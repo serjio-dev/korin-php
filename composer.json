@@ -1,0 +1,45 @@
+{
+    "name": "korin/gedcom",
+    "description": "Lossless GEDCOM 5.5–7.0 reader, validator, converter and writer for PHP",
+    "type": "library",
+    "license": "Apache-2.0",
+    "keywords": ["gedcom", "genealogy", "family-tree", "gedzip", "parser"],
+    "homepage": "https://github.com/serjio-dev/korin-php",
+    "require": {
+        "php": "~8.2.0 || ~8.3.0 || ~8.4.0 || ~8.5.0 || ~8.6.0"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "korin/gedcom-corpus": "dev-main",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpunit/phpunit": "^11.5 || ^12.5 || ^13",
+        "rector/rector": "^2.0",
+        "symfony/yaml": "^6.4 || ^7.0"
+    },
+    "suggest": {
+        "ext-intl": "Exact Unicode normalization (NFC) for ANSEL input",
+        "ext-mbstring": "Faster UTF-16 and single-byte decoding",
+        "ext-zip": "GEDZIP (.gdz) support"
+    },
+    "repositories": [
+        { "type": "vcs", "url": "https://github.com/serjio-dev/gedcom-corpus" }
+    ],
+    "autoload": {
+        "psr-4": { "Korin\\Gedcom\\": "src/" }
+    },
+    "autoload-dev": {
+        "psr-4": { "Korin\\Gedcom\\Tests\\": "tests/" }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit",
+        "stan": "phpstan analyse",
+        "cs": "php-cs-fixer check --diff",
+        "cs-fix": "php-cs-fixer fix",
+        "rector": "rector process --dry-run",
+        "check": ["@cs", "@rector", "@stan", "@test"]
+    }
+}

@@ -2,3 +2,8 @@
 .DS_Store
 /.claude/
 
+/vendor/
+/composer.lock
+/.phpunit.cache/
+/.php-cs-fixer.cache
+/build/
