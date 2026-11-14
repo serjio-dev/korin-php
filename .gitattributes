@@ -1,0 +1,3 @@
+# GEDCOM fixtures must stay byte-exact on every OS.
+*.ged binary
+*.gdz binary
