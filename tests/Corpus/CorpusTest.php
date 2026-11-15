@@ -159,7 +159,8 @@ final class CorpusTest extends TestCase
     private function checkConvert(\Korin\Gedcom\Syntax\Document $document, string $dir, array $conversion): void
     {
         $result = Gedcom::convert($document, Version::from($conversion['to']));
-        self::assertSame((string) file_get_contents($dir . '/' . $conversion['expected']), Gedcom::serialize($result->document()), 'Output');
+        self::assertSame((string) file_get_contents($dir . '/' . $conversion['expected']), $result->output(), 'Output');
+        self::assertSame($result->output(), Gedcom::serialize($result->document()), 'The document read back writes the output');
         $errors = Gedcom::validate($result->document())->errors();
         self::assertSame([], array_map(strval(...), $errors), 'The output must validate without errors');
 

@@ -10,7 +10,6 @@ use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Syntax\Node;
-use Korin\Gedcom\Syntax\Parser;
 use Korin\Gedcom\Version;
 use Korin\Gedcom\WriteOptions;
 use Korin\Gedcom\Writer\Writer;
@@ -18,8 +17,8 @@ use Korin\Gedcom\Writer\Writer;
 /**
  * Converts a document to another version along the chain of adjacent versions (SPEC section 7).
  * The input is not changed: the steps convert a copy record by record, then the copy is written
- * by the target version's rules and read back, so the result is an ordinary document whose
- * preserve-mode output is the conversion output.
+ * by the target version's rules; that output, read back on demand, is an ordinary document
+ * whose preserve-mode output is the conversion output.
  *
  * Output conventions: HEAD.GEDC.VERS names the target; 5.x HEAD.CHAR names the output encoding
  * (UTF-8, for 5.5 UTF-16 as "UNICODE"); the BOM follows the target version; every line ends
@@ -55,7 +54,9 @@ final readonly class Converter
     {
         $from = $document->version();
         if ($from === $to) {
-            return new ConversionResult($document->copy(), new LossReport($from, $to));
+            $copy = $document->copy();
+
+            return new ConversionResult(new LossReport($from, $to), (new Writer())->serialize($copy), new ReadOptions(), $copy);
         }
         $route = $this->route($from, $to) ?? throw new ConversionException("Conversion from {$from->value} to {$to->value} is not supported yet");
 
@@ -96,9 +97,8 @@ final readonly class Converter
         $encoding = self::ENCODINGS[$to->value];
         $this->stamp($work, $to, $encoding);
         $bytes = (new Writer())->serialize($work, WriteOptions::normalize()->withEncoding($encoding)->withLineEnding($document->lineEnding()));
-        $result = (new Parser())->parse($bytes, (new ReadOptions())->withVersion($to)->withEncoding($encoding));
 
-        return new ConversionResult($result, new LossReport($from, $to, $context->losses()));
+        return new ConversionResult(new LossReport($from, $to, $context->losses()), $bytes, (new ReadOptions())->withVersion($to)->withEncoding($encoding));
     }
 
     /**

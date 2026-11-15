@@ -12,9 +12,14 @@ break the API; such changes are described in `UPGRADE.md`.
 - `Gedcom::convert()` / `Conversion\Converter` with `ConversionResult` and `LossReport`
   ([docs/losses.md](docs/losses.md)), `ConvertOptions` with the loss policies
   `PreserveAsExtension`, `DropWithReport` and `Fail` (`ConversionException`). The framework
-  only: steps between versions follow, so every conversion between different versions is
-  still unsupported. Lines that are not GEDCOM are dropped and reported (`KL1001`), lines with
-  bytes invalid in their encoding are reported (`KL1002`).
+  and the 5.5.1 → 7.0 step below; the other steps follow. Lines that are not GEDCOM are dropped and reported (`KL1001`), lines with
+  bytes invalid in their encoding are reported (`KL1002`). `ConversionResult::output()` is
+  the converted file; `document()` reads it back on first use.
+- Conversion 5.5.1 → 7.0, first rules ([docs/conversion.md](docs/conversion.md)): UTF-8 with
+  a BOM, `CHAR` and `GEDC.FORM` removed, `CONC` joined, `@` escaped by the 7.0 rules, xrefs
+  invalid in 7.0 renamed to `@X<n>@`, dangling pointers to `@VOID@`, `NOTE` records and
+  pointers to them to `SNOTE`. Dates, ages, `LANG`, media, `ASSO`, `SUBN`, inline records,
+  identifiers and `SCHMA` follow.
 - `WriteOptions::normalize()` writes every line anew by the version's rules with one line
   terminator; `withEncoding()` writes in another encoding (unchanged lines are re-encoded in
   preserve mode), `withBom()` sets the byte order mark, by default by the version (SPEC
