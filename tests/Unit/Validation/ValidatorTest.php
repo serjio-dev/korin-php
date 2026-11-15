@@ -8,6 +8,7 @@ use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\Severity;
+use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Validation\ValidationOptions;
 use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\Test;
@@ -101,6 +102,53 @@ final class ValidatorTest extends TestCase
 
         self::assertSame(['KV2003 error: The file requires a SUBM record'], $this->lines($report->diagnostics()));
         self::assertSame('https://www.gedcom.org/specs/GEDCOM555.zip#SUBMITTER_RECORD/SUBM', $report->errors()[0]->reference);
+    }
+
+    #[Test]
+    public function gedcom555FileStartsWithAByteOrderMarkAndTheSubmitter(): void
+    {
+        $head = "0 HEAD\n1 GEDC\n2 VERS 5.5.5\n2 FORM LINEAGE-LINKED\n3 VERS 5.5.5\n1 CHAR UTF-8\n1 SOUR KORIN\n";
+        $submitter = "0 @U1@ SUBM\n1 NAME Анна\n";
+        $note = "0 @N1@ NOTE Shared note\n";
+
+        self::assertSame([], Gedcom::validate(Gedcom::parse("\u{FEFF}" . $head . $submitter . $note . "0 TRLR\n"))->diagnostics());
+        self::assertSame(
+            ['KV1104 warning: A GEDCOM 5.5.5 file must start with a byte order mark'],
+            $this->lines(Gedcom::validate(Gedcom::parse($head . $submitter . $note . "0 TRLR\n"))->diagnostics()),
+        );
+
+        $report = Gedcom::validate(Gedcom::parse("\u{FEFF}" . $head . $note . $submitter . "0 TRLR\n"));
+        self::assertSame(['KV2004 error line 9 (@U1@): The SUBM record must directly follow HEAD'], $this->lines($report->diagnostics()));
+        self::assertSame('https://www.gedcom.org/specs/GEDCOM555.zip#SUBMITTER_RECORD/SUBM', $report->errors()[0]->reference);
+
+        // Extension records are not checked, so they do not stand between HEAD and SUBM.
+        self::assertSame([], Gedcom::validate(Gedcom::parse("\u{FEFF}" . $head . "0 _PUBLISH yes\n" . $submitter . $note . "0 TRLR\n"))->diagnostics());
+    }
+
+    #[Test]
+    public function submitterAddedAfterReadingHasNoLine(): void
+    {
+        $doc = Document::create(Version::V5_5_5);
+        $doc->addRecord('NOTE', '@N1@', 'Shared note');
+        $doc->addRecord('SUBM', '@U1@')->addChild('NAME', 'Анна');
+
+        self::assertContains('KV2004 error (@U1@): The SUBM record must directly follow HEAD', $this->lines(Gedcom::validate($doc)->diagnostics()));
+    }
+
+    #[Test]
+    public function onlyGedcom555NeedsAByteOrderMarkAndTheSubmitterFirst(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 SOUR KORIN\n1 SUBM @U1@\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @N1@ NOTE Shared note\n0 @U1@ SUBM\n1 NAME Анна\n0 TRLR\n");
+
+        self::assertSame([], Gedcom::validate($doc)->diagnostics());
+    }
+
+    #[Test]
+    public function newGedcom555DocumentHasAByteOrderMark(): void
+    {
+        $doc = Document::create(Version::V5_5_5);
+
+        self::assertNotContains('KV1104', array_map(static fn(Diagnostic $d): string => $d->code, Gedcom::validate($doc)->diagnostics()));
     }
 
     #[Test]

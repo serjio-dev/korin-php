@@ -7,6 +7,7 @@ namespace Korin\Gedcom\Validation;
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Validation\Rule\FileRule;
 use Korin\Gedcom\Validation\Rule\PlausibilityRule;
 use Korin\Gedcom\Validation\Rule\ReferenceRule;
 use Korin\Gedcom\Validation\Rule\Rule;
@@ -25,7 +26,7 @@ final readonly class Validator
 
     public function __construct()
     {
-        $this->rules = [new StructureRule(), new ValueRule(), new ReferenceRule()];
+        $this->rules = [new FileRule(), new StructureRule(), new ValueRule(), new ReferenceRule()];
     }
 
     public function validate(Document $document, ValidationOptions $options = new ValidationOptions()): ValidationReport

@@ -24,7 +24,8 @@ sources, notes or multimedia objects; names and places have phonetic and romanis
   `<<INDIVIDUAL_EVENT_DETAIL>>`, whose `<<EVENT_DETAIL>>` has `n TYPE`. The specification
   describes one `TYPE` ("The IDNO and FACT record both require a subordinate TYPE record"); the
   written line takes precedence, so `IDNO` and `FACT` require `TYPE`.
-- The byte order mark at the start of the file is a matter of the reader, not of the grammar.
+- The byte order mark at the start of the file is not part of the grammar; the validator checks
+  it (`KV1104`).
 
 ## Differences from the printed text
 
@@ -56,5 +57,6 @@ because some sizes contradict the grammar (`TIME_VALUE {Size=7:12}` against `hh:
   no `@#DROMAN@`), ages (`< ` and `> ` with a space, parts without zeroes or leading zeroes, at
   most `999y 11m 365d`), times (`h:mm[:ss[.ff]]`), `GEDCOM_VERSION_NUMBER`,
   `PRODUCT_VERSION_NUMBER` and `PLACE_NAME` (parts separated by `, `).
-- Rules stated only in prose are not checked: the order of records (`SUBM` directly after
-  `HEAD`), no digits in names, dual years only from 1 January to 24 March and up to 1923.
+- The order of records is checked by the validator, outside the profile: `SUBM` directly after
+  `HEAD` (`KV2004`). Rules stated only in prose are not checked: no digits in names, dual years
+  only from 1 January to 24 March and up to 1923.
