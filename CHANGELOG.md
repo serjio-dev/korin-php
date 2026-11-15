@@ -12,6 +12,10 @@ break the API; such changes are described in `UPGRADE.md`.
 - `Spec\Profile`: the rules of a GEDCOM version as data — top-level records, substructures
   with cardinality per superstructure, payload types, enumeration sets and calendars.
   The 7.0 profile is compiled from the FamilySearch GEDCOM v7.0.18 term files (`NOTICE`).
+- `Gedcom::validate()` / `Validation\Validator` with `ValidationReport` (errors, warnings,
+  `isValid()`, JSON) and `ValidationOptions` to disable codes or change their severity.
+  Level 2 checks for 7.0: tags allowed in place (`KV2001`), cardinality (`KV2002`, `KV2003`).
+- `Diagnostic::$reference` (the specification term a rule comes from), `withSeverity()`, JSON.
 
 ## [0.1.0] - 2026-11-15
 
