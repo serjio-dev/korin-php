@@ -36,12 +36,12 @@ In strict mode (`ReadOptions::withStrict()`) every error-level `KV1` diagnostic 
 Reported by `Gedcom::validate()` against the profile of the document's version. Extension tags
 (`_X`) and everything under them are not checked. `reference` names the profile term of the
 structure that contains the problem: a 7.0 term such as `https://gedcom.io/terms/v7/record-INDI`,
-or for 5.5.1 a place in the grammar of the specification such as
+or for 5.5 and 5.5.1 a place in the grammar of the specification such as
 `https://gedcom.io/specifications/ged551.pdf#INDIVIDUAL_RECORD/INDI`.
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
-| `KV2000` | info | The version has no profile yet (5.5 and 5.5.5 until 0.2 is complete); structures are not checked |
+| `KV2000` | info | The version has no profile yet (5.5.5 until 0.2 is complete); structures are not checked |
 | `KV2001` | error | A standard tag that is not allowed where it stands (in this superstructure, or as a record); its substructures are not checked |
 | `KV2002` | error | A substructure occurs more often than allowed; reported once, at the first extra occurrence |
 | `KV2003` | error | A required substructure is missing; reported at the structure that lacks it |
@@ -55,26 +55,26 @@ $report = Gedcom::validate($doc, $options);
 
 ## KV3 — values
 
-Reported by `Gedcom::validate()` for GEDCOM 5.5.1 and 7.0 against the payload of each standard
+Reported by `Gedcom::validate()` for GEDCOM 5.5, 5.5.1 and 7.0 against the payload of each standard
 structure; extension structures are not checked. Messages name the expected type and never
 quote a value, except an enumeration value shortened to 20 characters.
 
 - 7.0: the data types of specification chapter 2. Dates follow the `DateValue`, `DatePeriod`
   and `DateExact` grammars with the months and epochs of their calendar (`GREGORIAN` when none
   is given; extension calendars must use extension months).
-- 5.5.1: the primitive elements of `spec/5.5.1/primitives.yaml`; other elements are text, and
+- 5.5 and 5.5.1: the primitive elements of `spec/<version>/primitives.yaml`; other elements are text, and
   field sizes are recommendations, not checked. Enumerations, date keywords and months are
   case-insensitive. Dates are `DATE_VALUE`, `DATE_PERIOD` or `DATE_EXACT` with calendar escapes
-  (`@#DJULIAN@`), date phrases in parentheses, `B.C.` after a lone year and Gregorian dual
-  years (`1648/49`).
+  (`@#DJULIAN@`), date phrases in parentheses, `B.C.` after any year (`44 B.C.`,
+  `MAR 44 B.C.`) and Gregorian dual years (`1648/49`).
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
-| `KV3001` | error | A value is required but missing (7.0: `Age`, `DateValue`, `DatePeriod` and `Y\|<NULL>` may be omitted; 5.5.1: payloads with `<NULL>`) |
+| `KV3001` | error | A value is required but missing (7.0: `Age`, `DateValue`, `DatePeriod` and `Y\|<NULL>` may be omitted; 5.x: payloads with `<NULL>`) |
 | `KV3002` | error | The structure must not have a value |
 | `KV3003` | error | The value must be a pointer to a record |
 | `KV3004` | error | A pointer where a value is expected (in 7.0 a leading `@` of text is written `@@`) |
-| `KV3005` | error | The value does not match its data type. 7.0: integer, personal name, BCP 47 language, media type, age, time, latitude, longitude, file path, URI, tag definition, `Y`, dates (including a day outside 1–36). 5.5.1: age, time, latitude, longitude, number, personal name, `Y`, dates |
+| `KV3005` | error | The value does not match its data type. 7.0: integer, personal name, BCP 47 language, media type, age, time, latitude, longitude, file path, URI, tag definition, `Y`, dates (including a day outside 1–36). 5.x: age, time, number, personal name, `Y`, dates; 5.5.1 also latitude, longitude |
 | `KV3006` | error | An enumeration value that the structure does not permit; in 7.0 extension values (`_X`) are always permitted |
 | `KV3007` | error | 7.0: a structure with neither a value nor substructures (`TRLR` excepted; a missing required substructure is `KV2003`) |
 | `KV3008` | warning | A date whose day is beyond the length of its month: `31 NOV`, `29 FEB 1900`, `FRENCH_R 7 COMP`. February follows the leap years of its calendar; Hebrew months use their longest length |

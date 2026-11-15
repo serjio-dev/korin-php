@@ -72,7 +72,9 @@ final class Grammar5Test extends TestCase
         yield 'bare calendar name' => [$value, 'JULIAN 1401', DateGrammar5::INVALID];
         yield 'B.C.' => [$value, '44 B.C.', DateGrammar5::VALID];
         yield 'B.C. without space' => [$value, '44B.C.', DateGrammar5::VALID];
-        yield 'B.C. after a month' => [$value, 'MAR 44 B.C.', DateGrammar5::INVALID];
+        yield 'B.C. after a month' => [$value, 'MAR 44 B.C.', DateGrammar5::VALID];
+        yield 'B.C. after a day' => [$value, '15 MAR 44 B.C.', DateGrammar5::VALID];
+        yield 'BC without stops' => [$value, 'MAR 44 BC', DateGrammar5::INVALID];
         yield 'dual year' => [$value, '30 JAN 1648/49', DateGrammar5::VALID];
         yield 'dual year over a century' => [$value, '1699/00', DateGrammar5::VALID];
         yield 'dual year not following' => [$value, '1701/99', DateGrammar5::BAD_DUAL_YEAR];
@@ -101,6 +103,7 @@ final class Grammar5Test extends TestCase
     {
         self::assertSame($expected, (new DateGrammar5(Profile::for(Version::V5_5_1)->enumeration(...)))->check($grammar, $value));
     }
+
 
     /**
      * @return iterable<string, array{string, string, bool}>
