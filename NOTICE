@@ -1,0 +1,15 @@
+Korin
+Copyright 2026 Serhii Tymtsunyk and contributors
+
+This product includes data derived from the FAMILYSEARCH GEDCOM™ Specification
+(https://github.com/FamilySearch/GEDCOM), licensed under the Apache License 2.0:
+
+  This work comprises, is based on, or is derived from the FAMILYSEARCH GEDCOM™
+  Specification, © 1984-2026 Intellectual Reserve, Inc. All rights reserved.
+
+  "FAMILYSEARCH GEDCOM™" and "FAMILYSEARCH®" are trademarks of Intellectual
+  Reserve, Inc. and may not be used except as allowed by the Apache 2.0 license
+  that governs this work or as expressly authorized in writing and in advance by
+  Intellectual Reserve, Inc.
+
+The data is in resources/profiles/7.0.php, compiled from spec/7.0/terms.

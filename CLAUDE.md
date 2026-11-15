@@ -10,6 +10,7 @@ composer check          # cs + rector + phpstan + phpunit
 vendor/bin/phpunit      # unit + corpus suites
 KORIN_CORPUS=../gedcom-corpus vendor/bin/phpunit --testsuite corpus   # against a local corpus checkout
 php bin/generate-encoding-tables.php   # regenerate resources/encodings (needs iconv + intl)
+php bin/generate-profiles.php          # compile spec/<version> into resources/profiles; --check in CI
 composer bench          # PHPBench; test files are generated into build/bench on first run
 vendor/bin/phpbench run --report=korin --filter=10Mb --filter=WriteBench   # without the 50 MB subject
 (cd tools/liberu-comparison && composer install && php compare.php ../../docs/comparison/liberu-php-gedcom.md)   # PHP 8.4+
@@ -32,6 +33,9 @@ vendor/bin/phpbench run --report=korin --filter=10Mb --filter=WriteBench   # wit
   decoded from the source on access. Do not add per-line arrays; check `composer bench` after changes.
 - Preserve mode must reproduce unmodified lines byte for byte. Any change to Io/Syntax/Writer
   must keep every `roundtrip-preserve` corpus case green.
+
+- Version rules live in `spec/` as data (7.0: unmodified FamilySearch term files, see
+  `spec/7.0/README.md`) and are compiled to PHP arrays; never edit `resources/profiles/*.php` by hand.
 
 ## Corpus
 

@@ -45,6 +45,7 @@
         "cs-fix": "php-cs-fixer fix",
         "rector": "rector process --dry-run",
         "bench": "phpbench run --report=korin",
-        "check": ["@cs", "@rector", "@stan", "@test"]
+        "profiles": "php bin/generate-profiles.php --check",
+        "check": ["@cs", "@rector", "@stan", "@profiles", "@test"]
     }
 }
