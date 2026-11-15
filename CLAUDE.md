@@ -26,6 +26,9 @@ vendor/bin/phpbench run --report=korin --filter=10Mb --filter=WriteBench   # wit
 - Exceptions and diagnostics must not quote more than a short fragment of the file: trees hold personal data.
 - `Syntax\Document` is mutable; functions such as convert or validate never change their input.
   Node ids are stable: removal leaves a tombstone, nothing shifts.
+- `Document` storage is packed for memory (spec section 9: 50 MB in ≤ 512 MB). Parsed lines are nodes
+  1..N in source order, so line numbers and lengths are derived, and values of unmodified lines are
+  decoded from the source on access. Do not add per-line arrays; check `composer bench` after changes.
 - Preserve mode must reproduce unmodified lines byte for byte. Any change to Io/Syntax/Writer
   must keep every `roundtrip-preserve` corpus case green.
 

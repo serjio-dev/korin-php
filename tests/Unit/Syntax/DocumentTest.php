@@ -160,4 +160,55 @@ final class DocumentTest extends TestCase
 
         Gedcom::parse("0 HEAD\n1 NOTE " . str_repeat('x', 100) . "\n", (new ReadOptions())->withLimits(maxDepth: 100, maxLineLength: 50));
     }
+
+    #[Test]
+    public function valuesOfUnmodifiedLinesComeFromTheSource(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\r\n1 GEDC\r\n2 VERS 5.5.1\r\n0 @N1@ NOTE Record text\r\n1 _EMPTY \r\n1 _NONE\r\n0 TRLR");
+
+        self::assertSame('Record text', $doc->record('@N1@')?->value());
+        self::assertSame('', $doc->find('@N1@/_EMPTY')?->value());
+        $none = $doc->find('@N1@/_NONE');
+        self::assertNotNull($none);
+        self::assertNull($none->value());
+        self::assertSame(1, $none->level());
+        self::assertSame(6, $none->line());
+        self::assertSame(7, $doc->find('TRLR')?->line());
+    }
+
+    #[Test]
+    public function renameXrefKeepsTheRecordValue(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @N1@ NOTE Shared text\n0 @I1@ INDI\n1 NOTE @N1@\n0 TRLR\n");
+        $doc->renameXref('@N1@', '@N2@');
+
+        self::assertSame('Shared text', $doc->record('@N2@')?->value());
+        self::assertSame('@N2@', $doc->find('@I1@/NOTE')?->pointer());
+        self::assertStringContainsString("0 @N2@ NOTE Shared text\n0 @I1@ INDI\n1 NOTE @N2@\n", Gedcom::serialize($doc));
+    }
+
+    #[Test]
+    public function siblingLinksSurviveInsertsAndRemovals(): void
+    {
+        $doc = Gedcom::parse(self::FILE);
+        $indi = $doc->record('@I1@');
+        $indi?->addChild('SEX', 'F', position: 0);
+        $indi?->first('FAMS')?->remove();
+        $indi?->addChild('_LAST', 'x');
+        $indi?->first('SEX')?->remove();
+
+        self::assertSame(['NAME', 'NAME', 'NOTE', '_LAST'], array_map(static fn(\Korin\Gedcom\Syntax\Node $n): string => $n->tag(), $indi?->children() ?? []));
+        self::assertStringContainsString("2 CONC  and more\n1 _LAST x\n0 @F1@ FAM\n", Gedcom::serialize($doc));
+    }
+
+    #[Test]
+    public function valueFarIntoALongLineIsKept(): void
+    {
+        $tag = '_' . str_repeat('T', 2_100_000);
+        $bytes = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 {$tag} far value\n0 TRLR\n";
+        $doc = Gedcom::parse($bytes, (new ReadOptions())->withLimits(maxDepth: 100, maxLineLength: 3_000_000));
+
+        self::assertSame('far value', $doc->find("HEAD/{$tag}")?->value());
+        self::assertSame($bytes, Gedcom::serialize($doc));
+    }
 }
