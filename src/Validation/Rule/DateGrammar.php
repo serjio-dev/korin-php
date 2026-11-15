@@ -126,10 +126,11 @@ final readonly class DateGrammar
             return self::VALID;
         }
 
-        return (int) $day <= $this->monthDays($calendar, $month, (int) $m[4], $epoch === 'BCE') ? self::VALID : self::DAY_OUT_OF_RANGE;
+        return (int) $day <= self::monthDays($calendar, $month, (int) $m[4], $epoch === 'BCE') ? self::VALID : self::DAY_OUT_OF_RANGE;
     }
 
-    private function monthDays(string $calendar, string $month, int $year, bool $bce): int
+    /** Length of a month of GREGORIAN, JULIAN, HEBREW or FRENCH_R; also used for 5.x dates. */
+    public static function monthDays(string $calendar, string $month, int $year, bool $bce): int
     {
         $days = self::MONTH_DAYS[$calendar === 'JULIAN' ? 'GREGORIAN' : $calendar][$month] ?? self::MAX_DAY;
         if ($month !== 'FEB' || ($calendar !== 'GREGORIAN' && $calendar !== 'JULIAN')) {

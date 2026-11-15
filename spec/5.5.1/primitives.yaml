@@ -1,0 +1,65 @@
+# GEDCOM 5.5.1 primitive elements (chapter 2, pages 41-66) whose values are restricted,
+# transcribed from the specification; see README.md and NOTICE. Elements not listed are text.
+#
+#   ELEMENT: [a, b, c]     an enumeration, compared case-insensitively; "(<X>)" stands for any
+#                          text in parentheses
+#   ELEMENT: <OTHER>       the same values as another element
+#   ELEMENT: GRAMMAR       a grammar implemented in Validation\Rule\Grammar5: DATE_VALUE,
+#                          DATE_EXACT, DATE_PERIOD, AGE_AT_EVENT, TIME_VALUE, NAME_PERSONAL,
+#                          NUMBER, PLACE_LATITUDE, PLACE_LONGITUDE
+#
+# {Size=…} is not transcribed: the specification gives "the minimum recommended field length
+# within a database", not a limit on values.
+
+ADOPTED_BY_WHICH_PARENT: [HUSB, WIFE, BOTH]
+AGE_AT_EVENT: AGE_AT_EVENT
+CERTAINTY_ASSESSMENT: ['0', '1', '2', '3']
+CHANGE_DATE: <DATE_EXACT>
+CHARACTER_SET: [ANSEL, UTF-8, UNICODE, ASCII]
+CHILD_LINKAGE_STATUS: [challenged, disproven, proven]
+# "The known number of children", "The number of different families": described as numbers.
+COUNT_OF_CHILDREN: NUMBER
+COUNT_OF_MARRIAGES: NUMBER
+DATE_EXACT: DATE_EXACT
+DATE_LDS_ORD: <DATE_VALUE>
+DATE_PERIOD: DATE_PERIOD
+DATE_VALUE: DATE_VALUE
+ENTRY_RECORDING_DATE: <DATE_VALUE>
+GEDCOM_FORM: [LINEAGE-LINKED]
+# "The number of generations": described as numbers.
+GENERATIONS_OF_ANCESTORS: NUMBER
+GENERATIONS_OF_DESCENDANTS: NUMBER
+LANGUAGE_ID: [
+  Afrikaans, Albanian, Anglo-Saxon, Catalan, Catalan_Spn, Czech, Danish, Dutch, English,
+  Esperanto, Estonian, Faroese, Finnish, French, German, Hawaiian, Hungarian, Icelandic,
+  Indonesian, Italian, Latvian, Lithuanian, Navaho, Norwegian, Polish, Portuguese, Romanian,
+  Serbo_Croa, Slovak, Slovene, Spanish, Swedish, Turkish, Wendic,
+  Amharic, Arabic, Armenian, Assamese, Belorusian, Bengali, Braj, Bulgarian, Burmese,
+  Cantonese, Church-Slavic, Dogri, Georgian, Greek, Gujarati, Hebrew, Hindi, Japanese,
+  Kannada, Khmer, Konkani, Korean, Lahnda, Lao, Macedonian, Maithili, Malayalam, Mandrin,
+  Manipuri, Marathi, Mewari, Nepali, Oriya, Pahari, Pali, Panjabi, Persian, Prakrit, Pusto,
+  Rajasthani, Russian, Sanskrit, Serb, Tagalog, Tamil, Telugu, Thai, Tibetan, Ukrainian, Urdu,
+  Vietnamese, Yiddish,
+]
+LANGUAGE_OF_TEXT: <LANGUAGE_ID>
+LANGUAGE_PREFERENCE: <LANGUAGE_ID>
+LDS_BAPTISM_DATE_STATUS: [CHILD, COMPLETED, EXCLUDED, PRE-1970, STILLBORN, SUBMITTED, UNCLEARED]
+LDS_CHILD_SEALING_DATE_STATUS: [BIC, COMPLETED, EXCLUDED, DNS, PRE-1970, STILLBORN, SUBMITTED, UNCLEARED]
+LDS_ENDOWMENT_DATE_STATUS: [CHILD, COMPLETED, EXCLUDED, PRE-1970, STILLBORN, SUBMITTED, UNCLEARED]
+LDS_SPOUSE_SEALING_DATE_STATUS: [CANCELED, COMPLETED, DNS, EXCLUDED, DNS/CAN, PRE-1970, SUBMITTED, UNCLEARED]
+MONTH: [JAN, FEB, MAR, APR, MAY, JUN, JUL, AUG, SEP, OCT, NOV, DEC]
+MONTH_FREN: [VEND, BRUM, FRIM, NIVO, PLUV, VENT, GERM, FLOR, PRAI, MESS, THER, FRUC, COMP]
+MONTH_HEBR: [TSH, CSH, KSL, TVT, SHV, ADR, ADS, NSN, IYR, SVN, TMZ, AAV, ELL]
+MULTIMEDIA_FORMAT: [bmp, gif, jpg, ole, pcx, tif, wav]
+NAME_PERSONAL: NAME_PERSONAL
+ORDINANCE_PROCESS_FLAG: ['yes', 'no']
+PEDIGREE_LINKAGE_TYPE: [adopted, birth, foster, sealing]
+PLACE_LATITUDE: PLACE_LATITUDE
+PLACE_LONGITUDE: PLACE_LONGITUDE
+PUBLICATION_DATE: <DATE_EXACT>
+RESTRICTION_NOTICE: [confidential, locked, privacy]
+ROLE_IN_EVENT: [CHIL, HUSB, WIFE, MOTH, FATH, SPOU, (<ROLE_DESCRIPTOR>)]
+SEX_VALUE: [M, F, U]
+SOURCE_MEDIA_TYPE: [audio, book, card, electronic, fiche, film, magazine, manuscript, map, newspaper, photo, tombstone, video]
+TIME_VALUE: TIME_VALUE
+TRANSMISSION_DATE: <DATE_EXACT>

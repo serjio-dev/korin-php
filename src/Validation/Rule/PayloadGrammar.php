@@ -28,10 +28,12 @@ final class PayloadGrammar
     public const DATE = 'https://gedcom.io/terms/v7/type-Date';
     public const DATE_PERIOD = 'https://gedcom.io/terms/v7/type-Date#period';
     public const DATE_EXACT = 'https://gedcom.io/terms/v7/type-Date#exact';
-    public const Y_OR_NULL = 'Y|<NULL>';
 
     /** Types whose payload may be omitted (the structure may carry only a PHRASE, say). */
-    public const OPTIONAL = [self::AGE => true, self::DATE => true, self::DATE_PERIOD => true, self::Y_OR_NULL => true];
+    public const OPTIONAL = [self::AGE => true, self::DATE => true, self::DATE_PERIOD => true];
+
+    /** Types checked by DateGrammar. */
+    public const DATES = [self::DATE => true, self::DATE_PERIOD => true, self::DATE_EXACT => true];
 
     /** Human-readable names for messages. */
     public const NAMES = [
@@ -46,7 +48,6 @@ final class PayloadGrammar
         self::FILE_PATH => 'a file path: a relative path or an ftp, http, https or file URL',
         self::URI => 'a URI reference',
         self::TAG_DEF => 'an extension tag and a URI, e.g. "_UID https://…"',
-        self::Y_OR_NULL => '"Y" or empty',
         self::DATE => 'a date, e.g. "6 DEC 1907", "ABT JULIAN 1650" or "BET 1900 AND 1910"',
         self::DATE_PERIOD => 'a date period, e.g. "FROM 1900 TO 1910" or "TO 1850"',
         self::DATE_EXACT => 'an exact Gregorian date, e.g. "6 DEC 1907"',
@@ -63,7 +64,6 @@ final class PayloadGrammar
         self::TIME => '/^(?:[01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9](?:\.[0-9]+)?)?Z?$/',
         self::LATITUDE => '/^[NS](?:90|[0-8]?[0-9])(?:\.[0-9]+)?$/',
         self::LONGITUDE => '/^[EW](?:180|1[0-7][0-9]|0?[0-9]?[0-9])(?:\.[0-9]+)?$/',
-        self::Y_OR_NULL => '/^Y?$/',
     ];
 
     /** RFC 2045 token: printable ASCII except SPACE and tspecials. */
@@ -114,6 +114,12 @@ final class PayloadGrammar
         $items = preg_split('/ *, */', $value);
 
         return $items === false ? [$value] : $items;
+    }
+
+    /** At most 20 characters of a value: diagnostics end up in logs. */
+    public static function fragment(string $value): string
+    {
+        return preg_match('/^.{21}/su', $value) === 1 && preg_match('/^.{19}/su', $value, $m) === 1 ? $m[0] . '…' : $value;
     }
 
     private static function isFilePath(string $value): bool

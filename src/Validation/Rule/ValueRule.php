@@ -13,30 +13,33 @@ use Korin\Gedcom\Syntax\Escaping;
 use Korin\Gedcom\Version;
 
 /**
- * Level 3: payloads of standard structures against the profile's payload types (KV3001–KV3008).
- * GEDCOM 7.0 only for now. Messages name the expected type but never quote a payload, except a
- * short enumeration value.
+ * Level 3: payloads of standard structures against the profile's payload types (KV3001–KV3009),
+ * for every version with a profile. A payload is one of the alternatives of its structure
+ * ("@<record>@|<SUBMITTER_TEXT>|<NULL>"); the types are version-specific (PayloadTypes).
+ * Messages name the expected type but never quote a payload, except a short enumeration value.
  *
  * @internal
  */
 final class ValueRule implements Rule
 {
     private const CONTINUATION = ['CONC' => true, 'CONT' => true];
-    private const DATES = [PayloadGrammar::DATE => true, PayloadGrammar::DATE_PERIOD => true, PayloadGrammar::DATE_EXACT => true];
+    private const NULL = '<NULL>';
 
-    private ?DateGrammar $dates = null;
+    /** @var array<string, array{bool, bool, list<string>, ?string}> structure URI => payload alternatives, see shape() */
+    private array $shapes = [];
 
     public function check(Document $document, ?Profile $profile): array
     {
-        if ($profile === null || $profile->version() !== Version::V7_0) {
+        if ($profile === null) {
             return [];
         }
+        $this->shapes = [];
+        $types = $profile->version() === Version::V7_0 ? new Payloads7($profile) : new Payloads5($profile);
         $out = [];
-        $this->dates = new DateGrammar($profile->calendars());
         foreach ($document->childIds(0) as $id) {
             $record = $profile->record($document->tagOf($id));
             if ($record !== null && !$document->isInvalid($id)) {
-                $this->structure($document, $profile, $id, $profile->structure($record->uri), $out);
+                $this->structure($document, $profile, $types, $id, $profile->structure($record->uri), $out);
             }
         }
 
@@ -44,7 +47,7 @@ final class ValueRule implements Rule
     }
 
     /** @param list<Diagnostic> $out */
-    private function structure(Document $document, Profile $profile, int $id, ?Structure $structure, array &$out): void
+    private function structure(Document $document, Profile $profile, PayloadTypes $types, int $id, ?Structure $structure, array &$out): void
     {
         if ($structure === null) {
             return;
@@ -63,14 +66,14 @@ final class ValueRule implements Rule
             ++$substructures;
             $substructure = $structure->substructure($tag);
             if ($substructure !== null) {
-                $this->structure($document, $profile, $child, $profile->structure($substructure->uri), $out);
+                $this->structure($document, $profile, $types, $child, $profile->structure($substructure->uri), $out);
             }
         }
-        $this->payload($document, $profile, $id, $structure, $substructures, $continued, $out);
+        $this->payload($document, $types, $id, $structure, $substructures, $continued, $out);
     }
 
     /** @param list<Diagnostic> $out */
-    private function payload(Document $document, Profile $profile, int $id, Structure $structure, int $substructures, bool $continued, array &$out): void
+    private function payload(Document $document, PayloadTypes $types, int $id, Structure $structure, int $substructures, bool $continued, array &$out): void
     {
         $raw = $document->payloadOf($id);
         $isPointer = $raw !== null && Escaping::isPointer($raw);
@@ -80,60 +83,62 @@ final class ValueRule implements Rule
             $continued => (string) $document->node($id)->value(),
             default => $raw === null ? '' : Escaping::unescape($raw, $document->version()),
         };
-        $type = $structure->payload;
+        [$hasPayload, $nullable, $texts, $target] = $this->shapes[$structure->uri] ??= $this->shape($structure);
         $tag = $structure->tag;
 
         if ($value === '') {
             // TRLR is empty by definition; a missing required substructure is already KV2003.
-            if ($substructures === 0 && $tag !== 'TRLR' && !$this->requiresSubstructures($structure)) {
+            if ($types->requiresContent() && $substructures === 0 && $tag !== 'TRLR' && !$this->requiresSubstructures($structure)) {
                 $out[] = $this->diagnostic($document, 'KV3007', "{$tag} has neither a value nor substructures", $id, $structure);
-            } elseif ($type !== null && !isset(PayloadGrammar::OPTIONAL[$type])) {
+            } elseif ($hasPayload && !$nullable && array_filter($texts, $types->isOptional(...)) === []) {
                 $out[] = $this->diagnostic($document, 'KV3001', "{$tag} requires a value", $id, $structure);
             }
 
             return;
         }
-        if ($type === null) {
+        if ($texts === [] && $target === null) {
             $out[] = $this->diagnostic($document, 'KV3002', "{$tag} must not have a value", $id, $structure);
 
             return;
         }
-        if ($structure->pointerTarget() !== null) {
-            if (!$isPointer) {
-                $out[] = $this->diagnostic($document, 'KV3003', "{$tag} must be a pointer to a record", $id, $structure);
-            }
-
-            return;
-        }
         if ($isPointer) {
-            $out[] = $this->diagnostic($document, 'KV3004', "{$tag} must have a value, not a pointer", $id, $structure);
-
-            return;
-        }
-        if ($type === PayloadGrammar::ENUM || $type === PayloadGrammar::LIST_ENUM) {
-            $permitted = $profile->enumeration((string) $structure->enumerationSet);
-            $items = $type === PayloadGrammar::ENUM ? [$value] : PayloadGrammar::listItems($value);
-            foreach ($items as $item) {
-                if (!PayloadGrammar::isEnumValue($item, $permitted)) {
-                    $out[] = $this->diagnostic($document, 'KV3006', "{$tag} does not permit \"" . $this->fragment($item) . '"; expected one of ' . implode(', ', $permitted) . ' or an extension value', $id, $structure);
-                }
+            if ($target === null) {
+                $out[] = $this->diagnostic($document, 'KV3004', "{$tag} must have a value, not a pointer", $id, $structure);
             }
 
             return;
         }
-        if (isset(self::DATES[$type]) && $this->dates !== null) {
-            $result = $this->dates->check($type, $value);
-            if ($result === DateGrammar::DAY_OUT_OF_RANGE) {
-                $out[] = $this->diagnostic($document, 'KV3008', "{$tag} has a day beyond the length of its month", $id, $structure, Severity::Warning);
-            } elseif ($result === DateGrammar::INVALID) {
-                $out[] = $this->diagnostic($document, 'KV3005', "{$tag} must be " . PayloadGrammar::NAMES[$type], $id, $structure);
-            }
+        if ($texts === []) {
+            $out[] = $this->diagnostic($document, 'KV3003', "{$tag} must be a pointer to a record", $id, $structure);
 
             return;
         }
-        if (!PayloadGrammar::matches($type, $value)) {
-            $out[] = $this->diagnostic($document, 'KV3005', "{$tag} must be " . (PayloadGrammar::NAMES[$type] ?? $type), $id, $structure);
+        // The value must be of one of the types; the problems of the first one are reported.
+        $first = null;
+        foreach ($texts as $type) {
+            $problems = $types->problems($structure, $type, $value);
+            if ($problems === []) {
+                return;
+            }
+            $first ??= $problems;
         }
+        foreach ($first as [$code, $severity, $message]) {
+            $out[] = $this->diagnostic($document, $code, "{$tag} {$message}", $id, $structure, $severity);
+        }
+    }
+
+    /**
+     * The payload alternatives of a structure: whether it has a payload, whether "<NULL>" is
+     * one of them, the types of non-pointer values, and the record type of a pointer.
+     *
+     * @return array{bool, bool, list<string>, ?string}
+     */
+    private function shape(Structure $structure): array
+    {
+        $alternatives = $structure->payload === null ? [] : explode('|', $structure->payload);
+        $texts = array_values(array_filter($alternatives, static fn(string $type): bool => $type !== self::NULL && !str_starts_with($type, '@<')));
+
+        return [$alternatives !== [], in_array(self::NULL, $alternatives, true), $texts, $structure->pointerTarget()];
     }
 
     private function requiresSubstructures(Structure $structure): bool
@@ -145,12 +150,6 @@ final class ValueRule implements Rule
         }
 
         return false;
-    }
-
-    /** At most 20 characters of a value: diagnostics end up in logs. */
-    private function fragment(string $value): string
-    {
-        return preg_match('/^.{21}/su', $value) === 1 && preg_match('/^.{19}/su', $value, $m) === 1 ? $m[0] . '…' : $value;
     }
 
     private function diagnostic(Document $document, string $code, string $message, int $id, Structure $structure, Severity $severity = Severity::Error): Diagnostic

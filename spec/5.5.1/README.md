@@ -40,9 +40,13 @@ same shape as the 7.0 profile:
 
 ## Differences from the printed text
 
-Only printing errors are corrected; the grammar itself is unchanged, including its known
-oddities (the `MULTIMEDIA_RECORD` uses `TYPE` where `MULTIMEDIA_LINK` uses `MEDI`; the
-individual `EVEN` has no payload).
+Printing errors are corrected, and one erratum; otherwise the grammar is unchanged, including
+its oddities (the `MULTIMEDIA_RECORD` uses `TYPE` where `MULTIMEDIA_LINK` uses `MEDI`).
+
+- Erratum: the individual `EVEN` is printed without a payload, although `EVENT_DESCRIPTOR` is
+  described as "usually assigned to the EVEN tag … pertaining to the individual or family", the
+  family `EVEN` has `[<EVENT_DESCRIPTOR> | <NULL>]`, and the gedcom7code test files give it a
+  value in files meant to be valid (`5/age-valid.ged`). It gets the payload of the family `EVEN`.
 
 - `{0:1)` and `{0:1*` are read as `{0:1}`; the footnote asterisks of `{0:1}*` are dropped.
 - Missing cardinalities are `{1:1}`, as for the other alternatives: `RESI` in
@@ -51,3 +55,16 @@ individual `EVEN` has no payload).
 - The 5.5 form of `MULTIMEDIA_LINK`, which the specification notes "some systems may have
   output", is the third alternative, with `FILE {1:1}`, `FORM {1:1}` and `MEDI {0:1}`.
 - The example line `0 @I1@ INDI` after `INDIVIDUAL_RECORD` is not part of the grammar.
+
+## Primitive elements
+
+`primitives.yaml` lists the primitive elements (pages 41–66) whose values are restricted: an
+enumeration (`SEX_VALUE: [M, F, U]`), another element (`CHANGE_DATE: <DATE_EXACT>`), or a
+grammar implemented in code (`DATE_VALUE`, `AGE_AT_EVENT`, …). Elements that are described
+only in prose, or that allow a `<user defined>` value (`NAME_TYPE`, `EVENT_TYPE_CITED_FROM`),
+are text. `{Size=…}` is left out: it is "the minimum recommended field length within a
+database", not a limit on values.
+
+Enumerations, date keywords and months are compared case-insensitively: the specification
+writes some lower case (`birth`), others upper case (`CHILD`), and the gedcom7code test files
+treat `child`, `Child` and `CHILD` alike (`5/age-valid.ged`).
