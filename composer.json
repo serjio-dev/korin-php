@@ -11,6 +11,7 @@
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.95",
         "korin/gedcom-corpus": "dev-main",
+        "phpbench/phpbench": "^1.4",
         "phpstan/phpstan": "^2.1",
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^11.5 || ^12.5 || ^13",
@@ -29,7 +30,10 @@
         "psr-4": { "Korin\\Gedcom\\": "src/" }
     },
     "autoload-dev": {
-        "psr-4": { "Korin\\Gedcom\\Tests\\": "tests/" }
+        "psr-4": {
+            "Korin\\Gedcom\\Tests\\": "tests/",
+            "Korin\\Gedcom\\Benchmarks\\": "benchmarks/"
+        }
     },
     "config": {
         "sort-packages": true
@@ -40,6 +44,7 @@
         "cs": "php-cs-fixer check --diff",
         "cs-fix": "php-cs-fixer fix",
         "rector": "rector process --dry-run",
+        "bench": "phpbench run --report=korin",
         "check": ["@cs", "@rector", "@stan", "@test"]
     }
 }
