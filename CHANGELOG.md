@@ -34,6 +34,9 @@ break the API; such changes are described in `UPGRADE.md`.
   mutual family links (`KV4004`), and the record type a pointer targets
   (`KV4003`).
 - `Diagnostic::$reference` (the specification term a rule comes from), `withSeverity()`, JSON.
+- Optional plausibility checks, `ValidationOptions::withPlausibility()` (warnings): a birth after
+  the death (`KV5001`), a child born before a parent (`KV5002`), an individual who is their own
+  ancestor (`KV5003`). Dates are compared as ranges of days, only when the conflict is certain.
 - Specification conformance tests generated from every profile (`tests/Conformance`): each
   reachable structure in a minimal valid file, then a tag it does not allow, each substructure
   once too often or left out, and its value of the wrong type, missing, forbidden, or a

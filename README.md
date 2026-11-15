@@ -50,6 +50,7 @@ Problems are reported, not thrown, unless you ask for strict mode:
 
 ```php
 use Korin\Gedcom\ReadOptions;
+use Korin\Gedcom\Validation\ValidationOptions;
 
 foreach ($doc->diagnostics() as $d) {
     echo $d, PHP_EOL;   // KV1101 warning line 6 (HEAD/CHAR): Non-standard CHAR value; …
@@ -57,8 +58,9 @@ foreach ($doc->diagnostics() as $d) {
 
 Gedcom::read('family.ged', (new ReadOptions())->withStrict());   // throws ParseException on errors
 
-$report = Gedcom::validate($doc);   // structure: 7.0 so far; references: all versions
+$report = Gedcom::validate($doc);   // structure, values and references of every version
 $report->isValid();                  // false if there are errors
+Gedcom::validate($doc, (new ValidationOptions())->withPlausibility());   // also births after deaths, cycles
 echo json_encode($report);           // code, severity, message, line, path, reference
 ```
 
