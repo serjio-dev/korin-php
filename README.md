@@ -3,9 +3,10 @@
 Read, validate, convert and write GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0 —
 without losing a single tag. Every unavoidable loss is reported.
 
-> **Status: early development (towards 0.1).** Reading, lossless writing and editing work today;
+> **Status: 0.1 — early development.** Reading, lossless writing and editing work today;
 > validation, conversion, the typed model, GEDZIP and streaming are planned — see
-> [the specification](docs/SPEC.md) for the roadmap.
+> [the specification](docs/SPEC.md) for the roadmap and [CHANGELOG.md](CHANGELOG.md) for releases.
+> Until 1.0 a minor release may break the API.
 
 ```php
 use Korin\Gedcom\Gedcom;
