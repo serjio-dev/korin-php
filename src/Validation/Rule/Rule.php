@@ -11,6 +11,10 @@ use Korin\Gedcom\Syntax\Document;
 /** @internal one group of checks of the validator */
 interface Rule
 {
-    /** @return iterable<Diagnostic> */
-    public function check(Document $document, Profile $profile): iterable;
+    /**
+     * @param ?Profile $profile null when the version has no profile yet
+     *
+     * @return iterable<Diagnostic>
+     */
+    public function check(Document $document, ?Profile $profile): iterable;
 }

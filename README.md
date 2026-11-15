@@ -57,7 +57,7 @@ foreach ($doc->diagnostics() as $d) {
 
 Gedcom::read('family.ged', (new ReadOptions())->withStrict());   // throws ParseException on errors
 
-$report = Gedcom::validate($doc);   // GEDCOM 7.0 so far; the document is not changed
+$report = Gedcom::validate($doc);   // structure: 7.0 so far; references: all versions
 $report->isValid();                  // false if there are errors
 echo json_encode($report);           // code, severity, message, line, path, reference
 ```

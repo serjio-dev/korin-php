@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Korin\Gedcom\Validation;
 
 use Korin\Gedcom\Diagnostic;
-use Korin\Gedcom\Severity;
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Validation\Rule\ReferenceRule;
 use Korin\Gedcom\Validation\Rule\Rule;
 use Korin\Gedcom\Validation\Rule\StructureRule;
 
@@ -22,22 +22,17 @@ final readonly class Validator
 
     public function __construct()
     {
-        $this->rules = [new StructureRule()];
+        $this->rules = [new StructureRule(), new ReferenceRule()];
     }
 
     public function validate(Document $document, ValidationOptions $options = new ValidationOptions()): ValidationReport
     {
         $diagnostics = $document->diagnostics();
-        $version = $document->version();
-        if (Profile::has($version)) {
-            $profile = Profile::for($version);
-            foreach ($this->rules as $rule) {
-                foreach ($rule->check($document, $profile) as $diagnostic) {
-                    $diagnostics[] = $diagnostic;
-                }
+        $profile = Profile::has($document->version()) ? Profile::for($document->version()) : null;
+        foreach ($this->rules as $rule) {
+            foreach ($rule->check($document, $profile) as $diagnostic) {
+                $diagnostics[] = $diagnostic;
             }
-        } else {
-            $diagnostics[] = new Diagnostic('KV2000', Severity::Info, "Structures are not checked: there is no profile for GEDCOM {$version->value} yet");
         }
 
         $reported = [];
