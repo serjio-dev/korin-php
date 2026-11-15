@@ -35,11 +35,13 @@ In strict mode (`ReadOptions::withStrict()`) every error-level `KV1` diagnostic 
 
 Reported by `Gedcom::validate()` against the profile of the document's version. Extension tags
 (`_X`) and everything under them are not checked. `reference` names the profile term of the
-structure that contains the problem, e.g. `https://gedcom.io/terms/v7/record-INDI`.
+structure that contains the problem: a 7.0 term such as `https://gedcom.io/terms/v7/record-INDI`,
+or for 5.5.1 a place in the grammar of the specification such as
+`https://gedcom.io/specifications/ged551.pdf#INDIVIDUAL_RECORD/INDI`.
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
-| `KV2000` | info | The version has no profile yet (5.x until 0.2 is complete); structures are not checked |
+| `KV2000` | info | The version has no profile yet (5.5 and 5.5.5 until 0.2 is complete); structures are not checked |
 | `KV2001` | error | A standard tag that is not allowed where it stands (in this superstructure, or as a record); its substructures are not checked |
 | `KV2002` | error | A substructure occurs more often than allowed; reported once, at the first extra occurrence |
 | `KV2003` | error | A required substructure is missing; reported at the structure that lacks it |
