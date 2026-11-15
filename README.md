@@ -58,6 +58,20 @@ Gedcom::read('family.ged', (new ReadOptions())->withStrict());   // throws Parse
 
 All codes are listed in [docs/diagnostics.md](docs/diagnostics.md).
 
+## Performance
+
+Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-series, no opcache):
+
+| Scenario | Peak memory | Time |
+| --- | --- | --- |
+| Full read, 10 MB UTF-8 | 170 MB | 0.33 s |
+| Full read, 10 MB Windows-1251 | 288 MB | 0.51 s |
+| Full read, 50 MB UTF-8 (2.4 million lines) | 1.16 GB | 1.8 s |
+| Preserve-mode write of 10 MB, unchanged / 10% of surnames edited | 175 MB | 80 ms / 100 ms |
+
+The 1.0 target for a full read of 50 MB is ≤ 512 MB and ≤ 20 s; memory use is being reduced.
+Streaming and indexed modes for large files are planned. Run the benchmarks with `composer bench`.
+
 ## License and trademarks
 
 Apache-2.0. GEDCOM is a trademark of Intellectual Reserve, Inc. Korin is not affiliated with
