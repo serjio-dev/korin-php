@@ -78,7 +78,7 @@ final class ValidatorTest extends TestCase
     #[Test]
     public function versionsWithoutAProfileAreReportedAsNotChecked(): void
     {
-        $report = Gedcom::validate(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5\n0 TRLR\n"));
+        $report = Gedcom::validate(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.5\n0 TRLR\n"));
 
         self::assertSame('KV2000', $report->diagnostics()[0]->code ?? null);
         self::assertTrue($report->isValid());
@@ -106,6 +106,23 @@ final class ValidatorTest extends TestCase
             'https://gedcom.io/specifications/ged551.pdf#PLACE_STRUCTURE/PLAC/MAP',
             Gedcom::validate($doc)->errors()[0]->reference,
         );
+    }
+
+    #[Test]
+    public function gedcom55IsCheckedAgainstItsOwnGrammar(): void
+    {
+        $doc = Gedcom::parse(
+            "0 HEAD\n1 SOUR KORIN\n1 SUBM @U1@\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n1 CHAR ASCII\n0 @U1@ SUBM\n1 NAME Anna\n"
+            . "0 @I1@ INDI\n1 NAME Anna /Koval/\n1 SEX U\n1 BIRT\n2 DATE MAR 44 B.C.\n1 ASSO @I1@\n2 RELA Godmother\n1 EVEN Appointed\n"
+            . "0 @O1@ OBJE\n1 FORM jpeg\n0 @O2@ OBJE\n1 FORM gif\n1 BLOB\n2 CONT .HM.......k.1..F.jwA\n0 @F1@ FAM\n1 MARR\n2 HUSB\n3 AGE 30y\n0 TRLR\n",
+        );
+
+        self::assertSame([
+            'KV3006 error line 12 (@I1@/SEX): SEX does not permit "U"; expected one of M, F',
+            'KV2003 error line 15 (@I1@/ASSO): ASSO requires TYPE',
+            'KV3002 error line 17 (@I1@/EVEN): EVEN must not have a value',
+            'KV2003 error line 18 (@O1@): OBJE requires BLOB',
+        ], $this->lines(Gedcom::validate($doc)->diagnostics()));
     }
 
     #[Test]

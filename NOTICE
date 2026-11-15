@@ -22,3 +22,12 @@ This product includes data transcribed from The GEDCOM Standard, Release 5.5.1:
   rights reserved.
 
 The data is in resources/profiles/5.5.1.php, compiled from spec/5.5.1/grammar.yaml.
+
+This product includes data transcribed from The GEDCOM Standard, Release 5.5:
+
+  Copyright © 1987, 1989, 1992, 1993, 1995 by The Church of Jesus Christ of Latter-day
+  Saints. This document may be copied for purposes of review or programming of genealogical
+  software, provided this notice is included. All other rights reserved.
+
+The data is in resources/profiles/5.5.php, compiled from spec/5.5/grammar.yaml and
+spec/5.5/primitives.yaml.

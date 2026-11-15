@@ -6,8 +6,9 @@ namespace Korin\Gedcom\Validation\Rule;
 
 /**
  * The GEDCOM 5.x date elements DATE_VALUE, DATE_PERIOD and DATE_EXACT (5.5.1 pages 45-48, 65):
- * calendar escapes such as "@#DJULIAN@", "B.C." after a lone year, dual years ("1699/00") in
- * the Gregorian calendar, date phrases in parentheses. Keywords and months are
+ * calendar escapes such as "@#DJULIAN@", "B.C." after any year (5.5: "A (B.C.) appended to the
+ * <YEAR>"; 5.5.1 writes it only after a lone year, but "MAR 44 B.C." means the same in both),
+ * dual years ("1699/00") in the Gregorian calendar, date phrases in parentheses. Keywords and months are
  * case-insensitive. @#DROMAN@ and @#DUNKNOWN@ are "for future definition": any day, word and
  * year is accepted.
  *
@@ -122,8 +123,8 @@ final readonly class DateGrammar5
         $year = (int) $m[3];
         $dual = $m[4] ?? '';
         $bc = ($m[5] ?? '') !== '';
-        // B.C. follows a lone year; only Gregorian years can be dual; a day needs a month.
-        if (($bc && $month !== '') || ($dual !== '' && $calendar !== 'GREGORIAN') || ($month !== '' && !isset($months[$month]))) {
+        // Only Gregorian years can be dual; a day needs a month.
+        if (($dual !== '' && $calendar !== 'GREGORIAN') || ($month !== '' && !isset($months[$month]))) {
             return self::INVALID;
         }
         if ($day !== '' && ((int) $day < 1 || (int) $day > DateGrammar::monthDays($calendar === 'FRENCH R' ? 'FRENCH_R' : $calendar, $month, $dual === '' ? $year : $year + 1, $bc))) {

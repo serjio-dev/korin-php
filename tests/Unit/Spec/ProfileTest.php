@@ -6,6 +6,7 @@ namespace Korin\Gedcom\Tests\Unit\Spec;
 
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Version;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -129,9 +130,34 @@ final class ProfileTest extends TestCase
     }
 
     #[Test]
-    public function every551StructureIsReachable(): void
+    public function version55HasItsOwnGrammar(): void
     {
-        $profile = Profile::for(Version::V5_5_1);
+        $profile = Profile::for(Version::V5_5);
+        $base = 'https://gedcom.io/specifications/ged55.pdf#';
+
+        self::assertSame(Version::V5_5, $profile->version());
+        self::assertStringStartsWith('The GEDCOM Standard, Release 5.5 ', $profile->source());
+        self::assertSame(['FAM', 'HEAD', 'INDI', 'NOTE', 'OBJE', 'REPO', 'SOUR', 'SUBM', 'SUBN', 'TRLR'], array_keys($profile->records()));
+        // Lines written under <<FAMILY_EVENT_STRUCTURE>> belong to each family event.
+        self::assertSame($base . 'FAM_RECORD/FAM/FAMILY_EVENT_STRUCTURE/HUSB', $profile->resolve(['FAM', 'MARR', 'HUSB'])?->uri);
+        self::assertSame('{1:1}', (string) $profile->resolve(['FAM', 'DIV', 'WIFE'])?->substructure('AGE')?->cardinality);
+        self::assertSame($base . 'FAM_RECORD/FAM/HUSB', $profile->resolve(['FAM', 'HUSB'])?->uri);
+        // Structures of 5.5 that 5.5.1 changed or dropped.
+        self::assertSame('{1:1}', (string) $profile->resolve(['OBJE'])?->substructure('BLOB')?->cardinality);
+        self::assertSame('{1:1}', (string) $profile->resolve(['INDI', 'ASSO'])?->substructure('TYPE')?->cardinality);
+        self::assertSame('<ADDRESS_LINE>', $profile->resolve(['REPO', 'ADDR'])?->payload);
+        self::assertNull($profile->resolve(['INDI', 'EVEN'])?->payload);
+        // NOTE_STRUCTURE and SOURCE_CITATION include each other.
+        self::assertSame($base . 'SOURCE_CITATION/SOUR', $profile->resolve(['INDI', 'NOTE', 'SOUR'])?->uri);
+        self::assertSame($base . 'NOTE_STRUCTURE/NOTE', $profile->resolve(['INDI', 'NOTE', 'SOUR', 'NOTE'])?->uri);
+        self::assertSame(['M', 'F'], $profile->enumeration('<SEX_VALUE>'));
+    }
+
+    #[Test]
+    #[DataProvider('grammarVersions')]
+    public function everyGrammarStructureIsReachable(Version $version, int $count): void
+    {
+        $profile = Profile::for($version);
         $seen = [];
         $queue = array_map(static fn(\Korin\Gedcom\Spec\Substructure $s): string => $s->uri, $profile->records());
         while ($queue !== []) {
@@ -144,7 +170,14 @@ final class ProfileTest extends TestCase
             }
         }
 
-        self::assertCount(248, $seen);
+        self::assertCount($count, $seen);
+    }
+
+    /** @return iterable<string, array{Version, int}> */
+    public static function grammarVersions(): iterable
+    {
+        yield '5.5' => [Version::V5_5, 219];
+        yield '5.5.1' => [Version::V5_5_1, 248];
     }
 
     #[Test]
@@ -152,6 +185,6 @@ final class ProfileTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        Profile::for(Version::V5_5);
+        Profile::for(Version::V5_5_5);
     }
 }

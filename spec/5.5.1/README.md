@@ -68,3 +68,7 @@ database", not a limit on values.
 Enumerations, date keywords and months are compared case-insensitively: the specification
 writes some lower case (`birth`), others upper case (`CHILD`), and the gedcom7code test files
 treat `child`, `Child` and `CHILD` alike (`5/age-valid.ged`).
+
+`B.C.` is accepted after any year, not only after a lone year as the 5.5.1 grammar writes it
+(`<YEAR>[B.C.]`): 5.5 allows it after any year ("A (B.C.) appended to the <YEAR>"), and
+`MAR 44 B.C.` has only one meaning.

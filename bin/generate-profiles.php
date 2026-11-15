@@ -16,6 +16,12 @@ use Symfony\Component\Yaml\Yaml;
 require __DIR__ . '/../vendor/autoload.php';
 
 const PROFILES = [
+    '5.5' => [
+        'grammar' => 'spec/5.5/grammar.yaml',
+        'primitives' => 'spec/5.5/primitives.yaml',
+        'uri' => 'https://gedcom.io/specifications/ged55.pdf#',
+        'source' => 'The GEDCOM Standard, Release 5.5 (2 January 1996), chapter 2',
+    ],
     '5.5.1' => [
         'grammar' => 'spec/5.5.1/grammar.yaml',
         'primitives' => 'spec/5.5.1/primitives.yaml',
@@ -188,8 +194,11 @@ final readonly class Term
  * A GEDCOM 5.x lineage-linked grammar in the notation of the specification (see
  * spec/5.5.1/README.md), compiled into the profile shape. Each line written in a named structure
  * is one structure, identified by the name and its tag path ("…#EVENT_DETAIL/DATE"); a structure
- * included with <<NAME>> keeps its own identity. Alternatives with the same tag are merged: a
- * substructure is required only when every alternative requires it.
+ * included with <<NAME>> keeps its own identity; lines written under <<NAME>> are added to each of
+ * its top structures. Alternatives with the same tag are merged: a substructure is required only
+ * when every alternative requires it. Includes may be cyclic (5.5: NOTE_STRUCTURE and
+ * SOURCE_CITATION include each other), so the top lines of a structure are resolved separately
+ * from the structures written in it.
  */
 final class Grammar
 {
@@ -202,8 +211,11 @@ final class Grammar
     /** @var array<string, array<string, array{string, int, int}>> */
     private array $members = [];
 
-    /** @var array<string, array{tag: string, payloads: list<string>, empty: bool, children: list<array<string, array{string, int, int}>>}> */
+    /** @var array<string, array{tag: string, payloads: list<string>, empty: bool, children: list<array<string, array{string, int, int}>>, extra: array<string, array{string, int, int}>}> */
     private array $structures = [];
+
+    /** @var array<string, true> named structures whose lines are in $structures */
+    private array $defined = [];
 
     public function __construct(string $file, private readonly string $base)
     {
@@ -221,10 +233,14 @@ final class Grammar
     {
         $root = $this->members(self::ROOT);
         ksort($root);
+        $this->define(self::ROOT);
         $pointer = (static fn(string $payload): string => preg_replace_callback('/@<XREF:([A-Z]+)>@/', static fn(array $m): string => '@<' . ($root[$m[1]][0] ?? throw new RuntimeException("No record {$m[1]}")) . '>@', $payload) ?? $payload);
         $structures = [];
         foreach ($this->structures as $uri => $structure) {
             $children = $this->merge($structure['children']);
+            foreach ($structure['extra'] as $tag => $entry) {
+                $children[$tag] = isset($children[$tag]) ? throw new RuntimeException("{$uri}: {$tag} twice") : $entry;
+            }
             ksort($children);
             $structures[$uri] = [
                 'tag' => $structure['tag'],
@@ -245,7 +261,7 @@ final class Grammar
         if (!isset($this->members[$name])) {
             $alternatives = [];
             foreach ($this->definitions[$name] ?? throw new RuntimeException("Unknown structure <<{$name}>>") as $lines) {
-                $alternatives[] = $this->lines($name, '', $lines);
+                $alternatives[] = $this->entries($name, '', $lines);
             }
             $this->members[$name] = $this->merge($alternatives);
         }
@@ -254,11 +270,13 @@ final class Grammar
     }
 
     /**
+     * The structures of lines at one place, by tag; an include gives the top lines of its structure.
+     *
      * @param list<GrammarLine> $lines
      *
      * @return array<string, array{string, int, int}>
      */
-    private function lines(string $name, string $path, array $lines): array
+    private function entries(string $name, string $path, array $lines): array
     {
         $out = [];
         $put = static function (string $tag, array $entry) use (&$out, $name): void {
@@ -273,21 +291,54 @@ final class Grammar
                 continue;
             }
             foreach ($line->tags as $tag) {
+                $put($tag, ["{$this->base}{$name}{$path}/{$tag}", $line->min, $line->max]);
+            }
+        }
+
+        return $out;
+    }
+
+    /** Adds the structures written in a named structure, and in those it includes, once. */
+    private function define(string $name): void
+    {
+        if (isset($this->defined[$name])) {
+            return;
+        }
+        $this->defined[$name] = true;
+        foreach ($this->definitions[$name] ?? throw new RuntimeException("Unknown structure <<{$name}>>") as $lines) {
+            $this->walk($name, '', $lines);
+        }
+    }
+
+    /** @param list<GrammarLine> $lines */
+    private function walk(string $name, string $path, array $lines): void
+    {
+        foreach ($lines as $line) {
+            if ($line->include !== null) {
+                $this->define($line->include);
+                if ($line->children !== []) {
+                    $here = "{$path}/{$line->include}";
+                    $this->walk($name, $here, $line->children);
+                    $extra = $this->entries($name, $here, $line->children);
+                    foreach ($this->members($line->include) as [$uri]) {
+                        $this->structures[$uri]['extra'] = $extra + ($this->structures[$uri]['extra'] ?? []);
+                    }
+                }
+                continue;
+            }
+            foreach ($line->tags as $tag) {
                 $uri = "{$this->base}{$name}{$path}/{$tag}";
-                $children = $this->lines($name, "{$path}/{$tag}", $line->children);
-                $this->structures[$uri] ??= ['tag' => $tag, 'payloads' => [], 'empty' => false, 'children' => []];
+                $this->structures[$uri] ??= ['tag' => $tag, 'payloads' => [], 'empty' => false, 'children' => [], 'extra' => []];
                 $this->structures[$uri]['empty'] = $this->structures[$uri]['empty'] || $line->payload === null;
                 foreach ($line->payload === null ? [] : explode('|', $line->payload) as $payload) {
                     if (!in_array($payload, $this->structures[$uri]['payloads'], true)) {
                         $this->structures[$uri]['payloads'][] = $payload;
                     }
                 }
-                $this->structures[$uri]['children'][] = $children;
-                $put($tag, [$uri, $line->min, $line->max]);
+                $this->structures[$uri]['children'][] = $this->entries($name, "{$path}/{$tag}", $line->children);
+                $this->walk($name, "{$path}/{$tag}", $line->children);
             }
         }
-
-        return $out;
     }
 
     /**
@@ -332,13 +383,17 @@ final class Grammar
             }
             $level = $m['level'][0] === '+' ? (int) substr($m['level'], 1) : 0;
             $line = GrammarLine::of($m['body'], (int) $m['min'], $m['max'] === 'M' ? -1 : (int) $m['max'], $name);
-            if ($line === null) {
+            $superior = $level === 0 ? null : ($stack[$level - 1] ?? throw new RuntimeException("{$name}: level {$level} without a superior"));
+            if (array_intersect($line->tags, SYNTAX_TAGS) !== []) {
+                // A value written only in continuation lines is the value of the line (5.5 BLOB).
+                if ($superior !== null && $superior->payload === null) {
+                    $superior->payload = $line->payload;
+                }
                 continue;
             }
-            if ($level === 0) {
+            if ($superior === null) {
                 $top[] = $line;
             } else {
-                $superior = $stack[$level - 1] ?? throw new RuntimeException("{$name}: level {$level} without a superior");
                 $superior->children[] = $line;
             }
             $stack[$level] = $line;
@@ -358,12 +413,12 @@ final class GrammarLine
     private function __construct(
         public readonly array $tags,
         public readonly ?string $include,
-        public readonly ?string $payload,
+        public ?string $payload,
         public readonly int $min,
         public readonly int $max,
     ) {}
 
-    public static function of(string $body, int $min, int $max, string $name): ?self
+    public static function of(string $body, int $min, int $max, string $name): self
     {
         if (preg_match('/^<<([A-Z_]+)>>$/', $body, $m) === 1) {
             return new self([], $m[1], null, $min, $max);
@@ -373,9 +428,6 @@ final class GrammarLine
             throw new RuntimeException("{$name}: cannot read \"{$body}\"");
         }
         $tags = explode('|', $m[1] ?? $m[2] ?? '');
-        if (array_intersect($tags, ['CONC', 'CONT']) !== []) {
-            return null;
-        }
         $payload = $m[3] !== null ? preg_replace(['/\s+/', '/^\[(.*)\]$/', '/@XREF:([A-Z]+)@/'], ['', '$1', '@<XREF:$1>@'], $m[3]) : null;
 
         return new self($tags, null, $payload, $min, $max);
