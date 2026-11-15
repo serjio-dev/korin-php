@@ -34,7 +34,7 @@ Gedcom::write($doc, 'family.ged');          // only the changed line is rewritte
 
 ## Requirements
 
-PHP 8.2–8.6.
+PHP 8.2–8.6, 64-bit.
 
 ## Installation
 
@@ -64,12 +64,12 @@ Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-ser
 
 | Scenario | Peak memory | Time |
 | --- | --- | --- |
-| Full read, 10 MB UTF-8 | 170 MB | 0.33 s |
-| Full read, 10 MB Windows-1251 | 288 MB | 0.51 s |
-| Full read, 50 MB UTF-8 (2.4 million lines) | 1.16 GB | 1.8 s |
-| Preserve-mode write of 10 MB, unchanged / 10% of surnames edited | 175 MB | 80 ms / 100 ms |
+| Full read, 10 MB UTF-8 | 70 MB | 0.32 s |
+| Full read, 10 MB Windows-1251 | 105 MB | 0.49 s |
+| Full read, 50 MB UTF-8 (2.4 million lines) | 426 MB | 1.6 s |
+| Preserve-mode write of 10 MB, unchanged / 10% of surnames edited | 76 MB | 104 ms / 121 ms |
 
-The 1.0 target for a full read of 50 MB is ≤ 512 MB and ≤ 20 s; memory use is being reduced.
+The 1.0 target for a full read of 50 MB is ≤ 512 MB and ≤ 20 s.
 Streaming and indexed modes for large files are planned. Run the benchmarks with `composer bench`.
 
 ## License and trademarks

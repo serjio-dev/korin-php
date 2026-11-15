@@ -7,6 +7,8 @@ namespace Korin\Gedcom\Syntax;
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Exception\DetachedNodeException;
 use Korin\Gedcom\Exception\InvalidPathException;
+use Korin\Gedcom\Io\Codec\Codec;
+use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\Version;
 
@@ -20,44 +22,45 @@ final class Document
 {
     private const ROOT = 0;
 
+    /** Bits of {@see $pos} below the line offset: value start (21 bits), terminator length (3 bits). */
+    private const POS_SHIFT = 24;
+
+    /** Value start meaning "the payload is stored in {@see $payload}". */
+    private const EXPLICIT = 0x1FFFFF;
+
+    private const LOW32 = 0xFFFFFFFF;
+
+    // One packed array per field, sized by the number of lines; everything per line that can be
+    // derived (depth, line number, content length, the value of an unmodified line) is not stored.
+
     /** @var array<int, int> */
     private array $parent = [self::ROOT => -1];
 
-    /** @var array<int, int> */
-    private array $depth = [self::ROOT => -1];
-
-    /** @var array<int, ?string> */
-    private array $xref = [self::ROOT => null];
-
-    /** @var array<int, string> empty for lines that could not be parsed */
+    /** @var array<int, string> empty for lines that could not be parsed; interned by the parser */
     private array $tag = [self::ROOT => ''];
 
-    /** @var array<int, ?string> line value as in the file (escaped), decoded to UTF-8 */
-    private array $payload = [self::ROOT => null];
+    /** @var array<int, int> siblings: (prev + 1) | (next + 1) << 32 */
+    private array $links = [self::ROOT => 0];
 
-    /** @var array<int, int> */
-    private array $firstChild = [self::ROOT => -1];
+    /**
+     * @var array<int, int> -1 for new nodes; otherwise offset << 24 | value start << 3 | terminator length.
+     *                      The value start is a byte position in the decoded line, 0 when there is no value.
+     */
+    private array $pos = [self::ROOT => -1];
 
-    /** @var array<int, int> */
-    private array $lastChild = [self::ROOT => -1];
+    /** @var array<int, int> only nodes with children: (first + 1) | (last + 1) << 32 */
+    private array $children = [];
 
-    /** @var array<int, int> */
-    private array $next = [self::ROOT => -1];
+    /** @var array<int, string> only nodes with an xref */
+    private array $xref = [];
 
-    /** @var array<int, int> */
-    private array $prev = [self::ROOT => -1];
+    /** @var array<int, ?string> line value (escaped, UTF-8) of new and modified nodes only */
+    private array $payload = [];
 
-    /** @var array<int, int> byte offset of the original line, -1 for new nodes */
-    private array $offset = [self::ROOT => -1];
+    /** Parsed lines are nodes 1..$parsed, contiguous in {@see $source}. */
+    private int $parsed = 0;
 
-    /** @var array<int, int> */
-    private array $contentLength = [self::ROOT => 0];
-
-    /** @var array<int, int> */
-    private array $eolLength = [self::ROOT => 0];
-
-    /** @var array<int, int> 1-based source line, 0 for new nodes */
-    private array $line = [self::ROOT => 0];
+    private ?Codec $codec = null;
 
     /** @var array<int, true> */
     private array $dirty = [];
@@ -193,14 +196,15 @@ final class Document
             throw new \InvalidArgumentException("Xref {$to} is already used");
         }
         $id = $this->xrefIndex[$from];
+        $this->markDirty($id);
         $this->xref[$id] = $to;
-        $this->dirty[$id] = true;
         unset($this->xrefIndex[$from]);
         $this->xrefIndex[$to] = $id;
-        foreach ($this->payload as $node => $payload) {
-            if ($payload === $from && !isset($this->removed[$node])) {
-                $this->payload[$node] = $to;
-                $this->dirty[$node] = true;
+        // Unmodified lines are only decoded when the source contains the pointer at all.
+        $candidates = str_contains($this->source, $this->encoding->ascii($from)) ? array_keys($this->parent) : array_keys($this->payload);
+        foreach ($candidates as $node) {
+            if ($node !== self::ROOT && !isset($this->removed[$node]) && $this->payloadOf($node) === $from) {
+                $this->setPayload($node, $to);
             }
         }
     }
@@ -211,6 +215,7 @@ final class Document
         return clone $this;
     }
 
+
     // ---- Internal API used by Node, the parser and writers -------------------------------
 
     /** @internal */
@@ -220,62 +225,35 @@ final class Document
     }
 
     /**
-     * @internal
+     * @internal a node that is not in the source: added by editing or by {@see self::create()}
      *
      * @param ?int $before sibling to insert before; null appends
      */
-    public function createNode(
-        int $parent,
-        ?string $xref,
-        string $tag,
-        ?string $payload,
-        ?int $before = null,
-        int $offset = -1,
-        int $contentLength = 0,
-        int $eolLength = 0,
-        int $line = 0,
-        bool $invalid = false,
-    ): int {
-        $id = count($this->parent);
-        $this->parent[$id] = $parent;
-        $this->depth[$id] = $this->depth[$parent] + 1;
-        $this->xref[$id] = $xref;
-        $this->tag[$id] = $tag;
+    public function createNode(int $parent, ?string $xref, string $tag, ?string $payload, ?int $before = null): int
+    {
+        $id = $this->append($parent, $xref, $tag, -1, $before);
         $this->payload[$id] = $payload;
-        $this->firstChild[$id] = -1;
-        $this->lastChild[$id] = -1;
-        $this->offset[$id] = $offset;
-        $this->contentLength[$id] = $contentLength;
-        $this->eolLength[$id] = $eolLength;
-        $this->line[$id] = $line;
-        if ($offset < 0) {
-            $this->dirty[$id] = true;
+        $this->dirty[$id] = true;
+
+        return $id;
+    }
+
+    /**
+     * @internal the next line of the source, appended as the last child of $parent
+     *
+     * @param int $valueStart byte position of the value in the decoded line; 0 when there is none
+     */
+    public function addParsedLine(int $parent, ?string $xref, string $tag, ?string $value, int $valueStart, int $offset, int $eolLength, bool $invalid = false): int
+    {
+        $explicit = $valueStart >= self::EXPLICIT;
+        $id = $this->append($parent, $xref, $tag, $offset << self::POS_SHIFT | ($explicit ? self::EXPLICIT : $valueStart) << 3 | $eolLength, null);
+        if ($explicit) {
+            $this->payload[$id] = $value;
         }
         if ($invalid) {
             $this->invalid[$id] = true;
         }
-        if ($before === null) {
-            $this->prev[$id] = $this->lastChild[$parent];
-            $this->next[$id] = -1;
-            if ($this->lastChild[$parent] >= 0) {
-                $this->next[$this->lastChild[$parent]] = $id;
-            } else {
-                $this->firstChild[$parent] = $id;
-            }
-            $this->lastChild[$parent] = $id;
-        } else {
-            $this->prev[$id] = $this->prev[$before];
-            $this->next[$id] = $before;
-            if ($this->prev[$before] >= 0) {
-                $this->next[$this->prev[$before]] = $id;
-            } else {
-                $this->firstChild[$parent] = $id;
-            }
-            $this->prev[$before] = $id;
-        }
-        if ($parent === self::ROOT && $xref !== null) {
-            $this->xrefIndex[$xref] ??= $id;
-        }
+        $this->parsed = $id;
 
         return $id;
     }
@@ -285,19 +263,19 @@ final class Document
     {
         $this->assertAttached($id);
         $parent = $this->parent[$id];
-        $prev = $this->prev[$id];
-        $next = $this->next[$id];
+        $prev = $this->prevOf($id);
+        $next = $this->nextOf($id);
         if ($prev >= 0) {
-            $this->next[$prev] = $next;
+            $this->setLinks($prev, $this->prevOf($prev), $next);
         } else {
-            $this->firstChild[$parent] = $next;
+            $this->setChildren($parent, $next, $this->lastChildOf($parent));
         }
         if ($next >= 0) {
-            $this->prev[$next] = $prev;
+            $this->setLinks($next, $prev, $this->nextOf($next));
         } else {
-            $this->lastChild[$parent] = $prev;
+            $this->setChildren($parent, $this->firstChildOf($parent), $prev);
         }
-        $xref = $this->xref[$id];
+        $xref = $this->xref[$id] ?? null;
         if ($parent === self::ROOT && $xref !== null && ($this->xrefIndex[$xref] ?? null) === $id) {
             unset($this->xrefIndex[$xref]);
         }
@@ -312,7 +290,7 @@ final class Document
     public function childIds(int $id): array
     {
         $ids = [];
-        for ($child = $this->firstChild[$id]; $child >= 0; $child = $this->next[$child]) {
+        for ($child = $this->firstChildOf($id); $child >= 0; $child = ($this->links[$child] >> 32) - 1) {
             $ids[] = $child;
         }
 
@@ -359,16 +337,21 @@ final class Document
         return $this->parent[$id];
     }
 
-    /** @internal */
+    /** @internal 0 for records */
     public function depthOf(int $id): int
     {
-        return $this->depth[$id];
+        $depth = -1;
+        for ($node = $this->parent[$id]; $node >= 0; $node = $this->parent[$node]) {
+            ++$depth;
+        }
+
+        return $depth;
     }
 
     /** @internal */
     public function xrefOf(int $id): ?string
     {
-        return $this->xref[$id];
+        return $this->xref[$id] ?? null;
     }
 
     /** @internal */
@@ -377,16 +360,27 @@ final class Document
         return $this->tag[$id];
     }
 
-    /** @internal */
+    /** @internal line value as in the file (escaped), decoded to UTF-8 */
     public function payloadOf(int $id): ?string
     {
-        return $this->payload[$id];
+        $pos = $this->pos[$id];
+        $valueStart = $pos >> 3 & self::EXPLICIT;
+        if ($pos < 0 || $valueStart === self::EXPLICIT || isset($this->dirty[$id])) {
+            return $this->payload[$id] ?? null;
+        }
+        if ($valueStart === 0) {
+            return null;
+        }
+        $raw = substr($this->source, $pos >> self::POS_SHIFT, $this->contentLength($id));
+        $this->codec ??= Codecs::for($this->encoding);
+
+        return substr($this->codec->decode($raw) ?? $this->codec->decodeLossy($raw), $valueStart);
     }
 
-    /** @internal */
+    /** @internal 1-based source line, 0 for nodes added after reading */
     public function lineOf(int $id): int
     {
-        return $this->line[$id];
+        return $this->pos[$id] < 0 ? 0 : $id;
     }
 
     /** @internal */
@@ -414,20 +408,22 @@ final class Document
      */
     public function originalBytes(int $id): ?array
     {
-        if ($this->offset[$id] < 0 || isset($this->dirty[$id])) {
+        $pos = $this->pos[$id];
+        if ($pos < 0 || isset($this->dirty[$id])) {
             return null;
         }
+        $offset = $pos >> self::POS_SHIFT;
+        $length = $this->contentLength($id);
 
-        return [
-            substr($this->source, $this->offset[$id], $this->contentLength[$id]),
-            substr($this->source, $this->offset[$id] + $this->contentLength[$id], $this->eolLength[$id]),
-        ];
+        return [substr($this->source, $offset, $length), substr($this->source, $offset + $length, $pos & 7)];
     }
 
     /** @internal original terminator of the line, '' if new or the line had none */
     public function originalEol(int $id): string
     {
-        return $this->offset[$id] < 0 ? '' : substr($this->source, $this->offset[$id] + $this->contentLength[$id], $this->eolLength[$id]);
+        $pos = $this->pos[$id];
+
+        return $pos < 0 ? '' : substr($this->source, ($pos >> self::POS_SHIFT) + $this->contentLength($id), $pos & 7);
     }
 
     /**
@@ -441,15 +437,103 @@ final class Document
         while ($stack !== []) {
             $id = array_pop($stack);
             yield $id;
-            for ($child = $this->lastChild[$id]; $child >= 0; $child = $this->prev[$child]) {
+            for ($child = $this->lastChildOf($id); $child >= 0; $child = ($this->links[$child] & self::LOW32) - 1) {
                 $stack[] = $child;
             }
         }
     }
 
+    private function append(int $parent, ?string $xref, string $tag, int $pos, ?int $before): int
+    {
+        $id = count($this->parent);
+        $this->parent[$id] = $parent;
+        $this->tag[$id] = $tag;
+        $this->pos[$id] = $pos;
+        if ($xref !== null) {
+            $this->xref[$id] = $xref;
+            if ($parent === self::ROOT) {
+                $this->xrefIndex[$xref] ??= $id;
+            }
+        }
+        $first = $this->firstChildOf($parent);
+        $last = $this->lastChildOf($parent);
+        if ($before === null) {
+            $this->links[$id] = $last + 1;
+            if ($last >= 0) {
+                $this->setLinks($last, $this->prevOf($last), $id);
+            } else {
+                $first = $id;
+            }
+            $this->setChildren($parent, $first, $id);
+        } else {
+            $prev = $this->prevOf($before);
+            $this->setLinks($id, $prev, $before);
+            $this->setLinks($before, $id, $this->nextOf($before));
+            if ($prev >= 0) {
+                $this->setLinks($prev, $this->prevOf($prev), $id);
+            } else {
+                $this->setChildren($parent, $id, $last);
+            }
+        }
+
+        return $id;
+    }
+
+    /** Keeps the current value of an unmodified line when the line is about to be rewritten. */
+    private function markDirty(int $id): void
+    {
+        if (!isset($this->dirty[$id])) {
+            $this->payload[$id] = $this->payloadOf($id);
+            $this->dirty[$id] = true;
+        }
+    }
+
+    /** Content bytes of a parsed line: up to the next line, which starts right after its terminator. */
+    private function contentLength(int $id): int
+    {
+        $pos = $this->pos[$id];
+        $end = $id < $this->parsed ? $this->pos[$id + 1] >> self::POS_SHIFT : strlen($this->source);
+
+        return $end - ($pos >> self::POS_SHIFT) - ($pos & 7);
+    }
+
+    private function prevOf(int $id): int
+    {
+        return ($this->links[$id] & self::LOW32) - 1;
+    }
+
+    private function nextOf(int $id): int
+    {
+        return ($this->links[$id] >> 32) - 1;
+    }
+
+    private function setLinks(int $id, int $prev, int $next): void
+    {
+        $this->links[$id] = ($prev + 1) | ($next + 1) << 32;
+    }
+
+    private function firstChildOf(int $id): int
+    {
+        return isset($this->children[$id]) ? ($this->children[$id] & self::LOW32) - 1 : -1;
+    }
+
+    private function lastChildOf(int $id): int
+    {
+        return isset($this->children[$id]) ? ($this->children[$id] >> 32) - 1 : -1;
+    }
+
+    private function setChildren(int $id, int $first, int $last): void
+    {
+        if ($first < 0) {
+            unset($this->children[$id]);
+        } else {
+            $this->children[$id] = ($first + 1) | ($last + 1) << 32;
+        }
+    }
+
     private function firstRecord(string $tag): ?Node
     {
-        for ($id = $this->firstChild[self::ROOT]; $id >= 0; $id = $this->next[$id]) {
+        for ($id = $this->firstChildOf(self::ROOT); $id >= 0; $id = $this->nextOf($id)) {
             if ($this->tag[$id] === $tag) {
                 return $this->node($id);
             }
@@ -461,7 +545,7 @@ final class Document
     private function markRemoved(int $id): void
     {
         $this->removed[$id] = true;
-        for ($child = $this->firstChild[$id]; $child >= 0; $child = $this->next[$child]) {
+        foreach ($this->childIds($id) as $child) {
             $this->markRemoved($child);
         }
     }

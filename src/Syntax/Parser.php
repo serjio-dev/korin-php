@@ -33,6 +33,8 @@ final readonly class Parser
         /** @var list<int> $stack node id at each depth, index = depth + 1 */
         $stack = [0];
         $lineNumber = 0;
+        /** @var array<string, string> one string per distinct tag, shared by all its lines */
+        $tags = [];
 
         foreach (LineSplitter::split($bytes, $encoding, $start) as [$offset, $length, $eol]) {
             ++$lineNumber;
@@ -54,7 +56,7 @@ final readonly class Parser
                 $this->report($document, $options, $text === ''
                     ? new Diagnostic('KV1001', Severity::Info, 'Empty line', $lineNumber)
                     : new Diagnostic('KV1001', Severity::Warning, 'Line is not a valid GEDCOM line and is kept verbatim', $lineNumber));
-                $document->createNode((int) end($stack), null, '', null, null, $offset, $length, $eol, $lineNumber, invalid: true);
+                $document->addParsedLine((int) end($stack), null, '', null, 0, $offset, $eol, invalid: true);
                 continue;
             }
 
@@ -71,7 +73,9 @@ final readonly class Parser
             }
             $xref = $m[2] !== '' ? $m[2] : null;
             $value = $m[4] ?? null;
-            $stack[] = $document->createNode($stack[$level], $xref, $m[3], $value, null, $offset, $length, $eol, $lineNumber);
+            $tag = $tags[$m[3]] ??= $m[3];
+            $valueStart = $value === null ? 0 : strlen($text) - strlen($value);
+            $stack[] = $document->addParsedLine($stack[$level], $xref, $tag, $value, $valueStart, $offset, $eol);
         }
 
         if ($eolCounts !== []) {
