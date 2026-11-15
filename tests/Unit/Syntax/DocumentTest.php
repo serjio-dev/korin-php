@@ -98,6 +98,52 @@ final class DocumentTest extends TestCase
     }
 
     #[Test]
+    public function setTagAndSetXrefKeepValuesAndLeavePointers(): void
+    {
+        $doc = Gedcom::parse(self::FILE);
+        $note = $doc->find('@I1@/NOTE');
+        self::assertNotNull($note);
+        $doc->setTag($note->id(), 'SNOTE');
+        $doc->setXref($doc->record('@F1@')?->id() ?? 0, '@X1@');
+
+        self::assertNull($doc->record('@F1@'));
+        self::assertSame('FAM', $doc->record('@X1@')?->tag());
+        self::assertSame("Line one\nline @two and more", $note->value());
+        self::assertStringContainsString("1 SNOTE Line one\n2 CONT line @@two\n2 CONC  and more\n1 FAMS @F1@\n0 @X1@ FAM\n", Gedcom::serialize($doc));
+    }
+
+    #[Test]
+    public function setXrefMayLeaveDuplicatesAndRecordFindsTheFirst(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n0 @a b@ INDI\n0 @a b@ FAM\n0 @I1@ SUBM\n0 TRLR\n");
+        [, $indi, $fam, $subm] = $doc->childIds(0);
+
+        $doc->setXref($indi, '@X1@');
+        self::assertSame($fam, $doc->record('@a b@')?->id());
+        $doc->setXref($subm, '@X1@');
+        self::assertSame($indi, $doc->record('@X1@')?->id());
+        self::assertNull($doc->record('@I1@'));
+    }
+
+    #[Test]
+    public function mayContainIsFalseOnlyWhenTheLineCertainlyLacksTheCharacter(): void
+    {
+        foreach (['UTF-8' => self::FILE, 'UTF-16LE' => "\xFF\xFE" . mb_convert_encoding(self::FILE, 'UTF-16LE', 'UTF-8')] as $encoding => $bytes) {
+            $doc = Gedcom::parse($bytes);
+            $at = [];
+            foreach ($doc->walk() as $id) {
+                if ($doc->mayContain($id, '@')) {
+                    $at[] = $doc->lineOf($id);
+                }
+            }
+            self::assertSame([9, 11, 13], $at, $encoding);
+        }
+        $doc = Gedcom::parse(self::FILE);
+        $doc->find('@I1@/NAME[0]')?->setValue('a@b');
+        self::assertTrue($doc->mayContain($doc->find('@I1@/NAME[0]')?->id() ?? 0, '@'));
+    }
+
+    #[Test]
     public function addRecordGoesBeforeTrailer(): void
     {
         $doc = Gedcom::parse(self::FILE);

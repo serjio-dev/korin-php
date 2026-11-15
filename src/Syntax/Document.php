@@ -71,8 +71,11 @@ final class Document
     /** @var array<int, true> lines kept verbatim because they could not be parsed */
     private array $invalid = [];
 
-    /** @var array<string, int> */
+    /** @var array<string, int> xref => first record with it; see {@see self::index()} */
     private array $xrefIndex = [];
+
+    /** Whether {@see $xrefIndex} must be rebuilt: setXref() can leave duplicates it cannot track. */
+    private bool $indexStale = false;
 
     /**
      * @internal use {@see \Korin\Gedcom\Gedcom::parse()} or {@see self::create()}
@@ -139,7 +142,9 @@ final class Document
 
     public function record(string $xref): ?Node
     {
-        return isset($this->xrefIndex[$xref]) ? $this->node($this->xrefIndex[$xref]) : null;
+        $id = $this->index()[$xref] ?? null;
+
+        return $id !== null ? $this->node($id) : null;
     }
 
     public function head(): ?Node
@@ -168,7 +173,7 @@ final class Document
     /** Adds a record before TRLR (or at the end when there is none). */
     public function addRecord(string $tag, ?string $xref = null, ?string $value = null): Node
     {
-        if ($xref !== null && isset($this->xrefIndex[$xref])) {
+        if ($xref !== null && isset($this->index()[$xref])) {
             throw new \InvalidArgumentException("Xref {$xref} is already used");
         }
         $trailer = $this->firstRecord('TRLR');
@@ -189,7 +194,7 @@ final class Document
     /** Renames a record's xref and every pointer to it. */
     public function renameXref(string $from, string $to): void
     {
-        if (!isset($this->xrefIndex[$from])) {
+        if (!isset($this->index()[$from])) {
             throw new \InvalidArgumentException("No record with xref {$from}");
         }
         if (isset($this->xrefIndex[$to])) {
@@ -305,6 +310,30 @@ final class Document
         $this->dirty[$id] = true;
     }
 
+    /** @internal a new tag for a node, its value and substructures kept (conversion) */
+    public function setTag(int $id, string $tag): void
+    {
+        $this->assertAttached($id);
+        $this->markDirty($id);
+        $this->tag[$id] = $tag;
+    }
+
+    /**
+     * @internal a new xref for a record; unlike {@see self::renameXref()}, pointers to it are
+     * left as they are, and the xref may be one another record has (a duplicate stays one)
+     */
+    public function setXref(int $id, ?string $xref): void
+    {
+        $this->assertAttached($id);
+        $this->markDirty($id);
+        if ($xref === null) {
+            unset($this->xref[$id]);
+        } else {
+            $this->xref[$id] = $xref;
+        }
+        $this->indexStale = true;
+    }
+
     /** @internal */
     public function setLineEnding(string $lineEnding): void
     {
@@ -375,6 +404,37 @@ final class Document
         $this->codec ??= Codecs::for($this->encoding);
 
         return substr($this->codec->decode($raw) ?? $this->codec->decodeLossy($raw), $valueStart);
+    }
+
+    /**
+     * @internal a cheap filter before {@see self::payloadOf()}: false only when the line
+     * certainly has no such ASCII character in its value. For an unmodified line it looks at
+     * the source bytes after the xref, without decoding (in UTF-16 too: an ASCII character's
+     * code unit contains its byte).
+     */
+    public function mayContain(int $id, string $ascii): bool
+    {
+        $pos = $this->pos[$id];
+        if ($pos < 0 || isset($this->dirty[$id])) {
+            return str_contains($this->payload[$id] ?? '', $ascii);
+        }
+        $offset = $pos >> self::POS_SHIFT;
+        $length = $this->contentLength($id);
+        if (isset($this->xref[$id]) && $ascii === '@') {
+            // Past the xref: from the byte after the second "@" (in UTF-16 maybe earlier, never later).
+            $skip = strcspn($this->source, '@', $offset, $length);
+            $skip += 1 + strcspn($this->source, '@', $offset + $skip + 1, max(0, $length - $skip - 1)) + 1;
+            $offset += min($skip, $length);
+            $length -= min($skip, $length);
+        }
+
+        return $length > 0 && strcspn($this->source, $ascii, $offset, $length) < $length;
+    }
+
+    /** @internal */
+    public function hasChildren(int $id): bool
+    {
+        return isset($this->children[$id]);
     }
 
     /** @internal 1-based source line, 0 for nodes added after reading */
@@ -482,6 +542,22 @@ final class Document
                 $stack[] = $child;
             }
         }
+    }
+
+    /** @return array<string, int> xref => the first record with it, in document order */
+    private function index(): array
+    {
+        if ($this->indexStale) {
+            $this->indexStale = false;
+            $this->xrefIndex = [];
+            foreach ($this->childIds(self::ROOT) as $id) {
+                if (isset($this->xref[$id])) {
+                    $this->xrefIndex[$this->xref[$id]] ??= $id;
+                }
+            }
+        }
+
+        return $this->xrefIndex;
     }
 
     private function append(int $parent, ?string $xref, string $tag, int $pos, ?int $before): int

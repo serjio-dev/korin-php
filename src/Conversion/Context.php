@@ -81,14 +81,17 @@ final class Context
         }
         $record = $this->document->createNode(0, $xref, $tag, null, $this->trailer);
         if ($value !== null) {
-            $version = $this->document->version();
-            $this->document->setVersion($this->step?->to() ?? $version);
-            $this->document->node($record)->setValue($value);
-            $this->document->setVersion($version);
+            $this->setValue($record, $value);
         }
         $this->added[] = $record;
 
         return $record;
+    }
+
+    /** Sets a text value by the rules of the current step's target version: its "@" escaping, "\n" as CONT lines. */
+    public function setValue(int $node, ?string $value): void
+    {
+        $this->document->node($node)->setValueFor($value, $this->step?->to() ?? $this->document->version());
     }
 
     /**

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Syntax;
 
+use Korin\Gedcom\Version;
+
 /**
  * Live view of one line and its substructures. CONC/CONT lines are not children here:
  * they are joined into {@see value()}. Any access after the node was removed throws
@@ -150,6 +152,12 @@ final readonly class Node
     /** Replaces the text value; "\n" becomes CONT lines, and old CONC/CONT lines are dropped. */
     public function setValue(?string $value): self
     {
+        return $this->setValueFor($value, $this->document->version());
+    }
+
+    /** @internal setValue() by the rules of another version than the document's (conversion) */
+    public function setValueFor(?string $value, Version $version): self
+    {
         $this->document->assertAttached($this->id);
         foreach ($this->document->childIds($this->id) as $child) {
             if (isset(self::CONTINUATION[$this->document->tagOf($child)])) {
@@ -161,7 +169,6 @@ final readonly class Node
 
             return $this;
         }
-        $version = $this->document->version();
         $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", $value));
         $this->document->setPayload($this->id, Escaping::escape(array_shift($lines), $version));
         $before = $this->document->childIds($this->id)[0] ?? null;

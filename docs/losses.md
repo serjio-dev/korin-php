@@ -10,7 +10,7 @@ use Korin\Gedcom\Conversion\LossPolicy;
 use Korin\Gedcom\ConvertOptions;
 
 $result = Gedcom::convert($doc, Version::V5_5_1);
-Gedcom::write($result->document(), 'family-551.ged');
+file_put_contents('family-551.ged', $result->output());
 foreach ($result->losses() as $loss) {
     echo $loss, PHP_EOL;   // KL1001 warning line 7 (@I1@/NAME), dropped: A line that is not a GEDCOM line is dropped
 }
@@ -34,8 +34,9 @@ Lines that are not GEDCOM lines are not data: they are dropped under every polic
 
 ## Output conventions
 
-The converted document is an ordinary document: written in preserve mode it gives the
-conversion output, byte for byte the same for the same input.
+`output()` is the converted file, byte for byte the same for the same input. `document()`
+reads it back, on first use only: an ordinary document whose preserve-mode output is
+`output()`; editing it does not change `output()`. What each version pair changes is in [conversion.md](conversion.md).
 
 - `HEAD.GEDC.VERS` names the target version; in 5.x `HEAD.CHAR` names the output encoding.
 - Encoding: UTF-8 for 7.0, 5.5.5 and 5.5.1; UTF-16 big-endian (`CHAR UNICODE`) for 5.5.
@@ -45,8 +46,9 @@ conversion output, byte for byte the same for the same input.
 - Converting to the version a document already has converts nothing: the result is a copy,
   written as the input was, with an empty report.
 
-The converter holds the source and the converted document at once (about twice the memory of
-a full read); `convertFile()` will convert large files in constant memory.
+The converter holds the source, its working copy (only changed lines take memory) and the
+output at once: converting a 50 MB 5.5.1 file to 7.0 peaks at about 1.5 times the memory of
+reading it. `convertFile()` will convert large files in constant memory.
 
 | Range | Level |
 | --- | --- |
