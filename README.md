@@ -71,6 +71,7 @@ Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-ser
 
 The 1.0 target for a full read of 50 MB is ≤ 512 MB and ≤ 20 s.
 Streaming and indexed modes for large files are planned. Run the benchmarks with `composer bench`.
+A baseline comparison with liberu-genealogy/php-gedcom is in [docs/comparison](docs/comparison/liberu-php-gedcom.md).
 
 ## License and trademarks
 

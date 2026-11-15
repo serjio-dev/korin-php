@@ -1,0 +1,22 @@
+{
+    "name": "korin/liberu-comparison",
+    "description": "Runs the gedcom-corpus and the benchmark files through Korin and liberu-genealogy/php-gedcom",
+    "type": "project",
+    "license": "Apache-2.0",
+    "require": {
+        "php": ">=8.4",
+        "korin/gedcom": "@dev",
+        "liberu-genealogy/php-gedcom": "4.2.0",
+        "symfony/yaml": "^7.0"
+    },
+    "repositories": [
+        { "type": "path", "url": "../..", "options": { "symlink": true } }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Korin\\Gedcom\\Tests\\Support\\": "../../tests/Support/",
+            "Korin\\Gedcom\\Benchmarks\\": "../../benchmarks/"
+        }
+    },
+    "config": { "sort-packages": true }
+}

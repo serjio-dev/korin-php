@@ -12,6 +12,7 @@ KORIN_CORPUS=../gedcom-corpus vendor/bin/phpunit --testsuite corpus   # against 
 php bin/generate-encoding-tables.php   # regenerate resources/encodings (needs iconv + intl)
 composer bench          # PHPBench; test files are generated into build/bench on first run
 vendor/bin/phpbench run --report=korin --filter=10Mb --filter=WriteBench   # without the 50 MB subject
+(cd tools/liberu-comparison && composer install && php compare.php ../../docs/comparison/liberu-php-gedcom.md)   # PHP 8.4+
 ```
 
 ## Rules
