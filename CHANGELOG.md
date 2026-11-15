@@ -23,6 +23,10 @@ break the API; such changes are described in `UPGRADE.md`.
   (`DateValue`, `DatePeriod`, `DateExact`) with the months and epochs of the `GREGORIAN`,
   `JULIAN`, `FRENCH_R`, `HEBREW` and extension calendars. A day beyond the length of its month
   is a warning (`KV3008`).
+- Level 3 checks for 5.5.1: the restricted primitive elements of the specification
+  (enumerations such as `SEX_VALUE`, ages, times, coordinates, numbers, personal names) and dates
+  with calendar escapes, date phrases, `B.C.` and dual years; a dual year whose second year
+  does not follow the first is a warning (`KV3009`).
 - Level 4 checks for every version: dangling pointers (`KV4001`), duplicate xrefs (`KV4002`),
   mutual family links (`KV4004`); for 5.5.1 and 7.0 also the record type a pointer targets
   (`KV4003`).

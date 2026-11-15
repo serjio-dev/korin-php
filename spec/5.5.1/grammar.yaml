@@ -325,8 +325,9 @@ INDIVIDUAL_EVENT_STRUCTURE:
   - |
     n [GRAD|RETI]                                 {1:1}
       +1 <<INDIVIDUAL_EVENT_DETAIL>>              {0:1}
+  # Erratum: printed without a payload; see README.md.
   - |
-    n EVEN                                        {1:1}
+    n EVEN [<EVENT_DESCRIPTOR>|<NULL>]            {1:1}
       +1 <<INDIVIDUAL_EVENT_DETAIL>>              {0:1}
 
 LDS_INDIVIDUAL_ORDINANCE:

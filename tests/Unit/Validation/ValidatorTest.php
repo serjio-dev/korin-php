@@ -92,7 +92,7 @@ final class ValidatorTest extends TestCase
             . "0 @U1@ SUBM\n1 NAME Анна\n0 @N1@ NOTE Shared note\n"
             . "0 @I1@ INDI\n1 NAME Анна /Коваль/\n2 SURN Коваль\n1 BIRT\n2 DATE 1921\n2 PLAC Київ\n3 MAP\n4 LATI N50.45\n"
             . "2 FAMC @F1@\n1 DEAT Y\n2 FAMC @F1@\n1 NOTE @N1@\n1 NOTE Inline text\n2 CONT more\n1 SOUR Inline source\n"
-            . "1 OBJE\n2 FILE photo.jpg\n3 FORM jpg\n1 FAMS @N1@\n1 SEX F\n1 SEX M\n0 @F1@ FAM\n1 CHIL @I1@\n1 MARR\n2 WIFE\n3 AGE 25\n0 TRLR\n",
+            . "1 OBJE\n2 FILE photo.jpg\n3 FORM jpg\n1 FAMS @N1@\n1 SEX F\n1 SEX M\n0 @F1@ FAM\n1 CHIL @I1@\n1 MARR\n2 WIFE\n3 AGE 25y\n0 TRLR\n",
         );
 
         self::assertSame([

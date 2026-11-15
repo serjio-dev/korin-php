@@ -17,6 +17,7 @@ use Korin\Gedcom\Version;
  *     root: array<string, array{string, int, int}>,
  *     structures: array<string, array{tag: string, payload: ?string, enumset: ?string, children: array<string, array{string, int, int}>}>,
  *     enumsets: array<string, list<string>>,
+ *     types: array<string, string>,
  *     calendars: array<string, array{uri: string, months: list<string>, epochs: list<string>}>
  * }
  */
@@ -115,7 +116,16 @@ final class Profile
         return $uri === null ? null : $this->structure($uri);
     }
 
-    /** @return list<string> standard tags of the values of an enumeration set */
+    /**
+     * The kind of a 5.x primitive element such as "<SEX_VALUE>": "ENUM" (values from
+     * enumeration()) or the name of a grammar such as "DATE_VALUE"; null for text and in 7.0.
+     */
+    public function type(string $element): ?string
+    {
+        return $this->data['types'][$element] ?? null;
+    }
+
+    /** @return list<string> values of an enumeration set (7.0 URI) or of a 5.x element ("<SEX_VALUE>") */
     public function enumeration(string $uri): array
     {
         return $this->data['enumsets'][$uri] ?? [];

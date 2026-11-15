@@ -18,6 +18,7 @@ require __DIR__ . '/../vendor/autoload.php';
 const PROFILES = [
     '5.5.1' => [
         'grammar' => 'spec/5.5.1/grammar.yaml',
+        'primitives' => 'spec/5.5.1/primitives.yaml',
         'uri' => 'https://gedcom.io/specifications/ged551.pdf#',
         'source' => 'The GEDCOM Standard, Release 5.5.1 (15 November 2019), chapter 2',
     ],
@@ -31,6 +32,9 @@ const PROFILES = [
 const ROOT_CARDINALITY = ['HEAD' => [1, 1], 'TRLR' => [1, 1]];
 const SYNTAX_TAGS = ['CONC', 'CONT'];
 
+/** Grammars of primitive elements implemented in Validation\Rule\Grammar5. */
+const GRAMMARS_5 = ['AGE_AT_EVENT', 'DATE_EXACT', 'DATE_PERIOD', 'DATE_VALUE', 'NAME_PERSONAL', 'NUMBER', 'PLACE_LATITUDE', 'PLACE_LONGITUDE', 'TIME_VALUE'];
+
 $argv = is_array($_SERVER['argv'] ?? null) ? $_SERVER['argv'] : [];
 $check = in_array('--check', $argv, true);
 $root = dirname(__DIR__);
@@ -38,7 +42,7 @@ $stale = [];
 foreach (PROFILES as $version => $config) {
     $target = "{$root}/resources/profiles/{$version}.php";
     $profile = isset($config['grammar'])
-        ? (new Grammar("{$root}/{$config['grammar']}", $config['uri']))->compile()
+        ? (new Grammar("{$root}/{$config['grammar']}", $config['uri']))->compile() + primitives("{$root}/{$config['primitives']}")
         : compile("{$root}/{$config['terms']}");
     $code = render($version, $config['source'], $profile);
     if ($check) {
@@ -110,7 +114,7 @@ function compile(string $dir): array
     ksort($root);
     ksort($calendars);
 
-    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'calendars' => $calendars];
+    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'types' => [], 'calendars' => $calendars];
 }
 
 /** The fields of a term file (https://gedcom.io/terms/format) that profiles use. */
@@ -232,7 +236,7 @@ final class Grammar
         }
         ksort($structures);
 
-        return ['root' => $root, 'structures' => $structures, 'enumsets' => [], 'calendars' => []];
+        return ['root' => $root, 'structures' => $structures];
     }
 
     /** @return array<string, array{string, int, int}> the top lines of a named structure by tag */
@@ -376,6 +380,52 @@ final class GrammarLine
 
         return new self($tags, null, $payload, $min, $max);
     }
+}
+
+/**
+ * The restricted primitive elements of a 5.x grammar (spec/5.5.1/primitives.yaml): "types" maps
+ * a payload such as "<SEX_VALUE>" to ENUM or a grammar, "enumsets" lists the values of an ENUM.
+ *
+ * @return array{enumsets: array<string, list<string>>, types: array<string, string>, calendars: array{}}
+ */
+function primitives(string $file): array
+{
+    $yaml = Yaml::parseFile($file);
+    $elements = is_array($yaml) ? $yaml : throw new RuntimeException("Not a list of primitives: {$file}");
+    $types = [];
+    $enumsets = [];
+    foreach (array_keys($elements) as $name) {
+        [$type, $values] = primitive($elements, (string) $name);
+        $types["<{$name}>"] = $type;
+        if ($type === 'ENUM') {
+            $enumsets["<{$name}>"] = $values;
+        }
+    }
+    ksort($types);
+    ksort($enumsets);
+
+    return ['enumsets' => $enumsets, 'types' => $types, 'calendars' => []];
+}
+
+/**
+ * @param array<mixed> $elements
+ * @param list<string> $seen
+ *
+ * @return array{string, list<string>} ENUM with its values, or a grammar
+ */
+function primitive(array $elements, string $name, array $seen = []): array
+{
+    $value = $elements[$name] ?? throw new RuntimeException("Unknown primitive <{$name}>");
+    if (is_array($value)) {
+        return ['ENUM', array_map(static fn(mixed $v): string => is_scalar($v) ? (string) $v : throw new RuntimeException("{$name}: bad value"), array_values($value))];
+    }
+    if (is_string($value) && preg_match('/^<([A-Z_]+)>$/', $value, $m) === 1 && !in_array($m[1], $seen, true)) {
+        return primitive($elements, $m[1], [...$seen, $name]);
+    }
+    if (is_string($value) && in_array($value, GRAMMARS_5, true)) {
+        return [$value, []];
+    }
+    throw new RuntimeException("{$name}: not an enumeration, element or known grammar");
 }
 
 /** @return array{int, int} minimum and maximum, -1 for "M" */

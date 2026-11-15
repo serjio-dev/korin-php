@@ -55,22 +55,30 @@ $report = Gedcom::validate($doc, $options);
 
 ## KV3 — values
 
-Reported by `Gedcom::validate()` for GEDCOM 7.0 against the payload type of each standard
-structure (specification chapter 2); extension structures are not checked. Dates follow the
-`DateValue`, `DatePeriod` and `DateExact` grammars with the months and epochs of their calendar
-(`GREGORIAN` when none is given; extension calendars must use extension months). Messages name
-the expected type and never quote a value, except an enumeration value shortened to 20 characters.
+Reported by `Gedcom::validate()` for GEDCOM 5.5.1 and 7.0 against the payload of each standard
+structure; extension structures are not checked. Messages name the expected type and never
+quote a value, except an enumeration value shortened to 20 characters.
+
+- 7.0: the data types of specification chapter 2. Dates follow the `DateValue`, `DatePeriod`
+  and `DateExact` grammars with the months and epochs of their calendar (`GREGORIAN` when none
+  is given; extension calendars must use extension months).
+- 5.5.1: the primitive elements of `spec/5.5.1/primitives.yaml`; other elements are text, and
+  field sizes are recommendations, not checked. Enumerations, date keywords and months are
+  case-insensitive. Dates are `DATE_VALUE`, `DATE_PERIOD` or `DATE_EXACT` with calendar escapes
+  (`@#DJULIAN@`), date phrases in parentheses, `B.C.` after a lone year and Gregorian dual
+  years (`1648/49`).
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
-| `KV3001` | error | A value is required but missing (`Age`, `DateValue`, `DatePeriod` and `Y\|<NULL>` may be omitted) |
+| `KV3001` | error | A value is required but missing (7.0: `Age`, `DateValue`, `DatePeriod` and `Y\|<NULL>` may be omitted; 5.5.1: payloads with `<NULL>`) |
 | `KV3002` | error | The structure must not have a value |
 | `KV3003` | error | The value must be a pointer to a record |
 | `KV3004` | error | A pointer where a value is expected (in 7.0 a leading `@` of text is written `@@`) |
-| `KV3005` | error | The value does not match its data type: integer, personal name, BCP 47 language, media type, age, time, latitude, longitude, file path, URI, tag definition, `Y`, dates (including a day outside 1–36) |
-| `KV3006` | error | An enumeration value that the structure does not permit; extension values (`_X`) are always permitted |
-| `KV3007` | error | A structure with neither a value nor substructures (`TRLR` excepted; a missing required substructure is `KV2003`) |
+| `KV3005` | error | The value does not match its data type. 7.0: integer, personal name, BCP 47 language, media type, age, time, latitude, longitude, file path, URI, tag definition, `Y`, dates (including a day outside 1–36). 5.5.1: age, time, latitude, longitude, number, personal name, `Y`, dates |
+| `KV3006` | error | An enumeration value that the structure does not permit; in 7.0 extension values (`_X`) are always permitted |
+| `KV3007` | error | 7.0: a structure with neither a value nor substructures (`TRLR` excepted; a missing required substructure is `KV2003`) |
 | `KV3008` | warning | A date whose day is beyond the length of its month: `31 NOV`, `29 FEB 1900`, `FRENCH_R 7 COMP`. February follows the leap years of its calendar; Hebrew months use their longest length |
+| `KV3009` | warning | 5.x: a dual year whose second year does not follow the first, such as `1701/99` (`1701/02` is meant) |
 
 ## KV4 — references
 
