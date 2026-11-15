@@ -8,7 +8,7 @@ new codes may be added in minor releases. Messages are informative and may chang
 | `KV1xxx` | Syntax: line format, levels, encoding, HEAD/TRLR |
 | `KV2xxx` | Structure: allowed substructures and cardinality |
 | `KV3xxx` | Values: dates, ages, enumerations, … *(0.2)* |
-| `KV4xxx` | References: dangling and duplicate xrefs *(0.2)* |
+| `KV4xxx` | References: dangling and duplicate xrefs, record types, family links |
 | `KV5xxx` | Plausibility, optional *(0.2)* |
 | `KL0001`–`KL9999` | Loss report entries of conversions *(0.3)* |
 
@@ -50,3 +50,15 @@ Every code can be left out or reported with another severity:
 $options = (new ValidationOptions())->withDisabled('KV2001')->withSeverity('KV1101', Severity::Error);
 $report = Gedcom::validate($doc, $options);
 ```
+
+## KV4 — references
+
+Reported by `Gedcom::validate()` in every version; `KV4003` needs the version's profile. Xrefs are
+case-sensitive (`@test@` is not `@TEST@`). In 7.0 `@VOID@` is a null pointer and never dangles.
+
+| Code | Severity | Meaning |
+| --- | --- | --- |
+| `KV4001` | error | Pointer to a record that does not exist |
+| `KV4002` | error | Xref already used by an earlier record; pointers resolve to the first one |
+| `KV4003` | error | Pointer to a record of the wrong type, e.g. `FAMC` to an `INDI` |
+| `KV4004` | warning | A family link is not mutual: `INDI.FAMC` without `FAM.CHIL`, `INDI.FAMS` without `FAM.HUSB`/`WIFE`, or the reverse; only checked when the target exists |

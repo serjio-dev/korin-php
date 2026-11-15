@@ -94,6 +94,47 @@ final class ValidatorTest extends TestCase
         self::assertSame($bytes, Gedcom::serialize($doc));
     }
 
+    #[Test]
+    public function danglingPointersAndDuplicateXrefs(): void
+    {
+        $report = Gedcom::validate(Gedcom::parse(self::HEAD_70 . "1 SUBM @VOID@\n0 @I1@ INDI\n1 FAMC @F9@\n1 SNOTE @n1@\n0 @N1@ SNOTE Text\n0 @N1@ SNOTE Again\n0 TRLR\n"));
+
+        self::assertSame([
+            'KV4001 error line 6 (@I1@/FAMC): Pointer to a record that does not exist',
+            'KV4001 error line 7 (@I1@/SNOTE): Pointer to a record that does not exist',
+            'KV4002 error line 9 (@N1@): Xref is already used by the record on line 8',
+        ], self::lines($report->diagnostics()));
+    }
+
+    #[Test]
+    public function voidIsANullPointerOnlyIn7(): void
+    {
+        $report = Gedcom::validate(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 SUBM @VOID@\n0 TRLR\n"));
+
+        self::assertSame(['KV4001 error line 4 (HEAD/SUBM): Pointer to a record that does not exist'], self::lines($report->errors()));
+    }
+
+    #[Test]
+    public function pointerMustTargetTheRightRecordType(): void
+    {
+        $report = Gedcom::validate(Gedcom::parse(self::HEAD_70 . "0 @I1@ INDI\n1 FAMC @I2@\n0 @I2@ INDI\n1 ASSO @I1@\n2 ROLE FRIEND\n0 TRLR\n"));
+
+        self::assertSame(['KV4003 error line 5 (@I1@/FAMC): FAMC must point to a FAM record, not INDI'], self::lines($report->diagnostics()));
+        self::assertSame('https://gedcom.io/terms/v7/INDI-FAMC', $report->diagnostics()[0]->reference);
+    }
+
+    #[Test]
+    public function familyLinksMustBeMutual(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 FAMS @F1@\n1 FAMC @F2@\n0 @I2@ INDI\n0 @F1@ FAM\n1 HUSB @I1@\n1 CHIL @I2@\n0 @F2@ FAM\n1 WIFE @I2@\n0 TRLR\n");
+
+        self::assertSame([
+            'KV4004 warning line 6 (@I1@/FAMC): @F2@ has no CHIL pointing back to @I1@',
+            'KV4004 warning line 10 (@F1@/CHIL): @I2@ has no FAMC pointing back to @F1@',
+            'KV4004 warning line 12 (@F2@/WIFE): @I2@ has no FAMS pointing back to @F2@',
+        ], self::lines(Gedcom::validate($doc)->warnings()));
+    }
+
     /**
      * @param list<Diagnostic> $diagnostics
      *

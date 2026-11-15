@@ -22,8 +22,13 @@ final class StructureRule implements Rule
 {
     private const CONTINUATION = ['CONC' => true, 'CONT' => true];
 
-    public function check(Document $document, Profile $profile): iterable
+    public function check(Document $document, ?Profile $profile): iterable
     {
+        if ($profile === null) {
+            yield new Diagnostic('KV2000', Severity::Info, "Structures are not checked: there is no profile for GEDCOM {$document->version()->value} yet");
+
+            return;
+        }
         yield from $this->children($document, $profile, 0, null, $profile->records());
     }
 
