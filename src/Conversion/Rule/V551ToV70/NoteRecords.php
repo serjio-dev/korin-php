@@ -22,6 +22,11 @@ final class NoteRecords implements NodeRule
         return false;
     }
 
+    public function tags(): array
+    {
+        return ['NOTE'];
+    }
+
     public function node(Document $document, int $id, Context $context): bool
     {
         if ($document->tagOf($id) === 'NOTE' && ($document->parentOf($id) === 0 || Escaping::isPointer((string) $document->payloadOf($id)))) {

@@ -32,7 +32,15 @@ final class V551ToV70 implements Step
     {
         return [
             new Rules\FileHeader(),
-            new Nodes(new Rules\Xrefs(), new Rules\NoteRecords(), new Rules\TextValues()),
+            new Rules\Submissions(),
+            new Nodes(
+                new Rules\Xrefs(),
+                new Rules\NoteRecords(),
+                new Rules\InlineRecords(),
+                new Rules\Identifiers(),
+                new Rules\Uids(),
+                new Rules\TextValues(),
+            ),
         ];
     }
 }

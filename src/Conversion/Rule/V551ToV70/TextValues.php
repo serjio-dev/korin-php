@@ -24,6 +24,11 @@ final class TextValues implements NodeRule
         return false;
     }
 
+    public function tags(): ?array
+    {
+        return null;
+    }
+
     public function node(Document $document, int $id, Context $context): bool
     {
         if ($document->tagOf($id) !== 'DATE' && $this->changes($document, $id)) {

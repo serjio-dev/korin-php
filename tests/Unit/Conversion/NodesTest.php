@@ -56,6 +56,11 @@ final class NodesTest extends TestCase
                 return false;
             }
 
+            public function tags(): ?array
+            {
+                return null;
+            }
+
             public function node(Document $document, int $id, Context $context): bool
             {
                 return ($this->apply)($document, $id);
