@@ -112,4 +112,53 @@ final class WriterTest extends TestCase
 
         self::assertSame($bytes, Gedcom::serialize(Gedcom::parse($bytes)));
     }
+
+    #[Test]
+    public function normalizeRewritesEveryLineWithOneTerminator(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\r\n1 GEDC\n2 VERS 5.5.1\r\n1 CHAR UTF-8\r\nnot a line\r\n\r\n0 @I1@ INDI\r\n1 NOTE " . str_repeat('z', 300) . "\r\n0 TRLR");
+
+        self::assertSame(
+            "0 HEAD\r\n1 GEDC\r\n2 VERS 5.5.1\r\n1 CHAR UTF-8\r\nnot a line\r\n\r\n0 @I1@ INDI\r\n1 NOTE " . str_repeat('z', 246) . "\r\n2 CONC " . str_repeat('z', 54) . "\r\n0 TRLR\r\n",
+            Gedcom::serialize($doc, WriteOptions::normalize()),
+        );
+        self::assertSame(
+            "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n",
+            substr(Gedcom::serialize($doc, WriteOptions::normalize()->withLineEnding("\n")), 0, 27),
+        );
+    }
+
+    #[Test]
+    public function anotherEncodingReencodesUnchangedLines(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Анна /Коваль/\r\n0 TRLR");
+
+        $bytes = Gedcom::serialize($doc, WriteOptions::preserve()->withEncoding(Encoding::Utf16Le));
+
+        // UTF-16 gets a BOM; the terminators, and the missing last one, are kept.
+        self::assertSame("\xFF\xFE" . mb_convert_encoding("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Анна /Коваль/\r\n0 TRLR", 'UTF-16LE', 'UTF-8'), $bytes);
+        self::assertSame($bytes, Gedcom::serialize(Gedcom::parse($bytes)));
+    }
+
+    /** @return iterable<string, array{string, Encoding, bool}> */
+    public static function boms(): iterable
+    {
+        yield '7.0' => ['7.0', Encoding::Utf8, true];
+        yield '5.5.5' => ['5.5.5', Encoding::Utf8, true];
+        yield '5.5.1 in UTF-8' => ['5.5.1', Encoding::Utf8, false];
+        yield '5.5 in UTF-16' => ['5.5', Encoding::Utf16Be, true];
+        yield 'ANSEL has none' => ['5.5.1', Encoding::Ansel, false];
+    }
+
+    #[Test]
+    #[DataProvider('boms')]
+    public function normalizedFilesGetTheBomOfTheirVersion(string $version, Encoding $encoding, bool $bom): void
+    {
+        $doc = Gedcom::parse("\u{FEFF}0 HEAD\n1 GEDC\n2 VERS {$version}\n0 TRLR\n");
+        $bytes = Gedcom::serialize($doc, WriteOptions::normalize()->withEncoding($encoding));
+
+        self::assertSame($bom, $encoding->bom() !== '' && str_starts_with($bytes, $encoding->bom()));
+        self::assertFalse(str_starts_with(Gedcom::serialize($doc, WriteOptions::normalize()->withBom(false)), "\xEF"));
+        self::assertTrue(str_starts_with(Gedcom::serialize($doc), "\xEF\xBB\xBF"), 'preserve keeps the BOM of the source');
+    }
 }

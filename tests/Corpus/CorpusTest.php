@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Tests\Corpus;
 
+use Korin\Gedcom\Conversion\Converter;
+use Korin\Gedcom\Conversion\Loss;
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Severity;
 use Korin\Gedcom\Tests\Support\Fingerprint;
 use Korin\Gedcom\Tests\Support\Ops;
+use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -16,13 +19,14 @@ use Symfony\Component\Yaml\Yaml;
 
 /**
  * Runs gedcom-corpus cases. The corpus comes from vendor/korin/gedcom-corpus, or from
- * KORIN_CORPUS (a path to a local checkout) when set. Only checks implemented so far run.
+ * KORIN_CORPUS (a path to a local checkout) when set. Only checks implemented so far run, and
+ * convert only for the conversions the library supports so far.
  */
 final class CorpusTest extends TestCase
 {
-    private const IMPLEMENTED = ['read', 'roundtrip-preserve', 'fingerprint', 'validate', 'edit'];
+    private const IMPLEMENTED = ['read', 'roundtrip-preserve', 'fingerprint', 'validate', 'edit', 'convert'];
 
-    /** @return iterable<string, array{string, string, array<string, mixed>}> */
+    /** @return iterable<string, array{string, string, array<string, mixed>, ?array{to: string, expected: string, losses: string}}> */
     public static function cases(): iterable
     {
         $root = getenv('KORIN_CORPUS');
@@ -39,15 +43,30 @@ final class CorpusTest extends TestCase
             /** @var list<string> $checks */
             $checks = $case['checks'];
             foreach (array_intersect($checks, self::IMPLEMENTED) as $check) {
-                yield basename($dir) . ' ' . $check => [$dir, $check, $case];
+                if ($check !== 'convert') {
+                    yield basename($dir) . ' ' . $check => [$dir, $check, $case, null];
+                    continue;
+                }
+                /** @var array{version: string} $input */
+                $input = $case['input'];
+                /** @var list<array{to: string, expected: string, losses: string}> $conversions */
+                $conversions = $case['convert'];
+                foreach ($conversions as $conversion) {
+                    if ((new Converter())->supports(Version::from($input['version']), Version::from($conversion['to']))) {
+                        yield basename($dir) . " convert {$conversion['to']}" => [$dir, $check, $case, $conversion];
+                    }
+                }
             }
         }
     }
 
-    /** @param array<string, mixed> $case */
+    /**
+     * @param array<string, mixed> $case
+     * @param ?array{to: string, expected: string, losses: string} $conversion
+     */
     #[Test]
     #[DataProvider('cases')]
-    public function corpusCase(string $dir, string $check, array $case): void
+    public function corpusCase(string $dir, string $check, array $case, ?array $conversion): void
     {
         /** @var array{file: string, version: string, encoding: string, bom?: bool} $input */
         $input = $case['input'];
@@ -60,6 +79,7 @@ final class CorpusTest extends TestCase
             'fingerprint' => self::assertEquals(json_decode((string) file_get_contents($dir . '/fingerprint.json'), true), Fingerprint::of($document)),
             'validate' => $this->checkValidate($document, $case),
             'edit' => $this->checkEdit($document, $dir),
+            'convert' => $this->checkConvert($document, $dir, $conversion ?? self::fail('No conversion')),
             default => self::fail("Check {$check} is not implemented"),
         };
     }
@@ -128,6 +148,28 @@ final class CorpusTest extends TestCase
                 self::assertContains($d['code'], $codes, $summary);
             }
         }
+    }
+
+    /**
+     * The output equals expected.<ver>.ged, validates without errors, and the loss report matches
+     * losses.<ver>.json by code, path and storedAs.
+     *
+     * @param array{to: string, expected: string, losses: string} $conversion
+     */
+    private function checkConvert(\Korin\Gedcom\Syntax\Document $document, string $dir, array $conversion): void
+    {
+        $result = Gedcom::convert($document, Version::from($conversion['to']));
+        self::assertSame((string) file_get_contents($dir . '/' . $conversion['expected']), Gedcom::serialize($result->document()), 'Output');
+        $errors = Gedcom::validate($result->document())->errors();
+        self::assertSame([], array_map(strval(...), $errors), 'The output must validate without errors');
+
+        /** @var array{entries: list<array{code: string, path: string, storedAs: string}>} $golden */
+        $golden = json_decode((string) file_get_contents($dir . '/' . $conversion['losses']), true);
+        $expected = array_map(static fn(array $e): string => "{$e['code']} {$e['path']} {$e['storedAs']}", $golden['entries']);
+        $actual = array_map(static fn(Loss $l): string => "{$l->code} {$l->path} {$l->storedAs->value}", $result->losses()->entries());
+        sort($expected);
+        sort($actual);
+        self::assertSame($expected, $actual, 'Losses: ' . implode('; ', array_map(strval(...), $result->losses()->entries())));
     }
 
     private function checkEdit(\Korin\Gedcom\Syntax\Document $document, string $dir): void
