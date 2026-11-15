@@ -15,9 +15,12 @@ break the API; such changes are described in `UPGRADE.md`.
 - `Gedcom::validate()` / `Validation\Validator` with `ValidationReport` (errors, warnings,
   `isValid()`, JSON) and `ValidationOptions` to disable codes or change their severity.
   Level 2 checks for 7.0: tags allowed in place (`KV2001`), cardinality (`KV2002`, `KV2003`).
-- Level 3 checks for 7.0 (`KV3001`–`KV3007`): required and forbidden values, pointers, and the
+- Level 3 checks for 7.0 (`KV3001`–`KV3008`): required and forbidden values, pointers, and the
   data types integer, enumeration and list of enumerations, personal name, language, media
-  type, age, time, latitude, longitude, file path, URI and tag definition.
+  type, age, time, latitude, longitude, file path, URI and tag definition; dates
+  (`DateValue`, `DatePeriod`, `DateExact`) with the months and epochs of the `GREGORIAN`,
+  `JULIAN`, `FRENCH_R`, `HEBREW` and extension calendars. A day beyond the length of its month
+  is a warning (`KV3008`).
 - Level 4 checks for every version: dangling pointers (`KV4001`), duplicate xrefs (`KV4002`),
   mutual family links (`KV4004`); for 7.0 also the record type a pointer targets (`KV4003`).
 - `Diagnostic::$reference` (the specification term a rule comes from), `withSeverity()`, JSON.

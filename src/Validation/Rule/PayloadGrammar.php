@@ -6,7 +6,7 @@ namespace Korin\Gedcom\Validation\Rule;
 
 /**
  * Grammars of the GEDCOM 7.0 data types (specification chapter 2), as regular expressions
- * with linear complexity. Dates are checked separately.
+ * with linear complexity. Dates are checked by DateGrammar.
  *
  * @internal
  */
@@ -47,6 +47,9 @@ final class PayloadGrammar
         self::URI => 'a URI reference',
         self::TAG_DEF => 'an extension tag and a URI, e.g. "_UID https://…"',
         self::Y_OR_NULL => '"Y" or empty',
+        self::DATE => 'a date, e.g. "6 DEC 1907", "ABT JULIAN 1650" or "BET 1900 AND 1910"',
+        self::DATE_PERIOD => 'a date period, e.g. "FROM 1900 TO 1910" or "TO 1850"',
+        self::DATE_EXACT => 'an exact Gregorian date, e.g. "6 DEC 1907"',
     ];
 
     public const EXT_TAG = '/^_[A-Z0-9_]+$/';

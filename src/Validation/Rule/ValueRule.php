@@ -13,15 +13,18 @@ use Korin\Gedcom\Syntax\Escaping;
 use Korin\Gedcom\Version;
 
 /**
- * Level 3: payloads of standard structures against the profile's payload types (KV3001–KV3007).
- * GEDCOM 7.0 only for now; dates are not checked yet. Messages name the expected type but
- * never quote a payload, except a short enumeration value.
+ * Level 3: payloads of standard structures against the profile's payload types (KV3001–KV3008).
+ * GEDCOM 7.0 only for now. Messages name the expected type but never quote a payload, except a
+ * short enumeration value.
  *
  * @internal
  */
 final class ValueRule implements Rule
 {
     private const CONTINUATION = ['CONC' => true, 'CONT' => true];
+    private const DATES = [PayloadGrammar::DATE => true, PayloadGrammar::DATE_PERIOD => true, PayloadGrammar::DATE_EXACT => true];
+
+    private ?DateGrammar $dates = null;
 
     public function check(Document $document, ?Profile $profile): array
     {
@@ -29,6 +32,7 @@ final class ValueRule implements Rule
             return [];
         }
         $out = [];
+        $this->dates = new DateGrammar($profile->calendars());
         foreach ($document->childIds(0) as $id) {
             $record = $profile->record($document->tagOf($id));
             if ($record !== null && !$document->isInvalid($id)) {
@@ -117,6 +121,16 @@ final class ValueRule implements Rule
 
             return;
         }
+        if (isset(self::DATES[$type]) && $this->dates !== null) {
+            $result = $this->dates->check($type, $value);
+            if ($result === DateGrammar::DAY_OUT_OF_RANGE) {
+                $out[] = $this->diagnostic($document, 'KV3008', "{$tag} has a day beyond the length of its month", $id, $structure, Severity::Warning);
+            } elseif ($result === DateGrammar::INVALID) {
+                $out[] = $this->diagnostic($document, 'KV3005', "{$tag} must be " . PayloadGrammar::NAMES[$type], $id, $structure);
+            }
+
+            return;
+        }
         if (!PayloadGrammar::matches($type, $value)) {
             $out[] = $this->diagnostic($document, 'KV3005', "{$tag} must be " . (PayloadGrammar::NAMES[$type] ?? $type), $id, $structure);
         }
@@ -139,10 +153,10 @@ final class ValueRule implements Rule
         return preg_match('/^.{21}/su', $value) === 1 && preg_match('/^.{19}/su', $value, $m) === 1 ? $m[0] . '…' : $value;
     }
 
-    private function diagnostic(Document $document, string $code, string $message, int $id, Structure $structure): Diagnostic
+    private function diagnostic(Document $document, string $code, string $message, int $id, Structure $structure, Severity $severity = Severity::Error): Diagnostic
     {
         $line = $document->lineOf($id);
 
-        return new Diagnostic($code, Severity::Error, $message, $line > 0 ? $line : null, $document->node($id)->path(), $structure->uri);
+        return new Diagnostic($code, $severity, $message, $line > 0 ? $line : null, $document->node($id)->path(), $structure->uri);
     }
 }

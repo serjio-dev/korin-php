@@ -54,9 +54,10 @@ $report = Gedcom::validate($doc, $options);
 ## KV3 — values
 
 Reported by `Gedcom::validate()` for GEDCOM 7.0 against the payload type of each standard
-structure (specification chapter 2); extension structures are not checked. Dates are not
-checked yet. Messages name the expected type and never quote a value, except an enumeration
-value shortened to 20 characters.
+structure (specification chapter 2); extension structures are not checked. Dates follow the
+`DateValue`, `DatePeriod` and `DateExact` grammars with the months and epochs of their calendar
+(`GREGORIAN` when none is given; extension calendars must use extension months). Messages name
+the expected type and never quote a value, except an enumeration value shortened to 20 characters.
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
@@ -64,9 +65,10 @@ value shortened to 20 characters.
 | `KV3002` | error | The structure must not have a value |
 | `KV3003` | error | The value must be a pointer to a record |
 | `KV3004` | error | A pointer where a value is expected (in 7.0 a leading `@` of text is written `@@`) |
-| `KV3005` | error | The value does not match its data type: integer, personal name, BCP 47 language, media type, age, time, latitude, longitude, file path, URI, tag definition, `Y` |
+| `KV3005` | error | The value does not match its data type: integer, personal name, BCP 47 language, media type, age, time, latitude, longitude, file path, URI, tag definition, `Y`, dates (including a day outside 1–36) |
 | `KV3006` | error | An enumeration value that the structure does not permit; extension values (`_X`) are always permitted |
 | `KV3007` | error | A structure with neither a value nor substructures (`TRLR` excepted; a missing required substructure is `KV2003`) |
+| `KV3008` | warning | A date whose day is beyond the length of its month: `31 NOV`, `29 FEB 1900`, `FRENCH_R 7 COMP`. February follows the leap years of its calendar; Hebrew months use their longest length |
 
 ## KV4 — references
 
