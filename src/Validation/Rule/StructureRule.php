@@ -22,23 +22,23 @@ final class StructureRule implements Rule
 {
     private const CONTINUATION = ['CONC' => true, 'CONT' => true];
 
-    public function check(Document $document, ?Profile $profile): iterable
+    public function check(Document $document, ?Profile $profile): array
     {
         if ($profile === null) {
-            yield new Diagnostic('KV2000', Severity::Info, "Structures are not checked: there is no profile for GEDCOM {$document->version()->value} yet");
-
-            return;
+            return [new Diagnostic('KV2000', Severity::Info, "Structures are not checked: there is no profile for GEDCOM {$document->version()->value} yet")];
         }
-        yield from $this->children($document, $profile, 0, null, $profile->records());
+        $out = [];
+        $this->children($document, $profile, 0, null, $profile->records(), $out);
+
+        return $out;
     }
 
     /**
      * @param ?Structure $structure null for the top level
      * @param array<string, Substructure> $allowed
-     *
-     * @return \Generator<int, Diagnostic>
+     * @param list<Diagnostic> $out
      */
-    private function children(Document $document, Profile $profile, int $parent, ?Structure $structure, array $allowed): \Generator
+    private function children(Document $document, Profile $profile, int $parent, ?Structure $structure, array $allowed, array &$out): void
     {
         $counts = [];
         $first = [];
@@ -49,18 +49,18 @@ final class StructureRule implements Rule
             }
             $substructure = $allowed[$tag] ?? null;
             if ($substructure === null) {
-                yield $this->diagnostic($document, 'KV2001', "{$tag} is not allowed " . ($structure === null ? 'as a record' : "in {$structure->tag}"), $child, $structure?->uri);
+                $out[] = $this->diagnostic($document, 'KV2001', "{$tag} is not allowed " . ($structure === null ? 'as a record' : "in {$structure->tag}"), $child, $structure?->uri);
                 continue;
             }
             $counts[$tag] = ($counts[$tag] ?? 0) + 1;
             $first[$tag] ??= $child;
             $max = $substructure->cardinality->max;
             if ($max !== null && $counts[$tag] === $max + 1) {
-                yield $this->diagnostic($document, 'KV2002', "{$tag} occurs more than {$max} time(s) " . ($structure === null ? 'as a record' : "in {$structure->tag}"), $child, $structure?->uri);
+                $out[] = $this->diagnostic($document, 'KV2002', "{$tag} occurs more than {$max} time(s) " . ($structure === null ? 'as a record' : "in {$structure->tag}"), $child, $structure?->uri);
             }
             $definition = $profile->structure($substructure->uri);
             if ($definition !== null) {
-                yield from $this->children($document, $profile, $child, $definition, $definition->substructures);
+                $this->children($document, $profile, $child, $definition, $definition->substructures, $out);
             }
         }
         // The top-level HEAD and TRLR are reported by the parser (KV1004, KV1005).
@@ -69,7 +69,7 @@ final class StructureRule implements Rule
         }
         foreach ($allowed as $tag => $substructure) {
             if ($substructure->cardinality->isRequired() && ($counts[$tag] ?? 0) < $substructure->cardinality->min) {
-                yield $this->diagnostic($document, 'KV2003', "{$structure->tag} requires {$tag}", $parent, $structure->uri);
+                $out[] = $this->diagnostic($document, 'KV2003', "{$structure->tag} requires {$tag}", $parent, $structure->uri);
             }
         }
     }
