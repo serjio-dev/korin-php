@@ -7,9 +7,9 @@ new codes may be added in minor releases. Messages are informative and may chang
 | --- | --- |
 | `KV1xxx` | Syntax: line format, levels, encoding, HEAD/TRLR |
 | `KV2xxx` | Structure: allowed substructures and cardinality |
-| `KV3xxx` | Values: payload presence and data types (dates later in 0.2) |
+| `KV3xxx` | Values: payload presence and data types, dates |
 | `KV4xxx` | References: dangling and duplicate xrefs, record types, family links |
-| `KV5xxx` | Plausibility, optional *(0.2)* |
+| `KV5xxx` | Plausibility, optional: dates and pedigrees that cannot be true |
 | `KL0001`–`KL9999` | Loss report entries of conversions *(0.3)* |
 
 ## KV1 — syntax
@@ -100,3 +100,24 @@ case-sensitive (`@test@` is not `@TEST@`). In 7.0 `@VOID@` is a null pointer and
 | `KV4002` | error | Xref already used by an earlier record; pointers resolve to the first one |
 | `KV4003` | error | Pointer to a record of the wrong type, e.g. `FAMC` to an `INDI` |
 | `KV4004` | warning | A family link is not mutual: `INDI.FAMC` without `FAM.CHIL`, `INDI.FAMS` without `FAM.HUSB`/`WIFE`, or the reverse; only checked when the target exists |
+
+## KV5 — plausibility
+
+Optional: reported only with `ValidationOptions::withPlausibility()`, always as warnings, for
+data that is valid but cannot be true. Dates are compared only when the conflict is certain:
+a date stands for every day it can mean (`1907` is the whole year, `BEF 1907` has no first
+day, `BET 1900 AND 1910` spans both years). Gregorian and Julian dates of every version are
+compared, including `B.C.`/`BCE` and dual years (`1648/49` is 1649); approximate dates (`ABT`,
+`CAL`, `EST`), date phrases and other calendars are not. The first `BIRT` and `DEAT` with
+such a date count. Parents are `HUSB` and `WIFE` of the families an individual is a child of,
+by `FAM.CHIL` or `INDI.FAMC`.
+
+```php
+$report = Gedcom::validate($doc, (new ValidationOptions())->withPlausibility());
+```
+
+| Code | Severity | Meaning |
+| --- | --- | --- |
+| `KV5001` | warning | A birth after the death, reported at the birth date |
+| `KV5002` | warning | A child born before a parent, reported at `FAM.CHIL` |
+| `KV5003` | warning | An individual who is their own ancestor, reported once per cycle, at its first individual |

@@ -7,6 +7,7 @@ namespace Korin\Gedcom\Validation;
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Validation\Rule\PlausibilityRule;
 use Korin\Gedcom\Validation\Rule\ReferenceRule;
 use Korin\Gedcom\Validation\Rule\Rule;
 use Korin\Gedcom\Validation\Rule\StructureRule;
@@ -14,7 +15,8 @@ use Korin\Gedcom\Validation\Rule\ValueRule;
 
 /**
  * Checks a document against the profile of its version. The report starts with the syntax
- * diagnostics found while reading (KV1xxx); the document itself is never changed.
+ * diagnostics found while reading (KV1xxx); the document itself is never changed. The
+ * plausibility checks (KV5xxx) run only when the options ask for them.
  */
 final readonly class Validator
 {
@@ -30,7 +32,8 @@ final readonly class Validator
     {
         $diagnostics = $document->diagnostics();
         $profile = Profile::for($document->version());
-        foreach ($this->rules as $rule) {
+        $rules = $options->plausibility ? [...$this->rules, new PlausibilityRule()] : $this->rules;
+        foreach ($rules as $rule) {
             foreach ($rule->check($document, $profile) as $diagnostic) {
                 $diagnostics[] = $diagnostic;
             }
