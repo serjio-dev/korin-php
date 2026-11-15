@@ -1,173 +1,173 @@
-# ТЗ: PHP-бібліотека GEDCOM (Korin)
+# Specification: Korin, a GEDCOM library for PHP
 
 Nov 14, 2026 · @Serhii
 
-## 1. Мета і межі
+## 1. Goal and scope
 
-Korin — відкрита PHP-бібліотека, яка читає, перевіряє, конвертує і записує GEDCOM від 4.0 до 7.0.x без втрати даних. Кожну втрату, якої не уникнути при переході на стару версію, вона явно фіксує у звіті.
+Korin is an open-source PHP library that reads, validates, converts and writes GEDCOM 4.0 through 7.0.x without losing data. Every loss that cannot be avoided when moving to an older version is recorded explicitly in a report.
 
-Бібліотека — фундамент архіву «Пам'ять про себе», але розробляється як самостійний продукт для будь-кого.
+The library is the foundation of the "Pam'iat pro sebe" archive, but it is developed as a standalone product for anyone.
 
-**Входить у v1.0:**
+**In scope for v1.0:**
 
-- читання GEDCOM 4.0, 5.0–5.4 (best effort), 5.5, 5.5.1, 5.5.5, 7.0.x і GEDZIP;
-- запис 5.5, 5.5.1, 5.5.5, 7.0.x і GEDZIP;
-- автоматичне визначення версії та кодування;
-- конвертація між будь-якими двома версіями зі звітом про втрати;
-- валідація за профілем конкретної версії;
-- збереження невідомих і `_`-тегів;
-- типізований доступ до записів (особи, сім'ї, джерела, медіа, дати, імена, місця);
-- потоковий (`stream()`) та індексований (`open()`) режими для великих файлів;
-- CLI-утиліта в окремому пакеті.
+- reading GEDCOM 4.0, 5.0–5.4 (best effort), 5.5, 5.5.1, 5.5.5, 7.0.x and GEDZIP;
+- writing 5.5, 5.5.1, 5.5.5, 7.0.x and GEDZIP;
+- automatic detection of version and encoding;
+- conversion between any two versions with a loss report;
+- validation against the profile of a specific version;
+- preservation of unknown and `_` tags;
+- typed access to records (individuals, families, sources, media, dates, names, places);
+- streaming (`stream()`) and indexed (`open()`) modes for large files;
+- a CLI tool in a separate package.
 
-**Не входить у v1.0:** GEDCOM X (окремий пакет пізніше), відображення дерева, робота з API FamilySearch чи Ancestry, збереження в БД, злиття дублікатів осіб.
+**Out of scope for v1.0:** GEDCOM X (a separate package later), tree visualization, FamilySearch or Ancestry APIs, database storage, merging duplicate individuals.
 
-## 2. Назва, ліцензія, розміщення
+## 2. Name, license, hosting
 
-Назва — **Korin** (від «корінь»): коротка, легко читається англійською і не містить торгової марки GEDCOM. Ліцензія — Apache-2.0.
+The name is **Korin** (from Ukrainian «корінь», "root"): short, easy to read in English, and free of the GEDCOM trademark. The license is Apache-2.0.
 
-| Що | Значення |
+| What | Value |
 | --- | --- |
-| Composer-пакет | `korin/gedcom` |
-| Неймспейс | `Korin\Gedcom` |
-| GitHub | `serjio-dev` (особистий акаунт): [serjio-dev/korin-php](https://github.com/serjio-dev/korin-php) |
-| Репозиторії | `korin-php` (бібліотека), `korin-cli` (утиліта), `gedcom-corpus` (спільний тестовий корпус) |
-| Реєстр | Packagist, автооновлення за git-тегами |
-| Документація | GitHub Pages з теки `docs/` |
+| Composer package | `korin/gedcom` |
+| Namespace | `Korin\Gedcom` |
+| GitHub | `serjio-dev` (personal account): [serjio-dev/korin-php](https://github.com/serjio-dev/korin-php) |
+| Repositories | `korin-php` (library), `korin-cli` (tool), `gedcom-corpus` (shared test corpus) |
+| Registry | Packagist, auto-updated from git tags |
+| Documentation | GitHub Pages from the `docs/` directory |
 
-**Чому Apache-2.0.** Специфікація FamilySearch GEDCOM і її машинно-читані файли поширюються під Apache-2.0 ([FamilySearch](https://www.familysearch.org/help/helpcenter/article/what-is-the-familysearch-gedcom-7-0-standard)), тож їх можна включити в репозиторій без конфлікту ліцензій. Apache-2.0 дає патентний грант і сумісна з MIT- та GPLv3-проєктами.
+**Why Apache-2.0.** The FamilySearch GEDCOM specification and its machine-readable files are distributed under Apache-2.0 ([FamilySearch](https://www.familysearch.org/help/helpcenter/article/what-is-the-familysearch-gedcom-7-0-standard)), so they can be included in the repository without a license conflict. Apache-2.0 provides a patent grant and is compatible with MIT and GPLv3 projects.
 
-**Торгова марка.** У README і на сайті: «GEDCOM is a trademark of Intellectual Reserve, Inc. Korin is not affiliated with or endorsed by FamilySearch.»
+**Trademark.** In the README and on the site: "GEDCOM is a trademark of Intellectual Reserve, Inc. Korin is not affiliated with or endorsed by FamilySearch."
 
-**Відкинуті назви:** Rodovid (зайнята генеалогічним сайтом rodovid.org), gedkit / gedcomkit (зайнята [Rust-бібліотекою](https://docs.rs/crate/gedcomkit/0.1.4)).
+**Rejected names:** Rodovid (taken by the genealogy site rodovid.org), gedkit / gedcomkit (taken by a [Rust library](https://docs.rs/crate/gedcomkit/0.1.4)).
 
-**Відкрите питання:** перед стартом зареєструвати vendor `korin` на Packagist; якщо зайнято — запасний варіант `serjio-dev/korin`.
+**Open question:** register the `korin` vendor on Packagist before the first release; if it is taken, the fallback is `serjio-dev/korin`.
 
-## 3. Версії GEDCOM, кодування і діалекти
+## 3. GEDCOM versions, encodings and dialects
 
-Повна підтримка — 5.5, 5.5.1, 5.5.5 і 7.0.x; старіші версії тільки читаються. На 14.11.2026 останній реліз — [7.0.18 від 17.02.2026](https://en.wikipedia.org/wiki/GEDCOM), 7.1 ще в робочій чернетці.
+Full support covers 5.5, 5.5.1, 5.5.5 and 7.0.x; older versions are read only. As of 14.11.2026 the latest release is [7.0.18 of 17.02.2026](https://en.wikipedia.org/wiki/GEDCOM); 7.1 is still a working draft.
 
-| Версія | Читання | Запис | Примітка |
+| Version | Read | Write | Note |
 | --- | --- | --- | --- |
-| 7.1 (чернетка) | — | — | Відстежуємо в окремій гілці, додаємо після офіційного релізу |
-| 7.0.0–7.0.18 (2021–2026) | ✓ | ✓ | Тільки UTF-8, `SCHMA` для розширень, GEDZIP (`.gdz`) |
-| 5.5.5 (2019) | ✓ | ✓ | Уточнення 5.5.1 від спільноти gedcom.org |
-| 5.5.1 (1999, повторно 2019) | ✓ | ✓ | Найпоширеніша; формат за замовчуванням для експорту «для сумісності» |
-| 5.5 (1996) | ✓ | ✓ | Кодування лише ANSEL, ASCII, UNICODE (UTF-16) |
-| 5.0–5.4 (чернетки) | best effort | — | Читаються профілем 5.5 у м'якому режимі |
-| 4.0 | best effort | — | Старі експорти PAF; перетворення в 5.5 зі звітом |
-| GEDCOM X | — | — | Інша модель (JSON/XML); окремий пакет `korin/gedcomx` після 1.0 |
+| 7.1 (draft) | — | — | Tracked in a separate branch, added after the official release |
+| 7.0.0–7.0.18 (2021–2026) | ✓ | ✓ | UTF-8 only, `SCHMA` for extensions, GEDZIP (`.gdz`) |
+| 5.5.5 (2019) | ✓ | ✓ | Clarification of 5.5.1 by the gedcom.org community |
+| 5.5.1 (1999, re-issued 2019) | ✓ | ✓ | The most widespread; default format for "compatibility" exports |
+| 5.5 (1996) | ✓ | ✓ | Encodings ANSEL, ASCII, UNICODE (UTF-16) only |
+| 5.0–5.4 (drafts) | best effort | — | Read with the 5.5 profile in lenient mode |
+| 4.0 | best effort | — | Old PAF exports; converted to 5.5 with a report |
+| GEDCOM X | — | — | A different model (JSON/XML); separate `korin/gedcomx` package after 1.0 |
 
-**Кодування при читанні:** UTF-8 (з BOM і без), UTF-16 LE/BE, ASCII, ANSEL (з перестановкою комбінованих діакритиків), Windows-1250/1251/1252, CP437/CP850 (IBMPC), MacRoman. Windows-1251 нестандартне, але обов'язкове: так експортують чимало програм із кирилицею.
+**Encodings for reading:** UTF-8 (with and without BOM), UTF-16 LE/BE, ASCII, ANSEL (with reordering of combining diacritics), Windows-1250/1251/1252, CP437/CP850 (IBMPC), MacRoman. Windows-1251 is non-standard but mandatory: many programs export Cyrillic that way.
 
-**Порядок визначення:** BOM → `HEAD.CHAR` → евристика за байтами. Якщо `CHAR` суперечить вмісту, перемагає вміст, а в діагностику пишеться попередження. Кодування можна задати явно.
+**Detection order:** BOM → `HEAD.CHAR` → byte heuristics. If `CHAR` contradicts the content, the content wins and a warning is added to the diagnostics. The encoding can be set explicitly.
 
-**Кодування при запису:** 7.0 і 5.5.5 — UTF-8; 5.5.1 — UTF-8 (або ANSEL / UTF-16 за опцією); 5.5 — UTF-16 (або ANSEL). Символ, якого немає в цільовому кодуванні, дає запис у звіті про втрати, а не тиху заміну на `?`.
+**Encodings for writing:** 7.0 and 5.5.5 — UTF-8; 5.5.1 — UTF-8 (or ANSEL / UTF-16 as an option); 5.5 — UTF-16 (or ANSEL). A character missing from the target encoding produces a loss report entry, never a silent replacement with `?`.
 
-**BOM** (byte order mark, символ U+FEFF на початку файлу; у UTF-8 — байти `EF BB BF`) нічого не означає для даних, лише підказує іншим програмам кодування.
+**BOM** (byte order mark, the character U+FEFF at the start of a file; in UTF-8 the bytes `EF BB BF`) carries no data; it only hints the encoding to other programs.
 
-| Запис | BOM за замовчуванням | Чому |
+| Writing | BOM by default | Why |
 | --- | --- | --- |
-| 7.0 | Так | Специфікація 7.0: «The first character in each data stream should be U+FEFF» |
-| 5.5.5 | Так | Вимога 5.5.5 (звірити з текстом специфікації при складанні профілю, етап 0.2) |
-| 5.5.1, 5.5 у UTF-8 | Ні | Специфікації BOM не згадують, частина старих програм не розпізнає `0 HEAD` після BOM |
-| UTF-16 будь-якої версії | Так | Без BOM порядок байтів доводиться вгадувати |
+| 7.0 | Yes | 7.0 specification: "The first character in each data stream should be U+FEFF" |
+| 5.5.5 | Yes | 5.5.5 requirement (verify against the specification text when building the profile, milestone 0.2) |
+| 5.5.1, 5.5 in UTF-8 | No | The specifications do not mention a BOM; some old programs do not recognize `0 HEAD` after a BOM |
+| UTF-16 in any version | Yes | Without a BOM the byte order has to be guessed |
 
-`WriteOptions::withBom(bool)` змінює поведінку; режим `preserve` лишає BOM таким, як був у джерелі.
+`WriteOptions::withBom(bool)` changes the behavior; `preserve` mode keeps the BOM as it was in the source.
 
-**Діалекти програм.** Бібліотека визначає програму-джерело за `HEAD.SOUR` і застосовує задокументовані виправлення її відомих помилок. Цільовий перелік для корпусу: Ancestry, FamilySearch, MyHeritage, Family Tree Maker, RootsMagic, Legacy, PAF, Gramps, webtrees, Heredis, Family Historian, GeneWeb. Невідомі і `_`-теги (`_UID`, `_APID`, `_FSFTID`, `_FREL`, `_MREL` тощо) зберігаються завжди. Значення відомих тегів беруться з реєстру розширень, не зі здогадок.
+**Vendor dialects.** The library identifies the source program from `HEAD.SOUR` and applies documented fixes for its known bugs. Target list for the corpus: Ancestry, FamilySearch, MyHeritage, Family Tree Maker, RootsMagic, Legacy, PAF, Gramps, webtrees, Heredis, Family Historian, GeneWeb. Unknown and `_` tags (`_UID`, `_APID`, `_FSFTID`, `_FREL`, `_MREL`, etc.) are always preserved. Meanings of known tags come from the extension registry, not from guesses.
 
-## 4. Версії PHP і залежності
+## 4. PHP versions and dependencies
 
-Мінімум — PHP 8.2, діапазон v1.x — 8.2–8.6. Підтримувати 8.0 і 8.1 не варто: вони вже не отримують навіть виправлень безпеки, у 8.0 немає enum, а readonly-класи з'явилися лише в 8.2.
+The minimum is PHP 8.2; the v1.x range is 8.2–8.6. Supporting 8.0 and 8.1 is not worth it: they no longer receive even security fixes, 8.0 has no enums, and readonly classes only arrived in 8.2.
 
-| PHP | Безпекова підтримка до | Korin 1.x |
+| PHP | Security support until | Korin 1.x |
 | --- | --- | --- |
-| 8.6 | GA [19.11.2026](https://php.watch/versions/8.6/releases) | ✓ (у CI вже з RC) |
+| 8.6 | GA [19.11.2026](https://php.watch/versions/8.6/releases) | ✓ (in CI from the RC) |
 | 8.5 | 31.12.2029 | ✓ |
 | 8.4 | 31.12.2028 | ✓ |
 | 8.3 | 31.12.2027 | ✓ |
-| 8.2 | 31.12.2026 | ✓ (мінімум) |
+| 8.2 | 31.12.2026 | ✓ (minimum) |
 | 8.1 | 31.12.2025, EOL | — |
 | 8.0 | 26.11.2023, EOL | — |
 
-Дати — за [графіком підтримки PHP](https://endoflife.ai/article-php-eol.html).
+Dates follow the [PHP support schedule](https://endoflife.ai/article-php-eol.html).
 
-**Правила сумісності:**
+**Compatibility rules:**
 
-- Код пишеться синтаксисом 8.2. Rector і PHPStan налаштовані на `phpVersion: 80200` і блокують можливості 8.3+ (типізовані константи, хуки властивостей тощо).
-- У CI застарілі функції (deprecations) на 8.5 і 8.6 вважаються помилками, нічна збірка PHP — інформативно.
-- Мінімальна версія PHP піднімається лише в мінорному релізі (ніколи в патчі), з анонсом за один мінор до того. Після EOL 8.2 вона лишається до першого мінору, якому потрібен новіший синтаксис.
-- 8.2 лишається мінімумом свідомо, попри EOL наприкінці 2026: бібліотека не залежить від розширень, а ширший діапазон дає більше користувачів. Ціна — тестовий код, сумісний з PHPUnit 11–13: тільки атрибути (`#[Test]`, `#[DataProvider]`), без docblock-анотацій, обережно з API моків.
+- Code is written in 8.2 syntax. Rector and PHPStan are configured with `phpVersion: 80200` and block 8.3+ features (typed constants, property hooks, etc.).
+- In CI, deprecations on 8.5 and 8.6 count as errors; the PHP nightly build is informational.
+- The minimum PHP version is raised only in a minor release (never in a patch), announced one minor in advance. After 8.2 reaches EOL it stays until the first minor that needs newer syntax.
+- 8.2 stays the minimum deliberately, despite its EOL at the end of 2026: the library depends on no extensions, and a wider range means more users. The cost is test code compatible with PHPUnit 11–13: attributes only (`#[Test]`, `#[DataProvider]`), no docblock annotations, care with the mock API.
 
-**Залежності під час роботи — нуль.** Таблиці кодувань (ANSEL, CP125x, CP437/850, MacRoman) написані на чистому PHP, тож обов'язкових розширень немає.
+**Runtime dependencies: none.** Encoding tables (ANSEL, CP125x, CP437/850, MacRoman) are written in pure PHP, so no extension is required.
 
-- `ext-mbstring` / `ext-iconv` — опційно, пришвидшують UTF-16 і CP125x;
-- `ext-zip` — у `suggest`, потрібен лише для GEDZIP.
+- `ext-mbstring` / `ext-iconv` — optional, speed up UTF-16 and CP125x;
+- `ext-zip` — in `suggest`, needed only for GEDZIP.
 
-**Dev-залежності:** PHPUnit `^11.5 || ^12.5 || ^13`. Composer сам вибирає версію під PHP: [11 працює з 8.2, 12 — з 8.3, 13 — з 8.4](https://phpunit.de/supported-versions.html). Також PHPStan 2.x, PHP-CS-Fixer, Rector, Infection, PHPBench і `nikic/php-fuzzer`.
+**Dev dependencies:** PHPUnit `^11.5 || ^12.5 || ^13`. Composer picks the version for the PHP in use: [11 works with 8.2, 12 with 8.3, 13 with 8.4](https://phpunit.de/supported-versions.html). Also PHPStan 2.x, PHP-CS-Fixer, Rector, Infection, PHPBench and `nikic/php-fuzzer`.
 
-## 5. Архітектура
+## 5. Architecture
 
-Ядро бібліотеки — безвтратне дерево вузлів, яке пам'ятає оригінальні рядки. Усе інше — типізовані представлення, валідація, конвертація і запис — працює поверх нього. Правила кожної версії GEDCOM задані даними, а не кодом.
+The core of the library is a lossless node tree that remembers the original lines. Everything else — typed views, validation, conversion and writing — works on top of it. The rules of each GEDCOM version are defined as data, not code.
 
 ```mermaid
 flowchart LR
-  IN["Вхід: .ged · .gdz · потік"] --> IO["Io: кодування, лексер"] --> SYN["Syntax: дерево без втрат"]
-  SYN --> MOD["Model: типізовані види"]
-  SYN --> VAL["Validation: діагностика KV*"]
-  SYN --> CONV["Conversion: кроки + LossReport"]
-  CONV --> WR["Writer: preserve / normalize"] --> OUT["Вихід: .ged · .gdz"]
-  SPEC["Spec: профілі версій 5.5…7.0 як дані (YAML)"] --> VAL
+  IN["Input: .ged · .gdz · stream"] --> IO["Io: encodings, lexer"] --> SYN["Syntax: lossless tree"]
+  SYN --> MOD["Model: typed views"]
+  SYN --> VAL["Validation: KV* diagnostics"]
+  SYN --> CONV["Conversion: steps + LossReport"]
+  CONV --> WR["Writer: preserve / normalize"] --> OUT["Output: .ged · .gdz"]
+  SPEC["Spec: version profiles 5.5…7.0 as data (YAML)"] --> VAL
   SPEC --> CONV
   SPEC --> WR
 ```
 
-Файл декодується в одне дерево; модель, валідація і конвертація читають його, а правила версій приходять зі Spec.
+A file is decoded into one tree; the model, validation and conversion read it, and version rules come from Spec.
 
-| Шар | Неймспейс | Відповідальність |
+| Layer | Namespace | Responsibility |
 | --- | --- | --- |
-| Ввід | `Korin\Gedcom\Io` | Джерела (файл, потік, рядок), визначення і декодування кодування, лексер рядків (рівень, xref, тег, значення, номер рядка) |
-| Синтаксис | `Korin\Gedcom\Syntax` | Дерево `Document` → `Record` → `Structure`; склейка `CONC`/`CONT`, екранування `@`, оригінальні байти і кінці рядків |
-| Специфікації | `Korin\Gedcom\Spec` | Профілі версій: структури, кардинальність, типи значень, переліки, календарі. 7.0 — з машинно-читаних файлів FamilySearch; 5.x — наші YAML у тому ж форматі |
-| Модель | `Korin\Gedcom\Model` | Типізовані представлення поверх дерева (`Individual`, `Family`, `Source`, `Repository`, `Media`, `SharedNote`, `Submitter`) і value-об'єкти (`GedcomDate`, `Age`, `PersonalName`, `Place`, `Coordinates`, `Language`, `MediaType`, `Xref`) |
-| Валідація | `Korin\Gedcom\Validation` | Перевірка документа за профілем, `Diagnostic` зі стабільним кодом |
-| Конвертація | `Korin\Gedcom\Conversion` | Кроки між сусідніми версіями, `LossReport` |
-| Запис | `Korin\Gedcom\Writer` | Серіалізація під версію: довжина рядка, `CONC`/`CONT`, кодування, кінці рядків, детермінований порядок |
-| Контейнер | `Korin\Gedcom\Gedzip` | Читання і запис `.gdz` з медіа |
-| Розширення | `Korin\Gedcom\Extension` | Реєстр відомих `_`-тегів і URI з `SCHMA`, детектори діалектів програм |
+| Input | `Korin\Gedcom\Io` | Sources (file, stream, string), encoding detection and decoding, line lexer (level, xref, tag, value, line number) |
+| Syntax | `Korin\Gedcom\Syntax` | Tree `Document` → `Record` → `Structure`; joining `CONC`/`CONT`, `@` escaping, original bytes and line endings |
+| Specifications | `Korin\Gedcom\Spec` | Version profiles: structures, cardinality, value types, enumerations, calendars. 7.0 from the FamilySearch machine-readable files; 5.x from our own YAML in the same format |
+| Model | `Korin\Gedcom\Model` | Typed views over the tree (`Individual`, `Family`, `Source`, `Repository`, `Media`, `SharedNote`, `Submitter`) and value objects (`GedcomDate`, `Age`, `PersonalName`, `Place`, `Coordinates`, `Language`, `MediaType`, `Xref`) |
+| Validation | `Korin\Gedcom\Validation` | Checking a document against a profile, `Diagnostic` with a stable code |
+| Conversion | `Korin\Gedcom\Conversion` | Steps between adjacent versions, `LossReport` |
+| Writing | `Korin\Gedcom\Writer` | Serialization for a version: line length, `CONC`/`CONT`, encoding, line endings, deterministic order |
+| Container | `Korin\Gedcom\Gedzip` | Reading and writing `.gdz` with media |
+| Extensions | `Korin\Gedcom\Extension` | Registry of known `_` tags and `SCHMA` URIs, vendor dialect detectors |
 
-**Принципи:**
+**Principles:**
 
-- **Два режими запису.** `preserve` віддає незмінені вузли байт у байт; `normalize` перезбирає файл за канонічними правилами версії.
-- **Представлення, а не копії.** `Individual` читає з дерева і пише в нього; невідомі теги не губляться, бо дані ніколи не копіюються в окрему модель.
-- **Незмінні value-об'єкти.** `GedcomDate`, `PersonalName`, `Place` та інші value-об'єкти — `final readonly`. Представлення (`Individual`, `Family`, …) — `final`, але не `readonly`: вони «живі».
-- **Компактне дерево.** Вузли зберігаються не як окремі PHP-об'єкти, а в упакованих масивах (рівень, тег, значення, зсуви в сирий буфер); об'єкти-вузли створюються ліниво при зверненні. Без цього ціль «50 МБ → ≤ 512 МБ» недосяжна.
+- **Two write modes.** `preserve` emits unmodified nodes byte for byte; `normalize` rebuilds the file by the version's canonical rules.
+- **Views, not copies.** `Individual` reads from and writes to the tree; unknown tags are never lost because data is never copied into a separate model.
+- **Immutable value objects.** `GedcomDate`, `PersonalName`, `Place` and the other value objects are `final readonly`. Views (`Individual`, `Family`, …) are `final` but not `readonly`: they are "live".
+- **Compact tree.** Nodes are stored not as separate PHP objects but in packed arrays (level, tag, value, offsets into the raw buffer); node objects are created lazily on access. Without this the "50 MB → ≤ 512 MB" target is out of reach.
+- **Extensibility.** A new GEDCOM version = a new profile + conversion steps to its neighbor, with no changes to the core.
+- **Private is marked explicitly.** Everything not marked `@internal` is public API and falls under the SemVer guarantees.
 
-**Модель змін (варіант «змінне дерево»):**
+**Change model (the "mutable tree" option):**
 
-- `Document` змінний; редагування — методами дерева і представлень (`setValue`, `append`, `remove`, `renameXref`).
-- **Функції не змінюють свій вхід.** `Gedcom::convert()`, `Validator`, `Writer` працюють з копією або лише читають; змінює документ тільки код викликача.
-- `$doc->copy()` — дешевий знімок (copy-on-write масивів PHP).
-- **Стабільні ID вузлів.** Вузол адресується ID, а не позицією серед сусідів; видалення лишає «надгробок», масиви не зсуваються. Тому вставка сусіда не зсуває вже отримані представлення.
-- **Живі представлення.** `Individual` і підструктури бачать зміни, зроблені будь-де; звернення до видаленого вузла кидає `DetachedNodeException`.
-- **Індекси** (xref → запис, зворотні зв'язки `FAMS`/`FAMC`) оновлюються методами редагування, а не перебудовуються.
-- **Прапорець dirty.** Зміна вузла позначає його і предків; `preserve` пише незмінені вузли з оригінальних байтів.
-- Undo / історія змін, якщо знадобляться, будуються пізніше поверх цієї моделі як журнал операцій.
-- **Розширюваність.** Нова версія GEDCOM = новий профіль + кроки конвертації до сусіда, без змін у ядрі.
-- **Приватне позначається явно.** Усе, що не позначене `@internal`, є публічним API і підпадає під гарантії SemVer.
+- `Document` is mutable; editing goes through methods of the tree and the views (`setValue`, `append`, `remove`, `renameXref`).
+- **Functions do not modify their input.** `Gedcom::convert()`, `Validator`, `Writer` work on a copy or only read; only the caller's code changes a document.
+- `$doc->copy()` is a cheap snapshot (copy-on-write of PHP arrays).
+- **Stable node ids.** A node is addressed by id, not by its position among siblings; removal leaves a tombstone and arrays are not shifted. So inserting a sibling does not shift views already obtained.
+- **Live views.** `Individual` and substructures see changes made anywhere; accessing a removed node throws `DetachedNodeException`.
+- **Indexes** (xref → record, `FAMS`/`FAMC` back-links) are updated by the editing methods rather than rebuilt.
+- **Dirty flag.** Changing a node marks it and its ancestors; `preserve` writes unmodified nodes from their original bytes.
+- Undo / change history, if needed, is built later on top of this model as an operation log.
 
-**Окремі пакети:** `korin/gedcom-cli` (команди `info`, `validate`, `convert`, `diff`), пізніше — `korin/gedcom-bundle` для Symfony і `korin/gedcomx`.
+**Separate packages:** `korin/gedcom-cli` (commands `info`, `validate`, `convert`, `diff`), later `korin/gedcom-bundle` for Symfony and `korin/gedcomx`.
 
-## 6. Публічний API
+## 6. Public API
 
-Точка входу — фасад `Gedcom` із статичними методами для типових задач. За ним стоять звичайні класи (`Reader`, `Writer`, `Converter`, `Validator`), які можна ін'єктувати в DI-контейнер.
+The entry point is the `Gedcom` facade with static methods for common tasks. Behind it are plain classes (`Reader`, `Writer`, `Converter`, `Validator`) that can be injected through a DI container.
 
 ```php
 use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Version;
 
-// Читання: версія і кодування визначаються автоматично
+// Reading: version and encoding are detected automatically
 $doc = Gedcom::read('family.ged');
 $doc->version();   // Version::V5_5_1
 $doc->encoding();  // Encoding::Windows1251
@@ -176,200 +176,200 @@ foreach ($doc->individuals() as $person) {
     echo $person->name()?->full(), ' — ', $person->birth()?->date()?->toString(), PHP_EOL;
 }
 
-// Валідація
+// Validation
 $report = Gedcom::validate($doc);
 foreach ($report->errors() as $d) {
     printf("%s line %d: %s\n", $d->code, $d->line, $d->message);
 }
 
-// Конвертація зі звітом про втрати
+// Conversion with a loss report
 $result = Gedcom::convert($doc, Version::V7_0);
 Gedcom::write($result->document(), 'family-7.ged');
-$result->losses();  // LossReport (порожній при підвищенні версії)
+$result->losses();  // LossReport (empty when upgrading)
 
-// Великі файли: по одному запису, пам'ять не залежить від розміру
-foreach (Gedcom::stream('huge.ged') as $record) {   // Syntax\Record, без втрат
-    $person = $record->view();                      // модель лише в межах запису
-    $person->familyXrefs();                         // ['@F1@'], а families() кидає RequiresDocumentException
+// Large files: one record at a time, memory independent of file size
+foreach (Gedcom::stream('huge.ged') as $record) {   // Syntax\Record, lossless
+    $person = $record->view();                      // model limited to this record
+    $person->familyXrefs();                         // ['@F1@'], while families() throws RequiresDocumentException
 }
 
-// Великі файли з повною моделлю: індекс xref → зсув, записи читаються з диска на вимогу
-$doc = Gedcom::open('huge.ged');                    // лише читання
-$doc->individual('@I1@')?->families();              // працює, бо сусідні записи підтягуються з файлу
+// Large files with the full model: xref → offset index, records read from disk on demand
+$doc = Gedcom::open('huge.ged');                    // read only
+$doc->individual('@I1@')?->families();              // works: related records are loaded from the file
 
-// Створення з нуля: xref генерується детерміновано
+// Creating from scratch: xrefs are generated deterministically
 $doc  = Document::create(Version::V7_0);
 $anna = $doc->addIndividual()
     ->setName(PersonalName::of('Анна', 'Коваль'))
     ->setSex(Sex::Female)
     ->addBirth(GedcomDate::parse('12 MAR 1921'), Place::of('Полтава, Україна'));
-$doc->addFamily()->setWife($anna)->addChild($ivan);  // FAMS/FAMC проставляються автоматично
+$doc->addFamily()->setWife($anna)->addChild($ivan);  // FAMS/FAMC are set automatically
 
-// Редагування існуючого: представлення «живі», зміни одразу в дереві
+// Editing an existing document: views are live, changes go straight into the tree
 $doc->individual('@I1@')->editName(fn (PersonalName $n) => $n->withSurname('Ковальова'));
-$doc->removeRecord('@S12@');  // діагностика, якщо на запис ще є посилання
+$doc->removeRecord('@S12@');  // diagnostic if the record is still referenced
 
-Gedcom::write($doc, 'out.ged', WriteOptions::preserve());  // змінене — за правилами версії, решта — байт у байт
+Gedcom::write($doc, 'out.ged', WriteOptions::preserve());  // changed lines by the version's rules, the rest byte for byte
 
 // GEDZIP
 $archive = Gedcom::readGedzip('family.gdz');
 $archive->document();
-$archive->media('photos/anna.jpg');  // потік, без розпакування на диск
+$archive->media('photos/anna.jpg');  // a stream, without extracting to disk
 ```
 
-**Режими читання:**
+**Read modes:**
 
-| Режим | Пам'ять | Що доступно |
+| Mode | Memory | What is available |
 | --- | --- | --- |
-| `Gedcom::read()` | Усе дерево | Повна модель, редагування, валідація всіх рівнів |
-| `Gedcom::stream()` | Постійна | `Syntax\Record` з оригінальними байтами; `view()` — модель у межах запису; методи, яким потрібні інші записи, кидають `RequiresDocumentException`. Валідація рівнів 1–4 |
-| `Gedcom::open()` | Індекс: xref → зсув у файлі, ~50 байт на запис, + LRU-кеш розібраних записів | Повна модель лише для читання; валідація всіх рівнів. Для редагування — `$doc->load()` повертає документ як після `read()`. Потрібне джерело, яке можна читати з довільного місця; інакше вхід спершу копіюється в `php://temp` |
+| `Gedcom::read()` | The whole tree | Full model, editing, validation at all levels |
+| `Gedcom::stream()` | Constant | `Syntax\Record` with original bytes; `view()` gives a model limited to the record; methods that need other records throw `RequiresDocumentException`. Validation levels 1–4 |
+| `Gedcom::open()` | Index: xref → file offset, ~50 bytes per record, + an LRU cache of parsed records | Full read-only model; validation at all levels. For editing, `$doc->load()` returns a document as after `read()`. Needs a seekable source; otherwise the input is first copied to `php://temp` |
 
-`stream()`, а потім запис кожного `Record` у `preserve` дає вхідний файл байт у байт. Кодування в потоці визначається за BOM, `HEAD.CHAR` і евристикою на перших 64 КБ; суперечність далі у файлі дає діагностику без перекодування.
+`stream()` followed by writing each `Record` in `preserve` mode reproduces the input file byte for byte. In a stream the encoding is detected from the BOM, `HEAD.CHAR` and a heuristic over the first 64 KB; a contradiction later in the file produces a diagnostic without re-decoding.
 
-**Опції** (незмінні об'єкти з `with*()`-методами):
+**Options** (immutable objects with `with*()` methods):
 
-| Клас | Головне |
+| Class | Main settings |
 | --- | --- |
-| `ReadOptions` | `strict` / `lenient`, явне кодування, явна версія, ліміти (глибина, довжина рядка, розмір) |
-| `WriteOptions` | `preserve` / `normalize`, кодування, кінець рядка, максимальна довжина рядка |
-| `ConvertOptions` | Політика втрат: `preserveAsExtension` (за замовчуванням), `dropWithReport`, `fail` |
+| `ReadOptions` | `strict` / `lenient`, explicit encoding, explicit version, limits (depth, line length, size) |
+| `WriteOptions` | `preserve` / `normalize`, encoding, line ending, maximum line length |
+| `ConvertOptions` | Loss policy: `preserveAsExtension` (default), `dropWithReport`, `fail` |
 
-**Помилки.** Усі винятки реалізують `Korin\Gedcom\Exception\GedcomException`. У м'якому режимі синтаксичні помилки стають діагностикою, а не винятком; у суворому — `ParseException` з номером рядка.
+**Errors.** All exceptions implement `Korin\Gedcom\Exception\GedcomException`. In lenient mode syntax errors become diagnostics rather than exceptions; in strict mode they throw `ParseException` with the line number.
 
-## 7. Конвертація між версіями
+## 7. Conversion between versions
 
-Конвертація йде ланцюжком сусідніх версій: 4.0 → 5.5 → 5.5.1 ↔ 7.0, а 5.5.5 під'єднано до 5.5.1. Так для N версій потрібно лише N−1 пар кроків, і кожен крок тестується окремо. Будь-яка пара, наприклад 7.0 → 5.5, складається з кроків ланцюжка.
+Conversion runs along a chain of adjacent versions: 4.0 → 5.5 → 5.5.1 ↔ 7.0, with 5.5.5 attached to 5.5.1. That way N versions need only N−1 pairs of steps, and each step is tested on its own. Any pair, for example 7.0 → 5.5, is composed of chain steps.
 
-**Гарантії:**
+**Guarantees:**
 
-- підвищення версії безвтратне: те, для чого в новій версії немає структури, лишається розширенням, описаним у `SCHMA`;
-- пониження версії за замовчуванням не викидає дані: несумісне стає `_`-тегом і записом у `LossReport`;
-- детермінованість: той самий вхід дає той самий вихід байт у байт;
-- ідемпотентність: повторна конвертація в ту саму версію нічого не змінює;
-- цикл вгору-вниз-вгору (7.0 → 5.5.1 → 7.0) відновлює семантично той самий документ;
-- потокова конвертація (`convertFile()`) дає байт у байт той самий результат і `LossReport`, що й `read()` + `convert()` + `write()`.
+- upgrading is lossless: anything without a structure in the newer version stays an extension described in `SCHMA`;
+- downgrading drops no data by default: whatever is incompatible becomes a `_` tag and a `LossReport` entry;
+- determinism: the same input gives the same output byte for byte;
+- idempotence: converting again to the same version changes nothing;
+- an up-down-up cycle (7.0 → 5.5.1 → 7.0) restores a semantically identical document;
+- streaming conversion (`convertFile()`) gives byte for byte the same result and `LossReport` as `read()` + `convert()` + `write()`.
 
-**Ключові правила 5.5.1 ↔ 7.0.** Повний перелік — за офіційним [гайдом міграції](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html); кожне правило — окремий клас із власним тестом.
+**Key 5.5.1 ↔ 7.0 rules.** The full list follows the official [migration guide](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html); each rule is a separate class with its own test.
 
-| 5.5.1 | → 7.0 | ← назад у 5.5.1 |
+| 5.5.1 | → 7.0 | ← back to 5.5.1 |
 | --- | --- | --- |
-| `CHAR`, будь-яке кодування | Тільки UTF-8, `CHAR` прибирається | `CHAR UTF-8` |
-| `CONC` | Склеюється в один рядок | Розбивається за лімітом довжини |
-| `@@` у тексті | Подвоєння лише початкового `@` | Назад до правил 5.5.1 |
-| Запис `NOTE` | `SNOTE` | `NOTE` |
-| `SUBN` | Прибирається, значення — у `_SUBN` | Відновлюється з `_SUBN` |
+| `CHAR`, any encoding | UTF-8 only, `CHAR` removed | `CHAR UTF-8` |
+| `CONC` | Joined into one line | Split by the line length limit |
+| `@@` in text | Only a leading `@` is doubled | Back to the 5.5.1 rules |
+| `NOTE` record | `SNOTE` | `NOTE` |
+| `SUBN` | Removed, contents moved to `_SUBN` | Restored from `_SUBN` |
 | `_UID` | `UID` | `_UID` |
-| `AFN`, `RFN`, `RIN` | `EXID` з `TYPE` | Назад у вихідний тег, інакше `REFN` + `TYPE` |
-| `FORM` медіа (`jpg`) | MIME (`image/jpeg`), `FILE` як URI | Назад у розширення файлу |
-| `LANG` словом (`Ukrainian`) | BCP 47 (`uk`) | Назад у назву мови |
+| `AFN`, `RFN`, `RIN` | `EXID` with `TYPE` | Back to the original tag, otherwise `REFN` + `TYPE` |
+| Media `FORM` (`jpg`) | MIME (`image/jpeg`), `FILE` as a URI | Back to a file extension |
+| `LANG` as a word (`Ukrainian`) | BCP 47 (`uk`) | Back to the language name |
 | `ASSO` + `RELA` | `ASSO` + `ROLE` (+ `PHRASE`) | `RELA` |
-| Дата `INT … (…)`, подвійний рік `1700/01` | `DATE` + `PHRASE` | Текстова дата 5.5.1 |
-| Вбудовані `OBJE` / `SOUR` / `NOTE` без посилання | Виносяться в записи або стають `NOTE` | Лишаються записами |
-| Xref з малими літерами, пробілами тощо (`@NoTe ref@`) | Валідний у 7.0 xref лишається; інший стає `@X<n>@` (наступний вільний `n` у порядку документа) | Лишаються як є |
-| Посилання на неіснуючий запис (з урахуванням регістру: `@test@` ≠ `@TEST@`) | `@VOID@` + запис у діагностиці | — |
-| — | Структура з `@VOID@` | Стає `_`-тегом з підструктурами, запис у `LossReport` |
+| Date `INT … (…)`, dual year `1700/01` | `DATE` + `PHRASE` | 5.5.1 text date |
+| Inline `OBJE` / `SOUR` / `NOTE` without a pointer | Moved into records or turned into `NOTE` | Stay records |
+| Xref with lowercase letters, spaces, etc. (`@NoTe ref@`) | An xref valid in 7.0 is kept; any other becomes `@X<n>@` (next free `n` in document order) | Kept as is |
+| Pointer to a non-existent record (case-sensitive: `@test@` ≠ `@TEST@`) | `@VOID@` + a diagnostic | — |
+| — | Structure with `@VOID@` | Becomes a `_` tag with its substructures, `LossReport` entry |
 | — | `NO`, `SDATE`, `CREA`, `INIL`, `TRAN`, `CROP`, `SEX X` | `_NO`, `_SDATE`, `_CREA`, `_INIL`, `_TRAN`, `_CROP`, `SEX U` + `_SEX X` |
 
-**Інші кроки:** 5.5 ↔ 5.5.1 (зокрема `EMAIL`, `FAX`, `WWW`, `MAP`/`LATI`/`LONG`, що з'явилися в 5.5.1); 5.5.5 ↔ 5.5.1 (суворіші правила 5.5.5 застосовуються при запису); 4.0 / 5.0–5.4 → 5.5 (best effort).
+**Other steps:** 5.5 ↔ 5.5.1 (including `EMAIL`, `FAX`, `WWW`, `MAP`/`LATI`/`LONG`, introduced in 5.5.1); 5.5.5 ↔ 5.5.1 (the stricter 5.5.5 rules apply when writing); 4.0 / 5.0–5.4 → 5.5 (best effort).
 
-**Домовленості виходу конвертації** (від них залежать еталонні файли корпусу; зміна будь-якої — зміна очікуваних результатів):
+**Conversion output conventions** (the corpus golden files depend on them; changing any of them changes expected results):
 
-- **BOM** — за правилами цільової версії з розділу 3 (для 7.0 — є).
-- **Кінці рядків** — як у джерелі; якщо в джерелі змішані — переважний (найчастіший); `WriteOptions` може задати явно.
-- **`HEAD.SOUR`** переноситься з джерела без змін: це програма, яка створила дані, а не конвертер. Korin себе в `HEAD` не дописує.
-- **`HEAD.DATE`** не оновлюється, щоб вихід був детермінованим.
-- **Службові структури джерела**, яких немає в цільовій версії і які описують сам файл (`CHAR`, `GEDC.FORM` при переході на 7.0), прибираються без запису в `LossReport`: вони не є даними.
-- **Порядок** записів і підструктур — як у джерелі; винесені й нові записи йдуть перед `TRLR` у порядку появи.
-- **Нові xref** — `@X<n>@`, наступний вільний `n` у порядку документа.
+- **BOM** — by the target version's rules from section 3 (present for 7.0).
+- **Line endings** — as in the source; if the source mixes them, the dominant (most frequent) one; `WriteOptions` can set it explicitly.
+- **`HEAD.SOUR`** is carried over from the source unchanged: it names the program that created the data, not the converter. Korin does not add itself to `HEAD`.
+- **`HEAD.DATE`** is not updated, so that the output is deterministic.
+- **Source housekeeping structures** that do not exist in the target version and describe the file itself (`CHAR`, `GEDC.FORM` when moving to 7.0) are removed without a `LossReport` entry: they are not data.
+- **Order** of records and substructures is as in the source; extracted and new records go before `TRLR` in order of appearance.
+- **New xrefs** — `@X<n>@`, the next free `n` in document order.
 
-**`LossReport`** — список записів з полями: стабільний код (`KL2001`), серйозність, шлях у дереві (`@I1@/BIRT[0]/DATE`, формат шляхів — як у корпусі), рядок джерела, як збережено (`extension` / `note` / `dropped`), повідомлення. Експортується в JSON.
+**`LossReport`** — a list of entries with the fields: stable code (`KL2001`), severity, tree path (`@I1@/BIRT[0]/DATE`, path format as in the corpus), source line, how it was kept (`extension` / `note` / `dropped`), message. Exported as JSON.
 
-### Потокова конвертація
+### Streaming conversion
 
-`Gedcom::convertFile($in, $out, Version::V7_0)` конвертує файл будь-якого розміру з постійною пам'яттю: вхід читається по одному запису, вихід пишеться одразу.
+`Gedcom::convertFile($in, $out, Version::V7_0)` converts a file of any size in constant memory: the input is read one record at a time and the output is written immediately.
 
-Деякі кроки не можуть писати вихід, поки не побачать увесь вхід, бо їхній результат потрапляє на початок файлу або залежить від записів, що йдуть далі:
+Some steps cannot write output before they have seen the whole input, because their result goes to the start of the file or depends on records further down:
 
-| Що потребує всього файлу | Чому | Напрям |
+| What needs the whole file | Why | Direction |
 | --- | --- | --- |
-| Перейменування xref і `@VOID@` | Посилання може стояти до визначення запису; нова назва не повинна зіткнутися з xref далі у файлі | 5.5.1 → 7.0 |
-| `HEAD.SCHMA` | Розширення може вперше трапитися в останньому записі, а `SCHMA` стоїть у `HEAD` | 5.5.1 → 7.0 |
-| `SUBN` → `HEAD._SUBN` | Запис `SUBN` може стояти будь-де | 5.5.1 → 7.0 |
-| xref для винесених `OBJE` / `SOUR` | Потрібна множина всіх зайнятих xref | 5.5.1 → 7.0 |
-| Кодування | Евристика на початку файлу може помилитися (CP1251 / CP1252 на латиниці однакові) | Будь-який з 8-бітного кодування |
+| Renaming xrefs and `@VOID@` | A pointer may precede the record it points to; a new name must not collide with an xref further down the file | 5.5.1 → 7.0 |
+| `HEAD.SCHMA` | An extension may first appear in the last record, while `SCHMA` sits in `HEAD` | 5.5.1 → 7.0 |
+| `SUBN` → `HEAD._SUBN` | The `SUBN` record can be anywhere | 5.5.1 → 7.0 |
+| Xrefs for extracted `OBJE` / `SOUR` | The set of all used xrefs is needed | 5.5.1 → 7.0 |
+| Encoding | A heuristic at the start of the file can be wrong (CP1251 / CP1252 look the same on Latin text) | Any, from an 8-bit encoding |
 
-**Два проходи.**
+**Two passes.**
 
-1. **Попередній прохід** — тільки лексер, без дерева (орієнтовно третина часу повного читання). Збирає множину xref і зсуви записів, теги розширень, зсув `SUBN`, кодування за всім файлом. Це та сама інформація, що й індекс `open()`, тож `convertFile()` побудований на `open()` + послідовному обході, а не окремим кодом.
-2. **Основний прохід** — записи по одному: кроки конвертації, запис. Нові записи (винесені `OBJE` / `SOUR`) накопичуються і пишуться перед `TRLR`.
+1. **Prepass** — lexer only, no tree (roughly a third of the full read time). Collects the set of xrefs and record offsets, extension tags, the `SUBN` offset, and the encoding over the whole file. This is the same information as the `open()` index, so `convertFile()` is built on `open()` plus a sequential walk rather than separate code.
+2. **Main pass** — records one at a time: conversion steps, writing. New records (extracted `OBJE` / `SOUR`) are accumulated and written before `TRLR`.
 
-**Попередній прохід лише за потреби.** Кожен крок оголошує `needsPrepass()`; ланцюжок робить попередній прохід, лише якщо цього потребує хоч один крок. 7.0 → 5.5.1, 5.5 ↔ 5.5.1 ↔ 5.5.5 — однопрохідні.
+**Prepass only when needed.** Each step declares `needsPrepass()`; the chain runs a prepass only if at least one step needs it. 7.0 → 5.5.1 and 5.5 ↔ 5.5.1 ↔ 5.5.5 are single-pass.
 
-**Входи, які не можна прочитати двічі:**
+**Inputs that cannot be read twice:**
 
-| Вхід | Поведінка |
+| Input | Behavior |
 | --- | --- |
-| Файл | Читається двічі, без копій |
-| Запис у `.gdz` | Відкривається вдруге через `zip://` (повторне розпакування в пам'яті, без диска) |
-| `stdin`, pipe, мережевий потік | Якщо потрібен попередній прохід — копія в `php://temp` (до 2 МБ у пам'яті, далі тимчасовий файл); інакше — без копії |
+| File | Read twice, no copies |
+| Entry in a `.gdz` | Opened again through `zip://` (decompressed again in memory, no disk) |
+| `stdin`, pipe, network stream | If a prepass is needed, copied to `php://temp` (up to 2 MB in memory, then a temporary file); otherwise no copy |
 
-**Пам'ять:** множина xref (~70 байт на запис; ~15 МБ для 200 тис. записів) + один запис + накопичені нові записи.
+**Memory:** the xref set (~70 bytes per record; ~15 MB for 200 thousand records) + one record + accumulated new records.
 
-**Відкинута альтернатива:** один прохід входу з тілом у тимчасовий файл і `HEAD`, дописаним наприкінці. Вона вирішує `SCHMA` і `SUBN`, але не xref: посилання вже записане до того, як відомо, на що його замінити, — тож потрібен другий прохід по виходу.
+**Rejected alternative:** a single input pass with the body in a temporary file and `HEAD` written at the end. It solves `SCHMA` and `SUBN` but not xrefs: a pointer is already written before it is known what to replace it with, so a second pass over the output would be needed.
 
-## 8. Валідація
+## 8. Validation
 
-Валідатор перевіряє документ за профілем його версії на п'ятьох рівнях і повертає діагностику зі стабільними кодами. Файл із помилками все одно читається: вирішує викликач.
+The validator checks a document against its version's profile at five levels and returns diagnostics with stable codes. A file with errors is still read: the caller decides.
 
-| Рівень | Що перевіряє | Коди |
+| Level | What it checks | Codes |
 | --- | --- | --- |
-| Синтаксис | Формат рядка, стрибки рівнів, xref, довжина рядка, кодування, `HEAD`/`TRLR` | `KV1xxx` |
-| Структура | Допустимі підструктури і кардинальність за профілем, обов'язкові теги | `KV2xxx` |
-| Значення | Дати і календарі, вік, переліки, MIME, мови, координати, тип цілі посилання | `KV3xxx` |
-| Посилання | Висячі xref, дублікати xref, узгодженість `FAMS`/`FAMC` з `HUSB`/`WIFE`/`CHIL` | `KV4xxx` |
-| Правдоподібність (опційно) | Народження після смерті, цикл у родоводі, дитина старша за батька — лише попередження | `KV5xxx` |
+| Syntax | Line format, level jumps, xrefs, line length, encoding, `HEAD`/`TRLR` | `KV1xxx` |
+| Structure | Allowed substructures and cardinality per profile, required tags | `KV2xxx` |
+| Values | Dates and calendars, ages, enumerations, MIME, languages, coordinates, pointer target type | `KV3xxx` |
+| References | Dangling xrefs, duplicate xrefs, consistency of `FAMS`/`FAMC` with `HUSB`/`WIFE`/`CHIL` | `KV4xxx` |
+| Plausibility (optional) | Birth after death, a cycle in the pedigree, a child older than a parent — warnings only | `KV5xxx` |
 
-- Серйозність: `error`, `warning`, `info`; кожен код можна вимкнути або підвищити.
-- Кожна діагностика має рядок, шлях у дереві та посилання на розділ специфікації.
-- Формати звіту: об'єкти PHP, JSON, текст для CLI.
-- Усі коди задокументовані в `docs/diagnostics.md` і не змінюють значення в межах мажорної версії.
+- Severity: `error`, `warning`, `info`; each code can be disabled or escalated.
+- Every diagnostic has a line, a tree path and a reference to the specification section.
+- Report formats: PHP objects, JSON, text for the CLI.
+- All codes are documented in `docs/diagnostics.md` and keep their meaning within a major version.
 
-Контроль якості валідатора: його висновки для 7.0 звіряються з очікуваними результатами офіційних тестових файлів і з відкритими валідаторами зі [списку gedcom.io](https://gedcom.io/tools/).
+Validator quality control: its findings for 7.0 are checked against the expected results of the official test files and against the open-source validators in the [gedcom.io list](https://gedcom.io/tools/).
 
-## 9. Безпека і продуктивність
+## 9. Security and performance
 
-Будь-який вхідний файл вважається ворожим: бібліотека ніколи не падає некеровано, не виходить за задані ліміти і не звертається до мережі.
+Every input file is treated as hostile: the library never crashes uncontrollably, never exceeds the configured limits and never accesses the network.
 
-**Захист:**
+**Protection:**
 
-- Ліміти за замовчуванням (змінюються в `ReadOptions`): глибина вкладеності, довжина рядка, кількість записів, розмір файлу.
-- GEDZIP: захист від zip-slip (нормалізація шляхів, заборона `..` і абсолютних шляхів), від zip-бомб (ліміт стиснення і сумарного розміру), симлінки ігноруються.
-- URI з `FILE` ніколи не завантажуються і не відкриваються автоматично.
-- Жодних `eval`, `unserialize`, динамічних include; регулярні вирази — з лінійною складністю (перевірка на ReDoS у тестах).
-- Винятки не містять вмісту файлу більше за фрагмент рядка: у деревах є персональні дані, а винятки потрапляють у логи.
-- `SECURITY.md` і приватні звіти про вразливості через GitHub Security Advisories.
+- Default limits (configurable in `ReadOptions`): nesting depth, line length, number of records, file size.
+- GEDZIP: protection against zip-slip (path normalization, `..` and absolute paths forbidden) and zip bombs (limits on compression ratio and total size); symlinks are ignored.
+- URIs from `FILE` are never downloaded or opened automatically.
+- No `eval`, `unserialize` or dynamic includes; regular expressions have linear complexity (ReDoS checks in tests).
+- Exceptions contain no more of the file than a fragment of a line: trees hold personal data, and exceptions end up in logs.
+- `SECURITY.md` and private vulnerability reports through GitHub Security Advisories.
 
-**Цільові показники** (перевіряються PHPBench на еталонній машині CI, PHP 8.5, одне ядро):
+**Targets** (checked with PHPBench on the CI reference machine, PHP 8.5, one core):
 
-| Сценарій | Ціль |
+| Scenario | Target |
 | --- | --- |
-| Потокове читання | Пам'ять не зростає з розміром файлу (орієнтир ≤ 32 МБ) |
-| Повне читання файлу 50 МБ | ≤ 512 МБ пам'яті, ≤ 20 с |
-| `open()` файлу 50 МБ | Індекс ≤ 64 МБ пам'яті, побудова ≤ 5 с; доступ до запису поза кешем ≤ 1 мс |
-| Конвертація 5.5.1 → 7.0 файлу 50 МБ | ≤ 2× часу повного читання |
-| `convertFile()` 5.5.1 → 7.0 файлу 50 МБ | ≤ 64 МБ пам'яті, ≤ 1,5× часу повного читання |
-| Регресія в PR | Більше 10% — PR блокується |
+| Streaming read | Memory does not grow with file size (guideline ≤ 32 MB) |
+| Full read of a 50 MB file | ≤ 512 MB memory, ≤ 20 s |
+| `open()` of a 50 MB file | Index ≤ 64 MB memory, built in ≤ 5 s; access to an uncached record ≤ 1 ms |
+| 5.5.1 → 7.0 conversion of a 50 MB file | ≤ 2× the full read time |
+| `convertFile()` 5.5.1 → 7.0 of a 50 MB file | ≤ 64 MB memory, ≤ 1.5× the full read time |
+| Regression in a PR | More than 10% blocks the PR |
 
-Цілі попередні: фіксуємо їх після перших замірів на корпусі (етап 0.1).
+The targets are preliminary: they are fixed after the first measurements on the corpus (milestone 0.1).
 
-## 10. Тестування
+## 10. Testing
 
-Кожен файл корпусу проходить усю матрицю: читання, запис у ту саму версію і конвертацію в кожну версію запису, від найнижчої до найвищої і навпаки. Результат кожної конвертації має пройти валідатор цільової версії без помилок.
+Every corpus file goes through the whole matrix: reading, writing to the same version, and conversion to every writable version, from the lowest to the highest and back. The result of each conversion must pass the target version's validator without errors.
 
-**Матриця конвертацій** (у клітинці — скільки кроків ланцюжка проходить тест):
+**Conversion matrix** (each cell shows how many chain steps the test goes through):
 
-| Джерело ↓ / ціль → | 5.5 | 5.5.1 | 5.5.5 | 7.0 |
+| Source ↓ / target → | 5.5 | 5.5.1 | 5.5.5 | 7.0 |
 | --- | --- | --- | --- | --- |
 | 7.0 | 2 | 1 | 2 | round-trip |
 | 5.5.5 | 2 | 1 | round-trip | 2 |
@@ -378,94 +378,94 @@ $archive->media('photos/anna.jpg');  // потік, без розпакуван�
 | 5.0–5.4 | 1 | 2 | 3 | 3 |
 | 4.0 | 1 | 2 | 3 | 3 |
 
-**Види тестів:**
+**Kinds of tests:**
 
-1. **Модульні** — на кожен клас, зокрема на кожне правило конвертації і кожну таблицю кодування.
-2. **Відповідність специфікації** — генеруються з профілів: для кожної структури перевіряється допустиме і недопустиме розміщення, кардинальність, тип значення.
-3. **Round-trip** — у режимі `preserve` вихід байт у байт дорівнює входу; у `normalize` — семантично рівний.
-4. **Матриця конвертацій** — для кожної клітинки вище: вихід валідний для цільової версії, `LossReport` збігається з еталонним (golden) файлом.
-   Кожна клітинка проганяється двічі: `read()` + `convert()` + `write()` і `convertFile()`; виходи й `LossReport` мають збігатися байт у байт (перевірка `convert-stream` у корпусі).
-5. **Інваріанти вгору-вниз-вгору** — «отисок» документа (канонічний JSON семантичного вмісту) після 7.0 → 5.5 → 7.0 дорівнює вихідному, крім пунктів із `LossReport`.
-6. **Генеративні (property-based)** — випадкові валідні документи за граматикою профілю проходять ланцюжок конвертацій з тими ж інваріантами.
-7. **Кодування** — кожна кодова сторінка, комбіновані діакритики ANSEL, BOM, невідповідність `CHAR` і вмісту, кирилиця в CP1251 і UTF-16.
-8. **Фазинг** — `nikic/php-fuzzer` на лексер, декодери, дати і GEDZIP: без незадокументованих винятків і виходу за ліміти.
-9. **Мутаційні** — Infection перевіряє, що тести справді ловлять помилки, а не лише проходять код.
-10. **Бенчмарки** — PHPBench, цілі з розділу 9.
+1. **Unit** — for every class, including every conversion rule and every encoding table.
+2. **Specification conformance** — generated from the profiles: for each structure, allowed and disallowed placement, cardinality and value type are checked.
+3. **Round-trip** — in `preserve` mode the output equals the input byte for byte; in `normalize` mode it is semantically equal.
+4. **Conversion matrix** — for every cell above: the output is valid for the target version, and the `LossReport` matches the golden file.
+   Each cell runs twice: `read()` + `convert()` + `write()` and `convertFile()`; outputs and `LossReport` must match byte for byte (the `convert-stream` check in the corpus).
+5. **Up-down-up invariants** — the document fingerprint (canonical JSON of the semantic content) after 7.0 → 5.5 → 7.0 equals the original, except for items in the `LossReport`.
+6. **Generative (property-based)** — random valid documents generated from a profile's grammar go through the conversion chain with the same invariants.
+7. **Encodings** — every code page, ANSEL combining diacritics, BOM, mismatch between `CHAR` and content, Cyrillic in CP1251 and UTF-16.
+8. **Fuzzing** — `nikic/php-fuzzer` on the lexer, decoders, dates and GEDZIP: no undocumented exceptions and no limits exceeded.
+9. **Mutation** — Infection checks that the tests actually catch bugs rather than just executing code.
+10. **Benchmarks** — PHPBench, targets from section 9.
 
-**Пороги якості:** покриття рядків ≥ 95%, гілок ≥ 90% для `Io`, `Syntax`, `Conversion`, `Writer`; MSI (Infection) ≥ 85%.
+**Quality thresholds:** line coverage ≥ 95%, branch coverage ≥ 90% for `Io`, `Syntax`, `Conversion`, `Writer`; MSI (Infection) ≥ 85%.
 
-**Корпус** — окремий репозиторій `gedcom-corpus`, підключений як dev-залежність:
+**Corpus** — a separate `gedcom-corpus` repository, included as a dev dependency:
 
-| Джерело | Ліцензія | Як використовуємо |
+| Source | License | How we use it |
 | --- | --- | --- |
-| `gedcom7code/test-files` | Unlicense | Вбудовано в корпус |
-| Приклади з [gedcom.io](https://gedcom.io/) і машинно-читані файли специфікації | Apache-2.0 | Вбудовано з текстом ліцензії |
-| Torture-тести GEDCOM 5.5 (H. Eichmann) | Уточнити | Завантажуються скриптом під час тестів, у репозиторій не кладемо |
-| Власні експорти з програм розділу 3 | Apache-2.0 | Створюємо тестове дерево з вигаданих людей в кожній програмі та експортуємо |
+| `gedcom7code/test-files` | Unlicense | Embedded in the corpus |
+| Examples from [gedcom.io](https://gedcom.io/) and the specification's machine-readable files | Apache-2.0 | Embedded with the license text |
+| GEDCOM 5.5 torture tests (H. Eichmann) | To be clarified | Downloaded by a script during tests, not committed |
+| Our own exports from the programs in section 3 | Apache-2.0 | We build a test tree of invented people in each program and export it |
 
-Реальні дерева живих людей у корпус не потрапляють.
+Real trees of living people never enter the corpus.
 
-**Репозиторій `gedcom-corpus` створюється з першого дня** і містить лише дані, без коду бібліотеки. Профілі версій і правила конвертації потрібні Korin під час роботи, тому лишаються в `korin-php` (у YAML).
+**The `gedcom-corpus` repository exists from day one** and holds data only, no library code. Version profiles and conversion rules are needed by Korin at runtime, so they stay in `korin-php` (as YAML).
 
-- **Структура:** `cases/<назва>/` з `input.ged` (або `.gdz`), `expected.<версія>.ged`, `losses.<версія>.json`, `fingerprint.json` і `case.yaml` (джерело, ліцензія, що перевіряє кейс). Формат JSON-файлів описаний JSON Schema в `schema/`.
-- **Кейси редагування:** `ops.json` — мовно-незалежний список операцій над `input.ged` (`setValue`, `addChild`, `remove`, `renameXref`, `addRecord`, `removeRecord`) з адресацією шляхами, і `expected.ged` — результат після них. Так сценарії з розділу 6 перевіряються однаково в будь-якій мові.
-- **`fingerprint.json`** — канонічний JSON семантики: записи й підструктури в порядку документа, значення в Unicode NFC після склейки `CONC`/`CONT` і зняття `@@`, без змінних полів `HEAD` (`DATE`, `SOUR`, `CHAR`, `GEDC`). Порівнюється лише в межах однієї версії GEDCOM.
-- **`.gitattributes`** у обох репозиторіях: `*.ged` і `*.gdz` — `binary`, щоб Git на Windows не чіпав кінці рядків.
-- **Ліцензії:** кожна тека-джерело має власний `LICENSE`; файли з неясною ліцензією не кладуться, а завантажуються скриптом `fetch-external`.
-- **Версіонування:** власні SemVer-теги. Новий кейс — мінор; зміна очікуваного результату існуючого кейсу — мажор.
-- **Підключення до Korin:** Composer-пакет `korin/gedcom-corpus` у `require-dev` з фіксованим діапазоном версій. Інші мови беруть його через git submodule або архів GitHub Release.
-- **Робочий процес:** зміна поведінки Korin, що зачіпає очікувані результати, спершу мерджиться в корпус і отримує тег, потім PR у `korin-php` піднімає версію корпусу. У корпусі власний CI: валідація JSON за схемами, перевірка наявності `case.yaml` і ліцензії, пошук персональних даних.
+- **Layout:** `cases/<name>/` with `input.ged` (or `.gdz`), `expected.<version>.ged`, `losses.<version>.json`, `fingerprint.json` and `case.yaml` (source, license, what the case checks). The JSON file formats are described by JSON Schema in `schema/`.
+- **Edit cases:** `ops.json` — a language-neutral list of operations on `input.ged` (`setValue`, `addChild`, `remove`, `renameXref`, `addRecord`, `removeRecord`) addressed by paths, and `expected.ged` — the result after them. This way the scenarios from section 6 are checked the same way in any language.
+- **`fingerprint.json`** — canonical JSON of the semantics: records and substructures in document order, values in Unicode NFC after joining `CONC`/`CONT` and removing `@@`, without the volatile `HEAD` fields (`DATE`, `SOUR`, `CHAR`, `GEDC`). Compared only within one GEDCOM version.
+- **`.gitattributes`** in both repositories: `*.ged` and `*.gdz` are `binary`, so Git on Windows never touches line endings.
+- **Licenses:** each source directory has its own `LICENSE`; files with an unclear license are not committed but downloaded by a `fetch-external` script.
+- **Versioning:** its own SemVer tags. A new case is a minor release; changing the expected result of an existing case is a major one.
+- **Use from Korin:** the Composer package `korin/gedcom-corpus` in `require-dev` with a fixed version range. Other languages take it through a git submodule or a GitHub Release archive.
+- **Workflow:** a Korin behavior change that affects expected results is merged into the corpus first and tagged, then a PR in `korin-php` bumps the corpus version. The corpus has its own CI: JSON validation against the schemas, presence of `case.yaml` and a license, a scan for personal data.
 
-## 11. Якість коду і CI
+## 11. Code quality and CI
 
-Кожен PR проходить тести на PHP 8.2–8.6, на трьох ОС і з мінімальними та максимальними версіями залежностей. Злиття в `main` можливе лише при зелених перевірках.
+Every PR runs the tests on PHP 8.2–8.6, on three operating systems, with lowest and highest dependency versions. Merging into `main` is possible only with green checks.
 
-**Інструменти:**
+**Tools:**
 
-- PHPStan 2.x, рівень `max` + `phpstan-strict-rules`, нуль винятків у baseline;
-- PHP-CS-Fixer з набором PER Coding Style;
-- Rector — тільки в режимі перевірки (`--dry-run`) з рівнем PHP 8.2;
-- `composer-require-checker` і `composer-unused` — жодних прихованих залежностей;
-- `declare(strict_types=1)` у кожному файлі, усі класи `final`, якщо не спроєктовані для розширення.
+- PHPStan 2.x, level `max` + `phpstan-strict-rules`, zero baseline entries;
+- PHP-CS-Fixer with the PER Coding Style set;
+- Rector — check mode only (`--dry-run`) at the PHP 8.2 level;
+- `composer-require-checker` and `composer-unused` — no hidden dependencies;
+- `declare(strict_types=1)` in every file; all classes `final` unless designed for extension.
 
-**Робочі процеси GitHub Actions:**
+**GitHub Actions workflows:**
 
-| Workflow | Коли | Що робить |
+| Workflow | When | What it does |
 | --- | --- | --- |
-| `tests` | Кожен push і PR | PHP 8.2, 8.3, 8.4, 8.5, 8.6 × `lowest`/`highest` на Ubuntu; Windows і macOS — на 8.2 та 8.6; покриття → Codecov |
-| `php-nightly` | Щоночі | Нічна збірка PHP, падіння не блокує |
-| `static` | Кожен PR | PHPStan, PHP-CS-Fixer, Rector, composer-перевірки |
-| `mutation` | PR (змінені файли) + щотижня (усе) | Infection, поріг MSI |
-| `fuzz` | Щоночі | Фазинг, знайдені входи додаються в корпус |
-| `bench` | PR | Порівняння з `main`, блок при регресії > 10% |
-| `release` | Тег `v*` | Збірка релізу, нотатки з CHANGELOG, атестація артефактів |
+| `tests` | Every push and PR | PHP 8.2, 8.3, 8.4, 8.5, 8.6 × `lowest`/`highest` on Ubuntu; Windows and macOS on 8.2 and 8.6; coverage → Codecov |
+| `php-nightly` | Nightly | PHP nightly build, failures do not block |
+| `static` | Every PR | PHPStan, PHP-CS-Fixer, Rector, composer checks |
+| `mutation` | PR (changed files) + weekly (everything) | Infection, MSI threshold |
+| `fuzz` | Nightly | Fuzzing; inputs found are added to the corpus |
+| `bench` | PR | Comparison with `main`, blocks on a regression > 10% |
+| `release` | Tag `v*` | Release build, notes from CHANGELOG, artifact attestation |
 
-**Репозиторій:** захищена гілка `main`, обов'язкове рев'ю, підписані теги, Dependabot для Composer і Actions, OpenSSF Scorecard.
+**Repository:** protected `main` branch, required review, signed tags, Dependabot for Composer and Actions, OpenSSF Scorecard.
 
-## 12. Версіонування і релізи
+## 12. Versioning and releases
 
-Бібліотека дотримується SemVer 2.0: злам сумісності публічного API — лише в мажорній версії. Реліз = підписаний git-тег `vX.Y.Z`, Packagist підхоплює його через webhook.
+The library follows SemVer 2.0: breaking changes to the public API only in a major version. A release = a signed git tag `vX.Y.Z`, picked up by Packagist through a webhook.
 
-- **0.x** — до виконання критеріїв приймання (розділ 14); мінор може ламати API, зміни описуються в `UPGRADE.md`.
-- **Гілки:** `main` — наступний мінор; `1.x`, `2.x` — гілки підтримки.
-- **Підтримка:** останній мажор — нові можливості; попередній — виправлення безпеки ще 12 місяців.
-- **Застаріле API** позначається `@deprecated` і `E_USER_DEPRECATED` щонайменше за один мінор до видалення.
-- **Версія специфікації.** Новий патч GEDCOM 7.0.x дає мінорний реліз Korin, нова мінорна версія GEDCOM (7.1) — теж мінорний, бо це додавання профілю.
-- **Процес:** Conventional Commits → `CHANGELOG.md` у форматі Keep a Changelog → тег → GitHub Release.
+- **0.x** — until the acceptance criteria are met (section 14); a minor may break the API, changes are described in `UPGRADE.md`.
+- **Branches:** `main` — the next minor; `1.x`, `2.x` — maintenance branches.
+- **Support:** the latest major gets new features; the previous one gets security fixes for another 12 months.
+- **Deprecated API** is marked with `@deprecated` and `E_USER_DEPRECATED` at least one minor before removal.
+- **Specification version.** A new GEDCOM 7.0.x patch means a minor Korin release; a new GEDCOM minor version (7.1) is also a minor release, because it adds a profile.
+- **Process:** Conventional Commits → `CHANGELOG.md` in the Keep a Changelog format → tag → GitHub Release.
 
-**Підключення в «Пам'ять про себе» чи будь-який інший проєкт:**
+**Using it in "Pam'iat pro sebe" or any other project:**
 
 ```bash
 composer require korin/gedcom:^1.0
 ```
 
-Оновлення — через Renovate або Dependabot. Поза релізами можна взяти конкретну гілку з GitHub (`dev-main` чи `1.x-dev`) або локальну копію через `path`-репозиторій Composer.
+Updates come through Renovate or Dependabot. Outside releases you can use a specific GitHub branch (`dev-main` or `1.x-dev`) or a local copy through a Composer `path` repository.
 
-## 13. README і документація
+## 13. README and documentation
 
-README англійською, з робочим прикладом у перших 30 рядках; повна документація — на сайті в GitHub Pages, український переклад — після 1.0. Приклади коду в README та документації запускаються в CI, щоб не застарівали.
+The README is in English, with a working example in the first 30 lines; full documentation lives on the GitHub Pages site, with a Ukrainian translation after 1.0. Code examples in the README and documentation run in CI so they never go stale.
 
-**Структура README:**
+**README structure:**
 
 ```markdown
 # Korin — lossless GEDCOM for PHP
@@ -498,54 +498,54 @@ without losing a single tag. Every unavoidable loss is reported.
 ## Acknowledgements
 ```
 
-**Файли в корені репозиторію:** `README.md`, `LICENSE`, `NOTICE` (атрибуція специфікації FamilySearch), `CHANGELOG.md`, `UPGRADE.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant), `SECURITY.md`, `CITATION.cff`, шаблони issue і PR.
+**Files in the repository root:** `README.md`, `LICENSE`, `NOTICE` (attribution of the FamilySearch specification), `CHANGELOG.md`, `UPGRADE.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant), `SECURITY.md`, `CITATION.cff`, issue and PR templates.
 
-**Сайт документації** (`docs/`): посібники за задачами, правила конвертації для кожної пари версій, довідник кодів `KV*` і `KL*`, таблиця діалектів програм, згенерована довідка API (phpDocumentor).
+**Documentation site** (`docs/`): task-oriented guides, conversion rules for each version pair, a reference of `KV*` and `KL*` codes, a table of vendor dialects, generated API reference (phpDocumentor).
 
-## 14. Етапи і критерії приймання
+## 14. Milestones and acceptance criteria
 
-Робота йде шістьма етапами; кожен закінчується релізом 0.x на Packagist, щоб «Пам'ять про себе» могла підключати бібліотеку задовго до 1.0.
+Work proceeds in six milestones; each ends with a 0.x release on Packagist, so "Pam'iat pro sebe" can use the library long before 1.0.
 
-1. **0.1 — фундамент.** Каркас репозиторію і CI, корпус, `Io` + `Syntax` + `Writer` для 5.5.1 і 7.0, безвтратний round-trip, кодування UTF-8/UTF-16/ANSEL/CP1251/CP1252. Заміри продуктивності і порівняльний прогін корпусу через `liberu-genealogy/php-gedcom` для базової планки.
-2. **0.2 — профілі і валідація.** Профілі 5.5, 5.5.1, 5.5.5, 7.0; валідатор рівнів 1–4; тести відповідності специфікації.
-3. **0.3 — конвертація.** Кроки 5.5.1 ↔ 7.0, 5.5 ↔ 5.5.1, 5.5.5 ↔ 5.5.1; `LossReport`; повна матриця з розділу 10.
-4. **0.4 — модель і медіа.** Типізовані представлення, дати з календарями, вік, імена, місця; GEDZIP; потоковий та індексований (`open()`) режими.
-5. **0.5 — старі версії і інструменти.** Читання 4.0 і 5.0–5.4, діалекти програм, CLI, сайт документації, фазинг.
-6. **1.0 — стабільний реліз** після виконання всіх критеріїв нижче.
+1. **0.1 — foundation.** Repository skeleton and CI, corpus, `Io` + `Syntax` + `Writer` for 5.5.1 and 7.0, lossless round-trip, encodings UTF-8/UTF-16/ANSEL/CP1251/CP1252. Performance measurements and a comparative corpus run through `liberu-genealogy/php-gedcom` as a baseline.
+2. **0.2 — profiles and validation.** Profiles for 5.5, 5.5.1, 5.5.5, 7.0; validator levels 1–4; specification conformance tests.
+3. **0.3 — conversion.** Steps 5.5.1 ↔ 7.0, 5.5 ↔ 5.5.1, 5.5.5 ↔ 5.5.1; `LossReport`; the full matrix from section 10.
+4. **0.4 — model and media.** Typed views, dates with calendars, ages, names, places; GEDZIP; streaming and indexed (`open()`) modes.
+5. **0.5 — old versions and tooling.** Reading 4.0 and 5.0–5.4, vendor dialects, CLI, documentation site, fuzzing.
+6. **1.0 — stable release** once all the criteria below are met.
 
-Після 1.0: GEDCOM 7.1 після офіційного релізу, `korin/gedcomx`, Symfony-бандл.
+After 1.0: GEDCOM 7.1 after its official release, `korin/gedcomx`, a Symfony bundle.
 
-**Критерії приймання 1.0:**
+**1.0 acceptance criteria:**
 
-- [ ] Усі офіційні тестові файли GEDCOM 7 читаються і дають очікуваний результат валідації
-- [ ] Round-trip у режимі `preserve` байт у байт для всього корпусу
-- [ ] Уся матриця конвертацій зелена: вихід валідний, `LossReport` збігається з еталоном
-- [ ] Інваріанти вгору-вниз-вгору виконуються для корпусу і генеративних тестів
-- [ ] Покриття рядків ≥ 95%, гілок ≥ 90%, MSI ≥ 85%
-- [ ] PHPStan `max` без помилок; CI зелений на PHP 8.2–8.6 і трьох ОС
-- [ ] 24 години фазингу без нових збоїв
-- [ ] Цілі продуктивності з розділу 9 досягнуті
-- [ ] README, сайт документації і довідка API опубліковані
-- [ ] Підписаний тег `v1.0.0`, пакет на Packagist
+- [ ] All official GEDCOM 7 test files are read and give the expected validation result
+- [ ] Byte-for-byte round-trip in `preserve` mode for the whole corpus
+- [ ] The whole conversion matrix is green: output is valid, `LossReport` matches the golden files
+- [ ] Up-down-up invariants hold for the corpus and the generative tests
+- [ ] Line coverage ≥ 95%, branch coverage ≥ 90%, MSI ≥ 85%
+- [ ] PHPStan `max` without errors; CI green on PHP 8.2–8.6 and three operating systems
+- [ ] 24 hours of fuzzing without new crashes
+- [ ] Performance targets from section 9 met
+- [ ] README, documentation site and API reference published
+- [ ] Signed tag `v1.0.0`, package on Packagist
 
-**Відкрите питання:** скільки часу на тиждень йде на бібліотеку — від цього залежать дати етапів.
+**Open question:** how many hours per week go into the library — the milestone dates depend on it.
 
-## 15. Порти на інші мови
+## 15. Ports to other languages
 
-Зараз порти не робимо. У Python, JavaScript, Go і Rust вже є живі бібліотеки з підтримкою GEDCOM 7, а в PHP прогалина більша. Наш внесок для інших мов — спільний корпус і правила конвертації як дані.
+No ports for now. Python, JavaScript, Go and Rust already have active libraries with GEDCOM 7 support, while the gap in PHP is bigger. Our contribution to other languages is the shared corpus and conversion rules as data.
 
-| Мова | Що вже є | Висновок |
+| Language | What already exists | Conclusion |
 | --- | --- | --- |
-| Rust (+ Python, JS/WASM) | [gedcomkit](https://docs.rs/crate/gedcomkit/0.1.1): збереження байтів, 5.5–7.x, GEDZIP, прив'язки для Python і Node.js | Найближчий за філософією аналог; варто звірятися з ним на корпусі |
-| Python | [gedcom7](https://pypi.org/p/gedcom7) (ціль 7.0.18), gedcom-lite (5.5.1 і 7) | Для Python-сервісу проєкту вистачить готового; головна робота з GEDCOM усе одно в PHP |
-| JavaScript / TypeScript | js-parser від gedcom7code, [gedcom-ts](https://app.unpkg.com/gedcom-ts@2026.6.4/files/README.md) | Порт знадобиться, лише якщо PWA матиме офлайн-імпорт у браузері |
-| Go | iand/gedcom (5.5.1 і 7.0), [cacack/gedcom-go](https://pkg.go.dev/github.com/cacack/gedcom-go/gedcom) (5.5, 5.5.1, 7.0) | Попиту з боку проєкту немає |
+| Rust (+ Python, JS/WASM) | [gedcomkit](https://docs.rs/crate/gedcomkit/0.1.1): byte preservation, 5.5–7.x, GEDZIP, Python and Node.js bindings | The closest in philosophy; worth cross-checking against it on the corpus |
+| Python | [gedcom7](https://pypi.org/p/gedcom7) (targets 7.0.18), gedcom-lite (5.5.1 and 7) | Existing libraries are enough for the project's Python service; the main GEDCOM work stays in PHP anyway |
+| JavaScript / TypeScript | js-parser by gedcom7code, [gedcom-ts](https://app.unpkg.com/gedcom-ts@2026.6.4/files/README.md) | A port is needed only if the PWA gets offline import in the browser |
+| Go | iand/gedcom (5.5.1 and 7.0), [cacack/gedcom-go](https://pkg.go.dev/github.com/cacack/gedcom-go/gedcom) (5.5, 5.5.1, 7.0) | No demand from the project |
 
-Повний перелік інструментів — на [gedcom.io/tools](https://gedcom.io/tools/).
+The full list of tools is at [gedcom.io/tools](https://gedcom.io/tools/).
 
-**Що робимо замість портів:**
+**What we do instead of ports:**
 
-- `gedcom-corpus` — незалежний від мови: вхідні файли, очікувані виходи, `losses.json`, `fingerprint.json`;
-- профілі версій і правила конвертації у YAML, а не лише в PHP-коді — тоді порт на будь-яку мову перевикористовує їх і перевіряється на тих самих тестах.
+- `gedcom-corpus` — language-independent: input files, expected outputs, `losses.json`, `fingerprint.json`;
+- version profiles and conversion rules in YAML, not only in PHP code — so a port in any language reuses them and is checked against the same tests.
 
-**Коли повернутися до питання:** після 1.0 — якщо з'явиться попит ззовні (issues, зірки) або проєкту знадобиться імпорт у браузері. Перший кандидат — TypeScript.
+**When to revisit:** after 1.0 — if outside demand appears (issues, stars) or the project needs import in the browser. The first candidate is TypeScript.

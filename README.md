@@ -5,7 +5,7 @@ without losing a single tag. Every unavoidable loss is reported.
 
 > **Status: early development (towards 0.1).** Reading, lossless writing and editing work today;
 > validation, conversion, the typed model, GEDZIP and streaming are planned — see
-> [the specification](docs/SPEC.md) (Ukrainian) for the roadmap.
+> [the specification](docs/SPEC.md) for the roadmap.
 
 ```php
 use Korin\Gedcom\Gedcom;

@@ -1,6 +1,6 @@
 # Korin — working notes
 
-Lossless GEDCOM library for PHP. The specification (in Ukrainian) is `docs/SPEC.md`; read the
+Lossless GEDCOM library for PHP. The specification is `docs/SPEC.md`; read the
 relevant section before changing behaviour. Diagnostic codes are listed in `docs/diagnostics.md`.
 
 ## Commands
