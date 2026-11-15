@@ -1,0 +1,60 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }} ${{ matrix.dependencies }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        php: ['8.2', '8.3', '8.4', '8.5']
+        dependencies: [lowest, highest]
+        experimental: [false]
+        include:
+          - { os: ubuntu-latest, php: '8.6', dependencies: highest, experimental: true }
+          # Spec section 11: Windows and macOS run on 8.2 and 8.6. Switch 8.5 -> 8.6 below and make
+          # 8.6 on Ubuntu non-experimental once PHP 8.6 is GA (scheduled for 2026-11-19).
+          - { os: windows-latest, php: '8.2', dependencies: highest, experimental: false }
+          - { os: windows-latest, php: '8.5', dependencies: highest, experimental: false }
+          - { os: macos-latest, php: '8.2', dependencies: highest, experimental: false }
+          - { os: macos-latest, php: '8.5', dependencies: highest, experimental: false }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: intl, mbstring
+          coverage: none
+          ini-values: error_reporting=E_ALL, zend.assertions=1
+      - uses: ramsey/composer-install@v3
+        with:
+          dependency-versions: ${{ matrix.dependencies }}
+      - run: vendor/bin/phpunit
+
+  without-intl:
+    name: PHP 8.2 without intl
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: :intl
+          coverage: none
+      - uses: ramsey/composer-install@v3
+      # ANSEL falls back to bundled composition tables; the corpus fingerprint helper needs intl.
+      - run: vendor/bin/phpunit --testsuite unit
