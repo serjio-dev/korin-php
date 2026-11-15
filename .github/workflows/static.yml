@@ -22,3 +22,4 @@ jobs:
       - run: vendor/bin/php-cs-fixer check --diff
       - run: vendor/bin/rector process --dry-run
       - run: vendor/bin/phpstan analyse --no-progress
+      - run: php bin/generate-profiles.php --check

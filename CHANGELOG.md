@@ -7,6 +7,12 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+### Added
+
+- `Spec\Profile`: the rules of a GEDCOM version as data — top-level records, substructures
+  with cardinality per superstructure, payload types, enumeration sets and calendars.
+  The 7.0 profile is compiled from the FamilySearch GEDCOM v7.0.18 term files (`NOTICE`).
+
 ## [0.1.0] - 2026-11-15
 
 First release: the lossless foundation. Validation, conversion, the typed model, GEDZIP,
