@@ -57,4 +57,4 @@ jobs:
           coverage: none
       - uses: ramsey/composer-install@v3
       # ANSEL falls back to bundled composition tables; the corpus fingerprint helper needs intl.
-      - run: vendor/bin/phpunit --testsuite unit
+      - run: vendor/bin/phpunit --testsuite unit,conformance
