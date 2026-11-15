@@ -91,7 +91,60 @@ final class ProfileTest extends TestCase
 
         // Every structure except CONT is reachable from the top level.
         self::assertCount(179, $seen);
-        self::assertFalse(Profile::has(Version::V5_5_1));
+    }
+
+    #[Test]
+    public function version551ComesFromTheGrammarOfTheSpecification(): void
+    {
+        $profile = Profile::for(Version::V5_5_1);
+        $base = 'https://gedcom.io/specifications/ged551.pdf#';
+
+        self::assertSame(Version::V5_5_1, $profile->version());
+        self::assertStringStartsWith('The GEDCOM Standard, Release 5.5.1', $profile->source());
+        self::assertSame(['FAM', 'HEAD', 'INDI', 'NOTE', 'OBJE', 'REPO', 'SOUR', 'SUBM', 'SUBN', 'TRLR'], array_keys($profile->records()));
+        self::assertSame('{0:1}', (string) $profile->record('SUBN')?->cardinality);
+        self::assertSame('{1:1}', (string) $profile->resolve(['HEAD'])?->substructure('SUBM')?->cardinality);
+
+        // An included structure keeps its identity: the same DATE in a birth and in a marriage.
+        self::assertSame($base . 'EVENT_DETAIL/DATE', $profile->resolve(['INDI', 'BIRT', 'DATE'])?->uri);
+        self::assertSame($base . 'EVENT_DETAIL/DATE', $profile->resolve(['FAM', 'MARR', 'DATE'])?->uri);
+        self::assertSame($base . 'INDIVIDUAL_EVENT_STRUCTURE/BIRT/FAMC', $profile->resolve(['INDI', 'BIRT', 'FAMC'])?->uri);
+        self::assertSame($base . 'CHILD_TO_FAMILY_LINK/FAMC', $profile->resolve(['INDI', 'FAMC'])?->uri);
+        self::assertNull($profile->resolve(['INDI', 'DEAT', 'FAMC']));
+        // A group of lines (ADDRESS_STRUCTURE) brings all its tags.
+        self::assertSame('{0:3}', (string) $profile->resolve(['REPO'])?->substructure('PHON')?->cardinality);
+
+        // Alternatives with one tag are merged; a substructure is required only in all of them.
+        $note = $profile->resolve(['INDI', 'NOTE']);
+        self::assertNotNull($note);
+        self::assertSame('@<' . $base . 'NOTE_RECORD/NOTE>@|<SUBMITTER_TEXT>|<NULL>', $note->payload);
+        self::assertSame($base . 'NOTE_RECORD/NOTE', $note->pointerTarget());
+        $link = $profile->resolve(['INDI', 'OBJE']);
+        self::assertNotNull($link);
+        self::assertSame('{0:M}', (string) $link->substructure('FILE')?->cardinality);
+        self::assertSame('@<' . $base . 'MULTIMEDIA_RECORD/OBJE>@|<NULL>', $link->payload);
+        self::assertSame('Y|<NULL>', $profile->resolve(['INDI', 'BIRT'])?->payload);
+        self::assertNull($profile->resolve(['INDI', 'BIRT'])->pointerTarget());
+        self::assertNull($profile->resolve(['INDI', 'NAME', 'CONT']));
+    }
+
+    #[Test]
+    public function every551StructureIsReachable(): void
+    {
+        $profile = Profile::for(Version::V5_5_1);
+        $seen = [];
+        $queue = array_map(static fn(\Korin\Gedcom\Spec\Substructure $s): string => $s->uri, $profile->records());
+        while ($queue !== []) {
+            $uri = array_pop($queue);
+            if (!isset($seen[$uri])) {
+                $seen[$uri] = true;
+                foreach ($profile->structure($uri)->substructures ?? [] as $child) {
+                    $queue[] = $child->uri;
+                }
+            }
+        }
+
+        self::assertCount(248, $seen);
     }
 
     #[Test]
@@ -99,6 +152,6 @@ final class ProfileTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        Profile::for(Version::V5_5_1);
+        Profile::for(Version::V5_5);
     }
 }

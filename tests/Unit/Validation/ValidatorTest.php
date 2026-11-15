@@ -78,10 +78,34 @@ final class ValidatorTest extends TestCase
     #[Test]
     public function versionsWithoutAProfileAreReportedAsNotChecked(): void
     {
-        $report = Gedcom::validate(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 TRLR\n"));
+        $report = Gedcom::validate(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5\n0 TRLR\n"));
 
         self::assertSame('KV2000', $report->diagnostics()[0]->code ?? null);
         self::assertTrue($report->isValid());
+    }
+
+    #[Test]
+    public function gedcom551IsCheckedAgainstItsGrammar(): void
+    {
+        $doc = Gedcom::parse(
+            "0 HEAD\n1 SOUR KORIN\n1 SUBM @U1@\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n"
+            . "0 @U1@ SUBM\n1 NAME Анна\n0 @N1@ NOTE Shared note\n"
+            . "0 @I1@ INDI\n1 NAME Анна /Коваль/\n2 SURN Коваль\n1 BIRT\n2 DATE 1921\n2 PLAC Київ\n3 MAP\n4 LATI N50.45\n"
+            . "2 FAMC @F1@\n1 DEAT Y\n2 FAMC @F1@\n1 NOTE @N1@\n1 NOTE Inline text\n2 CONT more\n1 SOUR Inline source\n"
+            . "1 OBJE\n2 FILE photo.jpg\n3 FORM jpg\n1 FAMS @N1@\n1 SEX F\n1 SEX M\n0 @F1@ FAM\n1 CHIL @I1@\n1 MARR\n2 WIFE\n3 AGE 25\n0 TRLR\n",
+        );
+
+        self::assertSame([
+            'KV2003 error line 17 (@I1@/BIRT/PLAC/MAP): MAP requires LONG',
+            'KV2001 error line 21 (@I1@/DEAT/FAMC): FAMC is not allowed in DEAT',
+            'KV4003 error line 29 (@I1@/FAMS): FAMS must point to a FAM record, not NOTE',
+            'KV2002 error line 31 (@I1@/SEX[1]): SEX occurs more than 1 time(s) in INDI',
+            'KV4004 warning line 33 (@F1@/CHIL): @I1@ has no FAMC pointing back to @F1@',
+        ], $this->lines(Gedcom::validate($doc)->diagnostics()));
+        self::assertSame(
+            'https://gedcom.io/specifications/ged551.pdf#PLACE_STRUCTURE/PLAC/MAP',
+            Gedcom::validate($doc)->errors()[0]->reference,
+        );
     }
 
     #[Test]
@@ -109,7 +133,8 @@ final class ValidatorTest extends TestCase
     #[Test]
     public function voidIsANullPointerOnlyIn7(): void
     {
-        $report = Gedcom::validate(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 SUBM @VOID@\n0 TRLR\n"));
+        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 SUBM @VOID@\n0 TRLR\n");
+        $report = Gedcom::validate($doc, (new ValidationOptions())->withDisabled('KV2003'));
 
         self::assertSame(['KV4001 error line 4 (HEAD/SUBM): Pointer to a record that does not exist'], self::lines($report->errors()));
     }

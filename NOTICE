@@ -13,3 +13,12 @@ This product includes data derived from the FAMILYSEARCH GEDCOM™ Specification
   Intellectual Reserve, Inc.
 
 The data is in resources/profiles/7.0.php, compiled from spec/7.0/terms.
+
+This product includes data transcribed from The GEDCOM Standard, Release 5.5.1:
+
+  Copyright © 1987, 1989, 1992, 1993, 1995, 1999, 2019 by The Church of Jesus Christ
+  of Latter-day Saints. This document may be copied for purposes of review or
+  programming of genealogical software, provided this notice is included. All other
+  rights reserved.
+
+The data is in resources/profiles/5.5.1.php, compiled from spec/5.5.1/grammar.yaml.

@@ -11,7 +11,8 @@ namespace Korin\Gedcom\Spec;
 final readonly class Structure
 {
     /**
-     * @param ?string $payload payload type URI, "Y|<NULL>", "@<record URI>@" for pointers; null when there is no payload
+     * @param ?string $payload payload type URI, "@<record URI>@" for pointers, or alternatives such as
+     *                         "Y|<NULL>" and, in 5.x, "@<record URI>@|<SUBMITTER_TEXT>"; null when there is no payload
      * @param array<string, Substructure> $substructures by tag
      */
     public function __construct(
@@ -27,9 +28,9 @@ final readonly class Structure
         return $this->substructures[$tag] ?? null;
     }
 
-    /** URI of the record type a pointer payload must point to; null when the payload is not a pointer. */
+    /** URI of the record type a pointer payload must point to; null when the payload cannot be a pointer. */
     public function pointerTarget(): ?string
     {
-        return $this->payload !== null && preg_match('/^@<(.+)>@$/', $this->payload, $m) === 1 ? $m[1] : null;
+        return $this->payload !== null && preg_match('/(?:^|\|)@<([^>]+)>@(?:$|\|)/', $this->payload, $m) === 1 ? $m[1] : null;
     }
 }
