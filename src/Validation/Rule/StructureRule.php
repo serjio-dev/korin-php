@@ -22,11 +22,8 @@ final class StructureRule implements Rule
 {
     private const CONTINUATION = ['CONC' => true, 'CONT' => true];
 
-    public function check(Document $document, ?Profile $profile): array
+    public function check(Document $document, Profile $profile): array
     {
-        if ($profile === null) {
-            return [new Diagnostic('KV2000', Severity::Info, "Structures are not checked: there is no profile for GEDCOM {$document->version()->value} yet")];
-        }
         $out = [];
         $this->children($document, $profile, 0, null, $profile->records(), $out);
 
@@ -63,13 +60,15 @@ final class StructureRule implements Rule
                 $this->children($document, $profile, $child, $definition, $definition->substructures, $out);
             }
         }
-        // The top-level HEAD and TRLR are reported by the parser (KV1004, KV1005).
-        if ($structure === null) {
-            return;
-        }
         foreach ($allowed as $tag => $substructure) {
+            // The top-level HEAD and TRLR are reported by the parser (KV1004, KV1005).
+            if ($structure === null && ($tag === 'HEAD' || $tag === 'TRLR')) {
+                continue;
+            }
             if ($substructure->cardinality->isRequired() && ($counts[$tag] ?? 0) < $substructure->cardinality->min) {
-                $out[] = $this->diagnostic($document, 'KV2003', "{$structure->tag} requires {$tag}", $parent, $structure->uri);
+                $out[] = $structure === null
+                    ? $this->diagnostic($document, 'KV2003', "The file requires a {$tag} record", $parent, $substructure->uri)
+                    : $this->diagnostic($document, 'KV2003', "{$structure->tag} requires {$tag}", $parent, $structure->uri);
             }
         }
     }
@@ -78,6 +77,7 @@ final class StructureRule implements Rule
     {
         $line = $document->lineOf($id);
 
-        return new Diagnostic($code, Severity::Error, $message, $line > 0 ? $line : null, $document->node($id)->path(), $reference);
+        // The file itself (node 0) has neither a line nor a path.
+        return new Diagnostic($code, Severity::Error, $message, $line > 0 ? $line : null, $id === 0 ? null : $document->node($id)->path(), $reference);
     }
 }

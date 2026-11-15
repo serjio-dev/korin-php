@@ -1,0 +1,126 @@
+# GEDCOM 5.5.5 primitive elements used by grammar.yaml, transcribed from the specification:
+# the enumerations, the elements with a grammar, and the size of text values. See README.md
+# and NOTICE. The notation is that of spec/5.5.1/primitives.yaml, plus a map form:
+#
+#   ELEMENT: {size: 'min:max'}                 text of min to max characters
+#   ELEMENT: {is: GRAMMAR, size: 'min:max'}    a grammar (or <OTHER>) and a size
+#
+# In 5.5.5 {Size=…} is "the minimum and maximum length of the logical line value". Sizes are
+# kept for text and for the text-like NAME_PERSONAL and PLACE_NAME; dates, ages, times and
+# version numbers are checked by their grammar alone, which some sizes contradict
+# (TIME_VALUE {Size=7:12} against "hh:mm").
+
+ADDRESS_CITY: {size: '1:60'}
+ADDRESS_COUNTRY: {size: '1:60'}
+ADDRESS_EMAIL: {size: '5:120'}
+ADDRESS_FAX: {size: '5:60'}
+ADDRESS_LINE1: {size: '1:60'}
+ADDRESS_LINE2: {size: '1:60'}
+ADDRESS_LINE3: {size: '1:60'}
+ADDRESS_POSTAL_CODE: {size: '1:10'}
+ADDRESS_STATE: {size: '1:60'}
+ADDRESS_WEB_PAGE: {size: '4:2047'}
+ADOPTED_BY_WHICH_PARENT: [HUSB, WIFE, BOTH]
+AGE_AT_EVENT: AGE_AT_EVENT
+ATTRIBUTE_DESCRIPTOR: {size: '1:90'}
+AUTOMATED_RECORD_ID: {size: '1:12'}
+CASTE_NAME: {size: '1:90'}
+CAUSE_OF_EVENT: {size: '1:90'}
+CERTAINTY_ASSESSMENT: ['0', '1', '2', '3']
+# The enumeration also lists ANSEL and ASCII, but "the ASCII and ANSEL encoding are not legal
+# in GEDCOM 5.5.5"; "All GEDCOM 5.5.5 files must use Unicode, using either the UTF-8 or UTF-16
+# encoding."
+CHARACTER_ENCODING: [UTF-8, UNICODE]
+COPYRIGHT_GEDCOM_FILE: {size: '1:248'}
+COPYRIGHT_SOURCE_DATA: {size: '1:248'}
+COUNT_OF_CHILDREN: {is: NUMBER, size: '1:3'}
+DATE_EXACT: DATE_EXACT
+DATE_PERIOD: DATE_PERIOD
+DATE_VALUE: DATE_VALUE
+DESCRIPTIVE_TITLE: {size: '1:248'}
+ENTRY_RECORDING_DATE: <DATE_VALUE>
+EVENT_DESCRIPTOR: {size: '1:90'}
+EVENT_OR_FACT_CLASSIFICATION: {size: '1:90'}
+# A list of event and attribute tags, or "a user supplied value".
+EVENT_TYPE_CITED_FROM: {size: '1:15'}
+EVENTS_RECORDED: {size: '1:90'}
+FILE_CREATION_DATE: <DATE_EXACT>
+GEDCOM_CONTENT_DESCRIPTION: {size: '1:248'}
+GEDCOM_FILE_NAME: {size: '5:248'}
+GEDCOM_VERSION_NUMBER: GEDCOM_VERSION_NUMBER
+ID_NUMBER: {size: '1:30'}
+LANGUAGE_ID: [
+  Afrikaans, Albanian, Anglo-Saxon, Catalan, Catalan_Spn, Czech, Danish, Dutch, English,
+  Esperanto, Estonian, Faroese, Finnish, French, German, Hawaiian, Hungarian, Icelandic,
+  Indonesian, Italian, Latvian, Lithuanian, Navaho, Norwegian, Polish, Portuguese, Romanian,
+  Serbo_Croa, Slovak, Slovene, Spanish, Swedish, Turkish, Wendic,
+  Amharic, Arabic, Armenian, Assamese, Belorusian, Bengali, Braj, Bulgarian, Burmese,
+  Cantonese, Church-Slavic, Dogri, Georgian, Greek, Gujarati, Hebrew, Hindi, Japanese,
+  Kannada, Khmer, Konkani, Korean, Lahnda, Lao, Macedonian, Maithili, Malayalam, Mandarin,
+  Manipuri, Marathi, Mewari, Nepali, Oriya, Pahari, Pali, Panjabi, Persian, Prakrit, Pusto,
+  Rajasthani, Russian, Sanskrit, Serb, Tagalog, Tamil, Telugu, Thai, Tibetan, Ukrainian, Urdu,
+  Vietnamese, Yiddish,
+]
+LANGUAGE_OF_TEXT: <LANGUAGE_ID>
+MONTH: [JAN, FEB, MAR, APR, MAY, JUN, JUL, AUG, SEP, OCT, NOV, DEC]
+MONTH_FREN: [VEND, BRUM, FRIM, NIVO, PLUV, VENT, GERM, FLOR, PRAI, MESS, THER, FRUC, COMP]
+MONTH_HEBR: [TSH, CSH, KSL, TVT, SHV, ADR, ADS, NSN, IYR, SVN, TMZ, AAV, ELL]
+MULTIMEDIA_FILE_REFERENCE: {size: '1:259'}
+MULTIMEDIA_FORMAT: [AAC, AVI, BMP, ePub, FLAC, GIF, JPEG, JPG, MKV, mobi, MP3, PCX, PDF, PNG, TIFF, TIF, WAV]
+NAME_OF_BUSINESS: {size: '1:90'}
+NAME_OF_PRODUCT: {size: '1:90'}
+NAME_OF_REPOSITORY: {size: '1:90'}
+NAME_OF_SOURCE_DATA: {size: '1:90'}
+NAME_PERSONAL: {is: NAME_PERSONAL, size: '1:120'}
+NAME_PHONETIC: {size: '1:120'}
+NAME_PIECE_GIVEN: {size: '1:120'}
+NAME_PIECE_NICKNAME: {size: '1:30'}
+NAME_PIECE_PREFIX: {size: '1:30'}
+NAME_PIECE_SUFFIX: {size: '1:30'}
+NAME_PIECE_SURNAME: {size: '1:120'}
+NAME_PIECE_SURNAME_PREFIX: {size: '1:30'}
+NAME_ROMANISED: {size: '1:120'}
+# [ aka | birth | immigrant | maiden | married | <user defined> ]
+NAME_TYPE: {size: '5:30'}
+NATIONAL_OR_TRIBAL_ORIGIN: {size: '1:120'}
+NOBILITY_TYPE_TITLE: {size: '1:120'}
+NUMBER_OF_RELATIONSHIPS: {is: NUMBER, size: '1:3'}
+OCCUPATION: {size: '1:90'}
+PEDIGREE_LINKAGE_TYPE: [adopted, birth, foster]
+# [ <user defined> | hangul | kana ]
+PHONETISATION_METHOD: {size: '5:30'}
+PHONE_NUMBER: {size: '1:25'}
+PHYSICAL_DESCRIPTION: {size: '1:4095'}
+PLACE_LATITUDE: PLACE_LATITUDE
+PLACE_LONGITUDE: PLACE_LONGITUDE
+PLACE_NAME: {is: PLACE_NAME, size: '1:120'}
+PLACE_PHONETIC: {size: '1:120'}
+PLACE_ROMANISED: {size: '1:120'}
+POSSESSIONS: {size: '1:248'}
+PRODUCT_VERSION_NUMBER: PRODUCT_VERSION_NUMBER
+PUBLICATION_DATE: <DATE_EXACT>
+RECEIVING_SYSTEM_NAME: {size: '1:20'}
+RELATION_IS_DESCRIPTOR: {size: '1:25'}
+RELIGIOUS_AFFILIATION: {size: '1:90'}
+RESPONSIBLE_AGENCY: {size: '1:120'}
+ROLE_IN_EVENT: [CHIL, HUSB, WIFE, MOTH, FATH, SPOU, (<ROLE_DESCRIPTOR>)]
+# [ <user defined> | pinyin | romaji | wadegiles ]
+ROMANISATION_METHOD: {size: '5:30'}
+SCHOLASTIC_ACHIEVEMENT: {size: '1:248'}
+# Given as "M = Male, F = Female, X = Intersex, U = Unknown, N = Not recorded".
+SEX_VALUE: [M, F, X, U, N]
+SOURCE_CALL_NUMBER: {size: '1:120'}
+SOURCE_DESCRIPTIVE_TITLE: {size: '1:4095'}
+SOURCE_FILED_BY_ENTRY: {size: '1:60'}
+SOURCE_JURISDICTION_PLACE: {is: <PLACE_NAME>, size: '1:120'}
+SOURCE_MEDIA_TYPE: [audio, book, card, electronic, fiche, film, magazine, manuscript, map, newspaper, photo, tombstone, video]
+SOURCE_ORIGINATOR: {size: '1:255'}
+SOURCE_PUBLICATION_FACTS: {size: '1:4095'}
+SUBMITTER_NAME: {size: '1:60'}
+SYSTEM_ID: {size: '1:20'}
+TEXT_FROM_SOURCE: {size: '1:32767'}
+TIME_VALUE: TIME_VALUE
+USER_REFERENCE_NUMBER: {size: '1:20'}
+USER_REFERENCE_TYPE: {size: '1:40'}
+USER_TEXT: {size: '1:32767'}
+WHERE_WITHIN_SOURCE: {size: '1:248'}

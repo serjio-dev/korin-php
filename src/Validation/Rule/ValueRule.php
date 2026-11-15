@@ -13,8 +13,8 @@ use Korin\Gedcom\Syntax\Escaping;
 use Korin\Gedcom\Version;
 
 /**
- * Level 3: payloads of standard structures against the profile's payload types (KV3001–KV3009),
- * for every version with a profile. A payload is one of the alternatives of its structure
+ * Level 3: payloads of standard structures against the profile's payload types (KV3001–KV3010).
+ * A payload is one of the alternatives of its structure
  * ("@<record>@|<SUBMITTER_TEXT>|<NULL>"); the types are version-specific (PayloadTypes).
  * Messages name the expected type but never quote a payload, except a short enumeration value.
  *
@@ -28,11 +28,8 @@ final class ValueRule implements Rule
     /** @var array<string, array{bool, bool, list<string>, ?string}> structure URI => payload alternatives, see shape() */
     private array $shapes = [];
 
-    public function check(Document $document, ?Profile $profile): array
+    public function check(Document $document, Profile $profile): array
     {
-        if ($profile === null) {
-            return [];
-        }
         $this->shapes = [];
         $types = $profile->version() === Version::V7_0 ? new Payloads7($profile) : new Payloads5($profile);
         $out = [];

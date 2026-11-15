@@ -1,0 +1,14 @@
+grammar.yaml and primitives.yaml are transcribed from The GEDCOM 5.5.5 Specification with
+Annotations (First Release, 2 October 2019), https://www.gedcom.org/specs/GEDCOM555.zip:
+
+Copyright © 2013 - 2019 Tamura Jones. All rights reserved.
+
+The specification states that it "is published for the purposes of review and programming of
+genealogical software", which is the purpose of this transcription. Only the grammar lines,
+enumerations, sizes and grammars of primitive elements are transcribed; the descriptions and
+annotations of the specification are not copied. The 5.5.5 specification is based on the
+FamilySearch GEDCOM 5.5 and 5.5.1 specifications:
+
+Copyright © 1987, 1989, 1992, 1993, 1995, 1999, 2019 by The Church of Jesus Christ of
+Latter-day Saints. This document may be copied for purposes of review or programming of
+genealogical software, provided this notice is included. All other rights reserved.

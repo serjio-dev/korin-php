@@ -14,9 +14,8 @@ use Korin\Gedcom\Syntax\Escaping;
 use Korin\Gedcom\Version;
 
 /**
- * Level 4: pointers and xrefs. Dangling pointers (KV4001) and duplicate xrefs (KV4002) are
- * checked in every version; the type of the record a pointer must point to (KV4003) needs the
- * profile. Family links must be mutual (KV4004): INDI.FAMC ↔ FAM.CHIL, INDI.FAMS ↔ FAM.HUSB/WIFE.
+ * Level 4: pointers and xrefs: dangling pointers (KV4001), duplicate xrefs (KV4002), the type of
+ * the record a pointer must point to (KV4003, from the profile). Family links must be mutual (KV4004): INDI.FAMC ↔ FAM.CHIL, INDI.FAMS ↔ FAM.HUSB/WIFE.
  * Xrefs are compared case-sensitively; in 7.0 "@VOID@" is a null pointer, not a dangling one.
  *
  * @internal
@@ -29,7 +28,7 @@ final class ReferenceRule implements Rule
     private const INDI_TO_FAM = ['FAMC' => ['CHIL'], 'FAMS' => ['HUSB', 'WIFE']];
     private const FAM_TO_INDI = ['CHIL' => 'FAMC', 'HUSB' => 'FAMS', 'WIFE' => 'FAMS'];
 
-    public function check(Document $document, ?Profile $profile): array
+    public function check(Document $document, Profile $profile): array
     {
         $out = [];
         /** @var array<string, int> $records xref => first record with it */
@@ -48,7 +47,7 @@ final class ReferenceRule implements Rule
 
         $void = $document->version() === Version::V7_0 ? self::VOID : null;
         foreach ($document->childIds(0) as $id) {
-            $this->pointers($document, $profile, $records, $void, $id, $this->definition($profile, $profile?->record($document->tagOf($id))), $out);
+            $this->pointers($document, $profile, $records, $void, $id, $this->definition($profile, $profile->record($document->tagOf($id))), $out);
         }
         $this->familyLinks($document, $records, $out);
 
@@ -59,14 +58,14 @@ final class ReferenceRule implements Rule
      * @param array<string, int> $records
      * @param list<Diagnostic> $out
      */
-    private function pointers(Document $document, ?Profile $profile, array $records, ?string $void, int $id, ?Structure $structure, array &$out): void
+    private function pointers(Document $document, Profile $profile, array $records, ?string $void, int $id, ?Structure $structure, array &$out): void
     {
         $payload = $document->payloadOf($id);
         if ($payload !== null && $payload !== $void && Escaping::isPointer($payload) && !$document->isInvalid($id)) {
             $target = $records[$payload] ?? null;
             if ($target === null) {
                 $out[] = $this->diagnostic($document, 'KV4001', Severity::Error, 'Pointer to a record that does not exist', $id);
-            } elseif ($profile !== null && $structure !== null) {
+            } elseif ($structure !== null) {
                 $expected = $structure->pointerTarget();
                 if ($expected !== null && $profile->record($document->tagOf($target))?->uri !== $expected) {
                     $want = $profile->structure($expected)->tag ?? $expected;
@@ -118,9 +117,9 @@ final class ReferenceRule implements Rule
         return false;
     }
 
-    private function definition(?Profile $profile, ?Substructure $substructure): ?Structure
+    private function definition(Profile $profile, ?Substructure $substructure): ?Structure
     {
-        return $substructure === null ? null : $profile?->structure($substructure->uri);
+        return $substructure === null ? null : $profile->structure($substructure->uri);
     }
 
     private function diagnostic(Document $document, string $code, Severity $severity, string $message, int $id, ?string $reference = null): Diagnostic

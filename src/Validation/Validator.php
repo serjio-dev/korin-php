@@ -29,7 +29,7 @@ final readonly class Validator
     public function validate(Document $document, ValidationOptions $options = new ValidationOptions()): ValidationReport
     {
         $diagnostics = $document->diagnostics();
-        $profile = Profile::has($document->version()) ? Profile::for($document->version()) : null;
+        $profile = Profile::for($document->version());
         foreach ($this->rules as $rule) {
             foreach ($rule->check($document, $profile) as $diagnostic) {
                 $diagnostics[] = $diagnostic;

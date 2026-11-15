@@ -69,7 +69,7 @@ Full support covers 5.5, 5.5.1, 5.5.5 and 7.0.x; older versions are read only. A
 | Writing | BOM by default | Why |
 | --- | --- | --- |
 | 7.0 | Yes | 7.0 specification: "The first character in each data stream should be U+FEFF" |
-| 5.5.5 | Yes | 5.5.5 requirement (verify against the specification text when building the profile, milestone 0.2) |
+| 5.5.5 | Yes | 5.5.5 specification: "All GEDCOM 5.5.5 files, UTF-8 as well as UTF-16 GEDCOM files, must start with a Byte Order Mark (BOM)." |
 | 5.5.1, 5.5 in UTF-8 | No | The specifications do not mention a BOM; some old programs do not recognize `0 HEAD` after a BOM |
 | UTF-16 in any version | Yes | Without a BOM the byte order has to be guessed |
 

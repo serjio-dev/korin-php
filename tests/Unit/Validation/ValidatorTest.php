@@ -76,12 +76,31 @@ final class ValidatorTest extends TestCase
     }
 
     #[Test]
-    public function versionsWithoutAProfileAreReportedAsNotChecked(): void
+    public function gedcom555IsCheckedAgainstItsStricterGrammar(): void
     {
-        $report = Gedcom::validate(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.5\n0 TRLR\n"));
+        $doc = Gedcom::parse(
+            "\u{FEFF}0 HEAD\n1 GEDC\n2 VERS 5.5.5\n2 FORM LINEAGE-LINKED\n3 VERS 5.5.5\n1 CHAR UTF-8\n1 SOUR KORIN\n2 VERS 0.2\n"
+            . "0 @U1@ SUBM\n1 NAME Anna\n0 @I1@ INDI\n1 NAME Anna /Koval/\n1 SEX X\n1 BIRT Y\n1 DEAT\n1 CHR Y\n1 IDNO 12345\n"
+            . "1 RESI\n2 DATE 44 BCE\n2 AGE <1y\n1 OCCU " . str_repeat('a', 91) . "\n1 FACT Woodworking\n2 TYPE Skills\n2 DATE 23 AUG\n0 TRLR\n",
+        );
 
-        self::assertSame('KV2000', $report->diagnostics()[0]->code ?? null);
-        self::assertTrue($report->isValid());
+        self::assertSame([
+            'KV3002 error line 14 (@I1@/BIRT): BIRT must not have a value',
+            'KV3007 error line 15 (@I1@/DEAT): DEAT has neither a value nor substructures',
+            'KV2003 error line 17 (@I1@/IDNO): IDNO requires TYPE',
+            'KV3005 error line 19 (@I1@/RESI/DATE): DATE must be a date, e.g. "6 DEC 1907", "ABT @#DJULIAN@ 1650" or "(date phrase)"',
+            'KV3005 error line 20 (@I1@/RESI/AGE): AGE must be an age, e.g. "35y 3m", "< 1y" or "CHILD"',
+            'KV3010 error line 21 (@I1@/OCCU): OCCU is longer than 90 characters (91)',
+        ], $this->lines(Gedcom::validate($doc)->diagnostics()));
+    }
+
+    #[Test]
+    public function gedcom555RequiresASubmitterRecord(): void
+    {
+        $report = Gedcom::validate(Gedcom::parse("\u{FEFF}0 HEAD\n1 GEDC\n2 VERS 5.5.5\n2 FORM LINEAGE-LINKED\n3 VERS 5.5.5\n1 CHAR UTF-8\n1 SOUR KORIN\n0 TRLR\n"));
+
+        self::assertSame(['KV2003 error: The file requires a SUBM record'], $this->lines($report->diagnostics()));
+        self::assertSame('https://www.gedcom.org/specs/GEDCOM555.zip#SUBMITTER_RECORD/SUBM', $report->errors()[0]->reference);
     }
 
     #[Test]

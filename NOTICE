@@ -31,3 +31,12 @@ This product includes data transcribed from The GEDCOM Standard, Release 5.5:
 
 The data is in resources/profiles/5.5.php, compiled from spec/5.5/grammar.yaml and
 spec/5.5/primitives.yaml.
+
+This product includes data transcribed from The GEDCOM 5.5.5 Specification with Annotations
+(https://www.gedcom.org/specs/GEDCOM555.zip), which "is published for the purposes of review
+and programming of genealogical software":
+
+  Copyright © 2013 - 2019 Tamura Jones. All rights reserved.
+
+The data is in resources/profiles/5.5.5.php, compiled from spec/5.5.5/grammar.yaml and
+spec/5.5.5/primitives.yaml; see spec/5.5.5/NOTICE.

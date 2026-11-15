@@ -104,6 +104,40 @@ final class Grammar5Test extends TestCase
         self::assertSame($expected, (new DateGrammar5(Profile::for(Version::V5_5_1)->enumeration(...)))->check($grammar, $value));
     }
 
+    /**
+     * @return iterable<string, array{string, string, int}>
+     */
+    public static function dates555(): iterable
+    {
+        $value = 'DATE_VALUE';
+        yield 'year' => [$value, '1850', DateGrammar5::VALID];
+        yield 'padded year' => [$value, '044 BCE', DateGrammar5::VALID];
+        yield 'two-digit year' => [$value, '44 BCE', DateGrammar5::INVALID];
+        yield 'BC' => [$value, '1066 BC', DateGrammar5::VALID];
+        yield 'B.C.' => [$value, '1066 B.C.', DateGrammar5::VALID];
+        yield 'BCE without space' => [$value, '1066BCE', DateGrammar5::INVALID];
+        yield 'BCE after a month' => [$value, 'MAR 1066 BCE', DateGrammar5::INVALID];
+        yield 'BCE in hebrew' => [$value, '@#DHEBREW@ 1066 BCE', DateGrammar5::INVALID];
+        yield 'day with leading zero' => [$value, '06 DEC 1907', DateGrammar5::INVALID];
+        yield 'day and month' => [$value, '23 AUG', DateGrammar5::VALID];
+        yield '29 February without year' => [$value, '29 FEB', DateGrammar5::VALID];
+        yield 'julian day and month' => [$value, '@#DJULIAN@ 23 AUG', DateGrammar5::INVALID];
+        yield 'dual julian year' => [$value, '@#DJULIAN@ 30 JAN 1648/49', DateGrammar5::VALID];
+        yield 'dual year without month' => [$value, '1648/49', DateGrammar5::INVALID];
+        yield 'dual year not following' => [$value, 'FEB 1701/99', DateGrammar5::BAD_DUAL_YEAR];
+        yield 'roman' => [$value, '@#DROMAN@ 15 IDES 709', DateGrammar5::INVALID];
+        yield 'unknown' => [$value, '@#DUNKNOWN@ 15 IDES 709', DateGrammar5::VALID];
+        yield '31 November' => [$value, 'ABT 31 NOV 1901', DateGrammar5::DAY_OUT_OF_RANGE];
+        yield 'exact' => ['DATE_EXACT', '15 NOV 2026', DateGrammar5::VALID];
+        yield 'exact with dual year' => ['DATE_EXACT', '15 FEB 1700/01', DateGrammar5::INVALID];
+    }
+
+    #[Test]
+    #[DataProvider('dates555')]
+    public function dateGrammar555(string $grammar, string $value, int $expected): void
+    {
+        self::assertSame($expected, (new DateGrammar5(Profile::for(Version::V5_5_5)->enumeration(...), v555: true))->check($grammar, $value));
+    }
 
     /**
      * @return iterable<string, array{string, string, bool}>
@@ -131,5 +165,38 @@ final class Grammar5Test extends TestCase
     public function grammars(string $grammar, string $value, bool $valid): void
     {
         self::assertSame($valid, Grammar5::matches($grammar, $value));
+    }
+
+    /**
+     * @return iterable<string, array{string, string, bool}>
+     */
+    public static function values555(): iterable
+    {
+        yield 'age bound with space' => ['AGE_AT_EVENT', '< 1y', true];
+        yield 'age bound without space' => ['AGE_AT_EVENT', '<1y', false];
+        yield 'age zero part' => ['AGE_AT_EVENT', '0y 3m', false];
+        yield 'age leading zero' => ['AGE_AT_EVENT', '05y', false];
+        yield 'age 12 months' => ['AGE_AT_EVENT', '1y 12m', false];
+        yield 'age 365 days' => ['AGE_AT_EVENT', '1y 365d', true];
+        yield 'age 366 days' => ['AGE_AT_EVENT', '366d', false];
+        yield 'age four-digit years' => ['AGE_AT_EVENT', '1000y', false];
+        yield 'time' => ['TIME_VALUE', '9:05:30.25', true];
+        yield 'time leading zero' => ['TIME_VALUE', '09:05', false];
+        yield 'time one-digit fraction' => ['TIME_VALUE', '9:05:30.2', false];
+        yield 'gedcom version' => ['GEDCOM_VERSION_NUMBER', '5.5.5', true];
+        yield 'gedcom version leading zero' => ['GEDCOM_VERSION_NUMBER', '5.05', false];
+        yield 'gedcom version four parts' => ['GEDCOM_VERSION_NUMBER', '5.5.5.1', false];
+        yield 'product version' => ['PRODUCT_VERSION_NUMBER', '10.0.3.64', true];
+        yield 'product version alone' => ['PRODUCT_VERSION_NUMBER', '10', false];
+        yield 'place' => ['PLACE_NAME', 'Cove, Cache, Utah, United States of America', true];
+        yield 'place empty part' => ['PLACE_NAME', 'Cove, , Utah', false];
+        yield 'place comma without space' => ['PLACE_NAME', 'Cove,Cache', false];
+    }
+
+    #[Test]
+    #[DataProvider('values555')]
+    public function grammars555(string $grammar, string $value, bool $valid): void
+    {
+        self::assertSame($valid, Grammar5::matches($grammar, $value, v555: true));
     }
 }

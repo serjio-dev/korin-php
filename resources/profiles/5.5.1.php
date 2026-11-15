@@ -2775,5 +2775,6 @@ return [
         '<TIME_VALUE>' => 'TIME_VALUE',
         '<TRANSMISSION_DATE>' => 'DATE_EXACT',
     ],
+    'sizes' => [],
     'calendars' => [],
 ];

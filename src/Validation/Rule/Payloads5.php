@@ -7,11 +7,16 @@ namespace Korin\Gedcom\Validation\Rule;
 use Korin\Gedcom\Severity;
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Spec\Structure;
+use Korin\Gedcom\Version;
 
 /**
  * GEDCOM 5.x payload types: the primitive elements of the profile ("<SEX_VALUE>") as
  * enumerations or grammars (Grammar5, DateGrammar5); other elements are text. Enumerations
- * are case-insensitive. An empty payload needs "<NULL>" among the alternatives.
+ * are case-insensitive. An empty payload needs "<NULL>" among the alternatives. A payload
+ * written without angle brackets is a literal ("Y", 5.5.5 "LINEAGE-LINKED").
+ *
+ * 5.5.5 adds the lengths of text values ({Size=min:max}, KV3010) and "every GEDCOM record
+ * without subrecords must have a line value" (KV3007).
  *
  * @internal
  */
@@ -22,14 +27,17 @@ final readonly class Payloads5 implements PayloadTypes
 
     private DateGrammar5 $dates;
 
+    private bool $v555;
+
     public function __construct(private Profile $profile)
     {
-        $this->dates = new DateGrammar5($profile->enumeration(...));
+        $this->v555 = $profile->version() === Version::V5_5_5;
+        $this->dates = new DateGrammar5($profile->enumeration(...), $this->v555);
     }
 
     public function requiresContent(): bool
     {
-        return false;
+        return $this->v555;
     }
 
     public function isOptional(string $type): bool
@@ -42,9 +50,12 @@ final readonly class Payloads5 implements PayloadTypes
         if ($type === 'Y') {
             return $value === 'Y' ? [] : [['KV3005', Severity::Error, 'must be "Y" or empty']];
         }
+        if (!str_starts_with($type, '<')) {
+            return strcasecmp($type, $value) === 0 ? [] : [['KV3006', Severity::Error, 'does not permit "' . PayloadGrammar::fragment($value) . "\"; expected {$type}"]];
+        }
         $grammar = $this->profile->type($type);
         if ($grammar === null) {
-            return [];
+            return $this->size($type, $value);
         }
         if ($grammar === 'ENUM') {
             return $this->enumeration($type, $value);
@@ -57,8 +68,29 @@ final readonly class Payloads5 implements PayloadTypes
                 DateGrammar5::INVALID => [['KV3005', Severity::Error, 'must be ' . Grammar5::NAMES[$grammar]]],
             };
         }
+        if (!Grammar5::matches($grammar, $value, $this->v555)) {
+            return [['KV3005', Severity::Error, 'must be ' . (($this->v555 ? Grammar5::NAMES_555[$grammar] ?? null : null) ?? Grammar5::NAMES[$grammar] ?? $grammar)]];
+        }
 
-        return Grammar5::matches($grammar, $value) ? [] : [['KV3005', Severity::Error, 'must be ' . (Grammar5::NAMES[$grammar] ?? $grammar)]];
+        return $this->size($type, $value);
+    }
+
+    /** @return list<array{string, Severity, string}> */
+    private function size(string $element, string $value): array
+    {
+        $size = $this->profile->size($element);
+        if ($size === null) {
+            return [];
+        }
+        // Characters, not bytes; the pure-PHP way to count UTF-8 code points.
+        $length = preg_match_all('/./su', $value);
+        $length = $length === false ? strlen($value) : $length;
+
+        return match (true) {
+            $length < $size[0] => [['KV3010', Severity::Error, "is shorter than {$size[0]} characters"]],
+            $length > $size[1] => [['KV3010', Severity::Error, "is longer than {$size[1]} characters ({$length})"]],
+            default => [],
+        };
     }
 
     /** @return list<array{string, Severity, string}> */

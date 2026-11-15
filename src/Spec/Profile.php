@@ -18,6 +18,7 @@ use Korin\Gedcom\Version;
  *     structures: array<string, array{tag: string, payload: ?string, enumset: ?string, children: array<string, array{string, int, int}>}>,
  *     enumsets: array<string, list<string>>,
  *     types: array<string, string>,
+ *     sizes: array<string, array{int, int}>,
  *     calendars: array<string, array{uri: string, months: list<string>, epochs: list<string>}>
  * }
  */
@@ -123,6 +124,17 @@ final class Profile
     public function type(string $element): ?string
     {
         return $this->data['types'][$element] ?? null;
+    }
+
+    /**
+     * The minimum and maximum length of a 5.5.5 text element such as "<ADDRESS_CITY>", in
+     * characters; null when the version gives none (sizes are recommendations before 5.5.5).
+     *
+     * @return ?array{int, int}
+     */
+    public function size(string $element): ?array
+    {
+        return $this->data['sizes'][$element] ?? null;
     }
 
     /** @return list<string> values of an enumeration set (7.0 URI) or of a 5.x element ("<SEX_VALUE>") */
