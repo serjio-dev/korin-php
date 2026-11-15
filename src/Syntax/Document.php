@@ -383,6 +383,12 @@ final class Document
         return $this->pos[$id] < 0 ? 0 : $id;
     }
 
+    /** @internal whether a node with this id exists and is attached */
+    public function contains(int $id): bool
+    {
+        return isset($this->parent[$id]) && !isset($this->removed[$id]);
+    }
+
     /** @internal */
     public function isRemoved(int $id): bool
     {
@@ -416,6 +422,41 @@ final class Document
         $length = $this->contentLength($id);
 
         return [substr($this->source, $offset, $length), substr($this->source, $offset + $length, $pos & 7)];
+    }
+
+    /**
+     * @internal the original line decoded to UTF-8, for writing it in another encoding
+     *
+     * @return ?array{string, string} line content and terminator; null for new or modified nodes
+     */
+    public function originalText(int $id): ?array
+    {
+        $original = $this->originalBytes($id);
+        if ($original === null) {
+            return null;
+        }
+        $this->codec ??= Codecs::for($this->encoding);
+
+        return [$this->codec->decode($original[0]) ?? $this->codec->decodeLossy($original[0]), (string) $this->codec->decode($original[1])];
+    }
+
+    /**
+     * @internal the original line with the byte position of its value in the decoded line
+     *
+     * @return ?array{string, string, int} content, terminator, value start (0: no value); null
+     *                                      for new or modified nodes and very long values
+     */
+    public function originalLine(int $id): ?array
+    {
+        $pos = $this->pos[$id];
+        $valueStart = $pos >> 3 & self::EXPLICIT;
+        if ($pos < 0 || $valueStart === self::EXPLICIT || isset($this->dirty[$id])) {
+            return null;
+        }
+        $offset = $pos >> self::POS_SHIFT;
+        $length = $this->contentLength($id);
+
+        return [substr($this->source, $offset, $length), substr($this->source, $offset + $length, $pos & 7), $valueStart];
     }
 
     /** @internal original terminator of the line, '' if new or the line had none */

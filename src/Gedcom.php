@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom;
 
+use Korin\Gedcom\Conversion\ConversionResult;
+use Korin\Gedcom\Conversion\Converter;
+use Korin\Gedcom\Exception\ConversionException;
 use Korin\Gedcom\Exception\IoException;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Syntax\Parser;
@@ -34,6 +37,16 @@ final class Gedcom
     public static function validate(Document $document, ValidationOptions $options = new ValidationOptions()): ValidationReport
     {
         return (new Validator())->validate($document, $options);
+    }
+
+    /**
+     * Converts the document to another version; the document is not changed.
+     *
+     * @throws ConversionException when the conversion is not supported, or at a loss under LossPolicy::Fail
+     */
+    public static function convert(Document $document, Version $to, ConvertOptions $options = new ConvertOptions()): ConversionResult
+    {
+        return (new Converter())->convert($document, $to, $options);
     }
 
     public static function write(Document $document, string $path, WriteOptions $options = new WriteOptions()): void

@@ -10,7 +10,7 @@ new codes may be added in minor releases. Messages are informative and may chang
 | `KV3xxx` | Values: payload presence and data types, dates |
 | `KV4xxx` | References: dangling and duplicate xrefs, record types, family links |
 | `KV5xxx` | Plausibility, optional: dates and pedigrees that cannot be true |
-| `KL0001`–`KL9999` | Loss report entries of conversions *(0.3)* |
+| `KL0001`–`KL9999` | Loss report entries of conversions, see [losses.md](losses.md) |
 
 ## KV1 — syntax
 

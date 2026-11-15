@@ -7,6 +7,19 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+### Added
+
+- `Gedcom::convert()` / `Conversion\Converter` with `ConversionResult` and `LossReport`
+  ([docs/losses.md](docs/losses.md)), `ConvertOptions` with the loss policies
+  `PreserveAsExtension`, `DropWithReport` and `Fail` (`ConversionException`). The framework
+  only: steps between versions follow, so every conversion between different versions is
+  still unsupported. Lines that are not GEDCOM are dropped and reported (`KL1001`), lines with
+  bytes invalid in their encoding are reported (`KL1002`).
+- `WriteOptions::normalize()` writes every line anew by the version's rules with one line
+  terminator; `withEncoding()` writes in another encoding (unchanged lines are re-encoded in
+  preserve mode), `withBom()` sets the byte order mark, by default by the version (SPEC
+  section 3) when the file is written anew.
+
 ## [0.2.0] - 2026-11-15
 
 Profiles and validation: the rules of GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0 as data, and a
