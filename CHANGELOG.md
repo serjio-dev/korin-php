@@ -34,6 +34,10 @@ break the API; such changes are described in `UPGRADE.md`.
   mutual family links (`KV4004`), and the record type a pointer targets
   (`KV4003`).
 - `Diagnostic::$reference` (the specification term a rule comes from), `withSeverity()`, JSON.
+- Specification conformance tests generated from every profile (`tests/Conformance`): each
+  reachable structure in a minimal valid file, then a tag it does not allow, each substructure
+  once too often or left out, and its value of the wrong type, missing, forbidden, or a
+  pointer where text belongs and the reverse.
 
 ## [0.1.0] - 2026-11-15
 

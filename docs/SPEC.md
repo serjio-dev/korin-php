@@ -381,7 +381,7 @@ Every corpus file goes through the whole matrix: reading, writing to the same ve
 **Kinds of tests:**
 
 1. **Unit** — for every class, including every conversion rule and every encoding table.
-2. **Specification conformance** — generated from the profiles: for each structure, allowed and disallowed placement, cardinality and value type are checked.
+2. **Specification conformance** — generated from the profiles: for each structure, allowed and disallowed placement, cardinality and value type are checked (`tests/Conformance`).
 3. **Round-trip** — in `preserve` mode the output equals the input byte for byte; in `normalize` mode it is semantically equal.
 4. **Conversion matrix** — for every cell above: the output is valid for the target version, and the `LossReport` matches the golden file.
    Each cell runs twice: `read()` + `convert()` + `write()` and `convertFile()`; outputs and `LossReport` must match byte for byte (the `convert-stream` check in the corpus).
