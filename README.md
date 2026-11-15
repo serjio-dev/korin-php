@@ -3,8 +3,9 @@
 Read, validate, convert and write GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0 —
 without losing a single tag. Every unavoidable loss is reported.
 
-> **Status: 0.1 — early development.** Reading, lossless writing and editing work today;
-> validation, conversion, the typed model, GEDZIP and streaming are planned — see
+> **Status: 0.2 — early development.** Reading, lossless writing, editing and validation against
+> the profiles of 5.5, 5.5.1, 5.5.5 and 7.0 work today; conversion, the typed model, GEDZIP and
+> streaming are planned — see
 > [the specification](docs/SPEC.md) for the roadmap and [CHANGELOG.md](CHANGELOG.md) for releases.
 > Until 1.0 a minor release may break the API.
 

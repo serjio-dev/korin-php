@@ -7,6 +7,12 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-15
+
+Profiles and validation: the rules of GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0 as data, and a
+validator with stable diagnostic codes ([docs/diagnostics.md](docs/diagnostics.md)). No
+breaking changes. Conversion and the `LossReport` follow in 0.3.
+
 ### Added
 
 - `Spec\Profile`: the rules of a GEDCOM version as data — top-level records, substructures
@@ -42,6 +48,7 @@ break the API; such changes are described in `UPGRADE.md`.
   reachable structure in a minimal valid file, then a tag it does not allow, each substructure
   once too often or left out, and its value of the wrong type, missing, forbidden, or a
   pointer where text belongs and the reverse.
+- Validation of a 50 MB file takes about 4.5 s and 405 MB (5.2 s and 466 MB with plausibility).
 
 ## [0.1.0] - 2026-11-15
 
@@ -76,5 +83,6 @@ streaming and indexed reading follow in 0.2–0.4.
   gedcom7code test files; PHPBench benchmarks; a baseline comparison with
   liberu-genealogy/php-gedcom ([docs/comparison](docs/comparison/liberu-php-gedcom.md)).
 
-[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.2.0
 [0.1.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.1.0
