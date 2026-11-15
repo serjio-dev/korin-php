@@ -4,7 +4,7 @@
 # annotations. See README.md for the notation and the corrections, and NOTICE.
 #
 # Pointers are written as in the specification, <XREF:FAM> without "@"; the byte order mark
-# that starts the file is checked by the reader, not by the grammar.
+# that starts the file and the order of records are checked by the validator, not by the grammar.
 
 LINEAGE_LINKED_GEDCOM_FILE: |
   n HEAD                                          {1:1}

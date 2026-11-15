@@ -27,6 +27,7 @@ new codes may be added in minor releases. Messages are informative and may chang
 | `KV1101` | warning | `HEAD.CHAR` is not a standard value (e.g. `ANSI`, `LATIN1`); the encoding is detected from content |
 | `KV1102` | warning | `HEAD.CHAR` contradicts the content; the content wins |
 | `KV1103` | info | No usable `HEAD.CHAR`; the encoding is guessed from content |
+| `KV1104` | warning | 5.5.5: the file does not start with a byte order mark ("All GEDCOM 5.5.5 files … must start with a Byte Order Mark"). Reported by `Gedcom::validate()` for the file, without a line; a warning, because the BOM carries no data |
 
 In strict mode (`ReadOptions::withStrict()`) every error-level `KV1` diagnostic throws
 `ParseException` instead.
@@ -45,6 +46,7 @@ or for 5.x a place in the grammar of the specification such as
 | `KV2001` | error | A standard tag that is not allowed where it stands (in this superstructure, or as a record); its substructures are not checked |
 | `KV2002` | error | A substructure occurs more often than allowed; reported once, at the first extra occurrence |
 | `KV2003` | error | A required substructure is missing; reported at the structure that lacks it. A missing required record (5.5.5: `SUBM`) is reported for the file, without a line |
+| `KV2004` | error | 5.5.5: the `SUBM` record does not directly follow `HEAD`; reported at the first `SUBM` record. Extension records do not count |
 
 Every code can be left out or reported with another severity:
 
@@ -73,8 +75,9 @@ quote a value, except an enumeration value shortened to 20 characters.
   a year, no `@#DROMAN@`; ages with `< ` / `> ` and without zero parts or leading zeroes (at
   most `999y 11m 365d`); times `h:mm[:ss[.ff]]`; version numbers; place names in parts
   separated by `, `. Text values are checked against their `{Size=min:max}` (`KV3010`). The
-  order of records (`SUBM` directly after `HEAD`) and rules given only in prose (no digits in
-  names, dual years only from 1 January to 24 March and up to 1923) are not checked.
+  file must start with a BOM (`KV1104`) and `SUBM` directly follow `HEAD` (`KV2004`). Rules
+  given only in prose (no digits in names, dual years only from 1 January to 24 March and up
+  to 1923) are not checked.
 
 | Code | Severity | Meaning |
 | --- | --- | --- |

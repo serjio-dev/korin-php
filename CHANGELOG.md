@@ -29,7 +29,8 @@ break the API; such changes are described in `UPGRADE.md`.
   does not follow the first is a warning (`KV3009`).
 - Level 3 checks for 5.5.5 with its stricter grammars (dates, ages, times, version numbers,
   place names), the lengths of text values (`KV3010`) and structures without a value or
-  substructures (`KV3007`).
+  substructures (`KV3007`); a 5.5.5 file must start with a BOM (`KV1104`, a warning) and
+  `SUBM` directly follow `HEAD` (`KV2004`).
 - Level 4 checks for every version: dangling pointers (`KV4001`), duplicate xrefs (`KV4002`),
   mutual family links (`KV4004`), and the record type a pointer targets
   (`KV4003`).
