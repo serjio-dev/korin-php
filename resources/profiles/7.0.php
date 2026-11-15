@@ -2615,6 +2615,7 @@ return [
         'https://gedcom.io/terms/v7/enumset-ord-STAT' => ['BIC', 'CANCELED', 'CHILD', 'COMPLETED', 'DNS', 'DNS_CAN', 'EXCLUDED', 'INFANT', 'PRE_1970', 'STILLBORN', 'SUBMITTED', 'UNCLEARED'],
     ],
     'types' => [],
+    'sizes' => [],
     'calendars' => [
         'FRENCH_R' => [
             'uri' => 'https://gedcom.io/terms/v7/cal-FRENCH_R',

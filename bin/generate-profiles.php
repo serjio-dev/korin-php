@@ -28,6 +28,13 @@ const PROFILES = [
         'uri' => 'https://gedcom.io/specifications/ged551.pdf#',
         'source' => 'The GEDCOM Standard, Release 5.5.1 (15 November 2019), chapter 2',
     ],
+    '5.5.5' => [
+        'grammar' => 'spec/5.5.5/grammar.yaml',
+        'primitives' => 'spec/5.5.5/primitives.yaml',
+        'uri' => 'https://www.gedcom.org/specs/GEDCOM555.zip#',
+        'root' => 'LINEAGE_LINKED_GEDCOM_FILE',
+        'source' => 'The GEDCOM 5.5.5 Specification with Annotations (2 October 2019), Lineage-Linked Form',
+    ],
     '7.0' => [
         'terms' => 'spec/7.0/terms',
         'source' => 'FamilySearch GEDCOM v7.0.18 (2f0b863b5a42275bd2b3ca315900cf779e42f28b)',
@@ -39,7 +46,7 @@ const ROOT_CARDINALITY = ['HEAD' => [1, 1], 'TRLR' => [1, 1]];
 const SYNTAX_TAGS = ['CONC', 'CONT'];
 
 /** Grammars of primitive elements implemented in Validation\Rule\Grammar5. */
-const GRAMMARS_5 = ['AGE_AT_EVENT', 'DATE_EXACT', 'DATE_PERIOD', 'DATE_VALUE', 'NAME_PERSONAL', 'NUMBER', 'PLACE_LATITUDE', 'PLACE_LONGITUDE', 'TIME_VALUE'];
+const GRAMMARS_5 = ['AGE_AT_EVENT', 'DATE_EXACT', 'DATE_PERIOD', 'DATE_VALUE', 'GEDCOM_VERSION_NUMBER', 'NAME_PERSONAL', 'NUMBER', 'PLACE_LATITUDE', 'PLACE_LONGITUDE', 'PLACE_NAME', 'PRODUCT_VERSION_NUMBER', 'TIME_VALUE'];
 
 $argv = is_array($_SERVER['argv'] ?? null) ? $_SERVER['argv'] : [];
 $check = in_array('--check', $argv, true);
@@ -48,7 +55,7 @@ $stale = [];
 foreach (PROFILES as $version => $config) {
     $target = "{$root}/resources/profiles/{$version}.php";
     $profile = isset($config['grammar'])
-        ? (new Grammar("{$root}/{$config['grammar']}", $config['uri']))->compile() + primitives("{$root}/{$config['primitives']}")
+        ? (new Grammar("{$root}/{$config['grammar']}", $config['uri'], $config['root'] ?? 'LINEAGE_LINKED_GEDCOM'))->compile() + primitives("{$root}/{$config['primitives']}")
         : compile("{$root}/{$config['terms']}");
     $code = render($version, $config['source'], $profile);
     if ($check) {
@@ -120,7 +127,7 @@ function compile(string $dir): array
     ksort($root);
     ksort($calendars);
 
-    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'types' => [], 'calendars' => $calendars];
+    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'types' => [], 'sizes' => [], 'calendars' => $calendars];
 }
 
 /** The fields of a term file (https://gedcom.io/terms/format) that profiles use. */
@@ -203,7 +210,6 @@ final readonly class Term
 final class Grammar
 {
     private const LINE = '/^(?<indent> *)(?<level>n|0|\+\d) +(?<body>.*?) +\{(?<min>\d+):(?<max>\d+|M)\}$/';
-    private const ROOT = 'LINEAGE_LINKED_GEDCOM';
 
     /** @var array<string, list<list<GrammarLine>>> structure name => alternatives => top lines */
     private array $definitions = [];
@@ -217,7 +223,7 @@ final class Grammar
     /** @var array<string, true> named structures whose lines are in $structures */
     private array $defined = [];
 
-    public function __construct(string $file, private readonly string $base)
+    public function __construct(string $file, private readonly string $base, private readonly string $root)
     {
         $yaml = Yaml::parseFile($file);
         foreach (is_array($yaml) ? $yaml : throw new RuntimeException("Not a grammar: {$file}") as $name => $value) {
@@ -231,9 +237,9 @@ final class Grammar
     /** @return array<string, mixed> */
     public function compile(): array
     {
-        $root = $this->members(self::ROOT);
+        $root = $this->members($this->root);
         ksort($root);
-        $this->define(self::ROOT);
+        $this->define($this->root);
         $pointer = (static fn(string $payload): string => preg_replace_callback('/@<XREF:([A-Z]+)>@/', static fn(array $m): string => '@<' . ($root[$m[1]][0] ?? throw new RuntimeException("No record {$m[1]}")) . '>@', $payload) ?? $payload);
         $structures = [];
         foreach ($this->structures as $uri => $structure) {
@@ -271,6 +277,8 @@ final class Grammar
 
     /**
      * The structures of lines at one place, by tag; an include gives the top lines of its structure.
+     * A line written in place takes precedence over an included line with the same tag (5.5.5:
+     * the TYPE of an attribute and the TYPE of its <<INDIVIDUAL_EVENT_DETAIL>>).
      *
      * @param list<GrammarLine> $lines
      *
@@ -279,19 +287,22 @@ final class Grammar
     private function entries(string $name, string $path, array $lines): array
     {
         $out = [];
-        $put = static function (string $tag, array $entry) use (&$out, $name): void {
-            /** @var array{string, int, int} $entry */
-            $out[$tag] = isset($out[$tag]) ? throw new RuntimeException("{$name}: {$tag} twice in one place") : $entry;
-        };
+        $written = [];
+        foreach ($lines as $line) {
+            if ($line->include === null) {
+                foreach ($line->tags as $tag) {
+                    $out[$tag] = isset($out[$tag]) ? throw new RuntimeException("{$name}: {$tag} twice in one place") : ["{$this->base}{$name}{$path}/{$tag}", $line->min, $line->max];
+                    $written[$tag] = true;
+                }
+            }
+        }
         foreach ($lines as $line) {
             if ($line->include !== null) {
                 foreach ($this->members($line->include) as $tag => [$uri, $min, $max]) {
-                    $put($tag, [$uri, $line->min * $min, $line->max < 0 || $max < 0 ? -1 : $line->max * $max]);
+                    if (!isset($written[$tag])) {
+                        $out[$tag] = isset($out[$tag]) ? throw new RuntimeException("{$name}: {$tag} twice in one place") : [$uri, $line->min * $min, $line->max < 0 || $max < 0 ? -1 : $line->max * $max];
+                    }
                 }
-                continue;
-            }
-            foreach ($line->tags as $tag) {
-                $put($tag, ["{$this->base}{$name}{$path}/{$tag}", $line->min, $line->max]);
             }
         }
 
@@ -423,12 +434,12 @@ final class GrammarLine
         if (preg_match('/^<<([A-Z_]+)>>$/', $body, $m) === 1) {
             return new self([], $m[1], null, $min, $max);
         }
-        // Records start with their xref: "@<XREF:FAM>@ FAM".
-        if (preg_match('/^(?:@<?XREF:[A-Z]+>?@ +)?(?:\[([A-Z0-9_|]+)\]|([A-Z0-9_]+))(?: +(.+))?$/', $body, $m, PREG_UNMATCHED_AS_NULL) !== 1) {
+        // Records start with their xref: "@<XREF:FAM>@ FAM" (5.5.5: "<XREF:FAM> FAM").
+        if (preg_match('/^(?:@?<?XREF:[A-Z]+>?@? +)?(?:\[([A-Z0-9_|]+)\]|([A-Z0-9_]+))(?: +(.+))?$/', $body, $m, PREG_UNMATCHED_AS_NULL) !== 1) {
             throw new RuntimeException("{$name}: cannot read \"{$body}\"");
         }
         $tags = explode('|', $m[1] ?? $m[2] ?? '');
-        $payload = $m[3] !== null ? preg_replace(['/\s+/', '/^\[(.*)\]$/', '/@XREF:([A-Z]+)@/'], ['', '$1', '@<XREF:$1>@'], $m[3]) : null;
+        $payload = $m[3] !== null ? preg_replace(['/\s+/', '/^\[(.*)\]$/', '/@<?XREF:([A-Z]+)>?@|<XREF:([A-Z]+)>/'], ['', '$1', '@<XREF:$1$2>@'], $m[3]) : null;
 
         return new self($tags, null, $payload, $min, $max);
     }
@@ -436,9 +447,10 @@ final class GrammarLine
 
 /**
  * The restricted primitive elements of a 5.x grammar (spec/5.5.1/primitives.yaml): "types" maps
- * a payload such as "<SEX_VALUE>" to ENUM or a grammar, "enumsets" lists the values of an ENUM.
+ * a payload such as "<SEX_VALUE>" to ENUM or a grammar, "enumsets" lists the values of an ENUM,
+ * "sizes" the minimum and maximum length of a value (5.5.5, {size: 'min:max'}).
  *
- * @return array{enumsets: array<string, list<string>>, types: array<string, string>, calendars: array{}}
+ * @return array{enumsets: array<string, list<string>>, types: array<string, string>, sizes: array<string, array{int, int}>, calendars: array{}}
  */
 function primitives(string $file): array
 {
@@ -446,8 +458,15 @@ function primitives(string $file): array
     $elements = is_array($yaml) ? $yaml : throw new RuntimeException("Not a list of primitives: {$file}");
     $types = [];
     $enumsets = [];
-    foreach (array_keys($elements) as $name) {
+    $sizes = [];
+    foreach ($elements as $name => $value) {
+        if (is_array($value) && isset($value['size'])) {
+            $sizes["<{$name}>"] = is_string($value['size']) && preg_match('/^(\d+):(\d+)$/', $value['size'], $m) === 1 ? [(int) $m[1], (int) $m[2]] : throw new RuntimeException("{$name}: bad size");
+        }
         [$type, $values] = primitive($elements, (string) $name);
+        if ($type === null) {
+            continue;
+        }
         $types["<{$name}>"] = $type;
         if ($type === 'ENUM') {
             $enumsets["<{$name}>"] = $values;
@@ -455,19 +474,29 @@ function primitives(string $file): array
     }
     ksort($types);
     ksort($enumsets);
+    ksort($sizes);
 
-    return ['enumsets' => $enumsets, 'types' => $types, 'calendars' => []];
+    return ['enumsets' => $enumsets, 'types' => $types, 'sizes' => $sizes, 'calendars' => []];
 }
 
 /**
  * @param array<mixed> $elements
  * @param list<string> $seen
  *
- * @return array{string, list<string>} ENUM with its values, or a grammar
+ * @return array{?string, list<string>} ENUM with its values, a grammar, or null for sized text
  */
 function primitive(array $elements, string $name, array $seen = []): array
 {
     $value = $elements[$name] ?? throw new RuntimeException("Unknown primitive <{$name}>");
+    if (is_array($value) && !array_is_list($value)) {
+        if (array_diff(array_keys($value), ['is', 'size']) !== []) {
+            throw new RuntimeException("{$name}: only is and size are allowed");
+        }
+        if (!isset($value['is'])) {
+            return [null, []];
+        }
+        $value = $value['is'];
+    }
     if (is_array($value)) {
         return ['ENUM', array_map(static fn(mixed $v): string => is_scalar($v) ? (string) $v : throw new RuntimeException("{$name}: bad value"), array_values($value))];
     }

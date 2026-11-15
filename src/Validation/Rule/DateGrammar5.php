@@ -12,6 +12,11 @@ namespace Korin\Gedcom\Validation\Rule;
  * case-insensitive. @#DROMAN@ and @#DUNKNOWN@ are "for future definition": any day, word and
  * year is accepted.
  *
+ * 5.5.5 (DATE_GREG, DATE_JULN, YEAR, DAY, DUAL_STYLE_YEAR) is stricter and slightly different:
+ * years of 3 or 4 digits, days without a leading zero, "BCE", "BC" or "B.C." after a space and
+ * only after a lone Gregorian or Julian year, dual years in both of these calendars but only
+ * with a month, a Gregorian day and month without a year ("23 AUG"), and no @#DROMAN@.
+ *
  * @internal
  */
 final readonly class DateGrammar5
@@ -36,11 +41,19 @@ final readonly class DateGrammar5
 
     private const DATE = '/^(?:(?:([0-9]+) )?([A-Z][A-Z0-9_]*) )?([0-9]+)(?:\/([0-9]{2}))?( ?B\.C\.)?$/';
 
+    private const DATE_555 = '/^(?:(?:([1-9][0-9]?) )?([A-Z]+) )?([0-9]{3,4})(?:\/([0-9]{2}))?( (?:BCE|BC|B\.C\.))?$/';
+
+    /** 5.5.5 calendars with BCE and dual years. */
+    private const PROLEPTIC_555 = ['GREGORIAN' => true, 'JULIAN' => true];
+
     /** @var array<string, array<string, true>> calendar => months */
     private array $months;
 
-    /** @param callable(string): list<string> $enumeration values of an element, from the profile */
-    public function __construct(callable $enumeration)
+    /**
+     * @param callable(string): list<string> $enumeration values of an element, from the profile
+     * @param bool $v555 whether the 5.5.5 date grammar applies
+     */
+    public function __construct(callable $enumeration, private bool $v555 = false)
     {
         $months = [];
         foreach (self::ESCAPES as $calendar => $element) {
@@ -60,7 +73,7 @@ final readonly class DateGrammar5
         $value = strtoupper($value);
 
         return match ($grammar) {
-            'DATE_EXACT' => preg_match('/^[0-9]+ [A-Z]+ [0-9]+(?:\/[0-9]{2})?$/', $value) === 1 ? $this->date($value) : self::INVALID,
+            'DATE_EXACT' => preg_match($this->v555 ? '/^[1-9][0-9]? [A-Z]+ [0-9]{3,4}$/' : '/^[0-9]+ [A-Z]+ [0-9]+(?:\/[0-9]{2})?$/', $value) === 1 ? $this->date($value) : self::INVALID,
             'DATE_PERIOD' => $this->period($value) ?? self::INVALID,
             default => $this->dateValue($value),
         };
@@ -111,7 +124,13 @@ final readonly class DateGrammar5
         if (preg_match('/^@#D([A-Z ]+)@ (.+)$/', $date, $m) === 1) {
             [, $calendar, $date] = $m;
         }
-        if (!array_key_exists($calendar, self::ESCAPES) || preg_match(self::DATE, $date, $m) !== 1) {
+        if (!array_key_exists($calendar, self::ESCAPES) || ($this->v555 && $calendar === 'ROMAN')) {
+            return self::INVALID;
+        }
+        if ($this->v555 && isset($this->months[$calendar])) {
+            return $this->date555($calendar, $date);
+        }
+        if (preg_match(self::DATE, $date, $m) !== 1) {
             return self::INVALID;
         }
         $months = $this->months[$calendar] ?? null;
@@ -128,6 +147,38 @@ final readonly class DateGrammar5
             return self::INVALID;
         }
         if ($day !== '' && ((int) $day < 1 || (int) $day > DateGrammar::monthDays($calendar === 'FRENCH R' ? 'FRENCH_R' : $calendar, $month, $dual === '' ? $year : $year + 1, $bc))) {
+            return self::DAY_OUT_OF_RANGE;
+        }
+
+        return $dual !== '' && (int) $dual !== ($year + 1) % 100 ? self::BAD_DUAL_YEAR : self::VALID;
+    }
+
+    /** @return self::VALID|self::DAY_OUT_OF_RANGE|self::BAD_DUAL_YEAR|self::INVALID */
+    private function date555(string $calendar, string $date): int
+    {
+        $months = $this->months[$calendar] ?? [];
+        // <DAY> + space + <MONTH>: a Gregorian date without a year; 29 FEB is possible.
+        if (preg_match('/^([1-9][0-9]?) ([A-Z]+)$/', $date, $m) === 1) {
+            if ($calendar !== 'GREGORIAN' || !isset($months[$m[2]])) {
+                return self::INVALID;
+            }
+
+            return (int) $m[1] > DateGrammar::monthDays($calendar, $m[2], 2000, false) ? self::DAY_OUT_OF_RANGE : self::VALID;
+        }
+        if (preg_match(self::DATE_555, $date, $m) !== 1) {
+            return self::INVALID;
+        }
+        $day = $m[1];
+        $month = $m[2];
+        $year = (int) $m[3];
+        $dual = $m[4] ?? '';
+        $bce = ($m[5] ?? '') !== '';
+        $proleptic = isset(self::PROLEPTIC_555[$calendar]);
+        // BCE follows a lone year; a dual year needs a month; both only in Gregorian and Julian.
+        if (($bce && ($month !== '' || !$proleptic)) || ($dual !== '' && ($month === '' || !$proleptic)) || ($month !== '' && !isset($months[$month]))) {
+            return self::INVALID;
+        }
+        if ($day !== '' && (int) $day > DateGrammar::monthDays($calendar === 'FRENCH R' ? 'FRENCH_R' : $calendar, $month, $dual === '' ? $year : $year + 1, false)) {
             return self::DAY_OUT_OF_RANGE;
         }
 

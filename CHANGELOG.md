@@ -11,11 +11,11 @@ break the API; such changes are described in `UPGRADE.md`.
 
 - `Spec\Profile`: the rules of a GEDCOM version as data — top-level records, substructures
   with cardinality per superstructure, payload types, enumeration sets and calendars.
-  The 7.0 profile is compiled from the FamilySearch GEDCOM v7.0.18 term files, the 5.5 and
-  5.5.1 profiles from transcriptions of the grammar in their specifications (`NOTICE`).
+  The 7.0 profile is compiled from the FamilySearch GEDCOM v7.0.18 term files, the 5.5, 5.5.1
+  and 5.5.5 profiles from transcriptions of the grammar in their specifications (`NOTICE`).
 - `Gedcom::validate()` / `Validation\Validator` with `ValidationReport` (errors, warnings,
   `isValid()`, JSON) and `ValidationOptions` to disable codes or change their severity.
-  Level 2 checks for 5.5, 5.5.1 and 7.0: tags allowed in place (`KV2001`), cardinality (`KV2002`,
+  Level 2 checks for every version: tags allowed in place (`KV2001`), cardinality (`KV2002`,
   `KV2003`).
 - Level 3 checks for 7.0 (`KV3001`–`KV3008`): required and forbidden values, pointers, and the
   data types integer, enumeration and list of enumerations, personal name, language, media
@@ -27,8 +27,11 @@ break the API; such changes are described in `UPGRADE.md`.
   (enumerations such as `SEX_VALUE`, ages, times, coordinates, numbers, personal names) and dates
   with calendar escapes, date phrases, `B.C.` after any year and dual years; a dual year whose second year
   does not follow the first is a warning (`KV3009`).
+- Level 3 checks for 5.5.5 with its stricter grammars (dates, ages, times, version numbers,
+  place names), the lengths of text values (`KV3010`) and structures without a value or
+  substructures (`KV3007`).
 - Level 4 checks for every version: dangling pointers (`KV4001`), duplicate xrefs (`KV4002`),
-  mutual family links (`KV4004`); for 5.5, 5.5.1 and 7.0 also the record type a pointer targets
+  mutual family links (`KV4004`), and the record type a pointer targets
   (`KV4003`).
 - `Diagnostic::$reference` (the specification term a rule comes from), `withSeverity()`, JSON.
 

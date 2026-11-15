@@ -35,8 +35,8 @@ vendor/bin/phpbench run --report=korin --filter=10Mb --filter=WriteBench   # wit
   must keep every `roundtrip-preserve` corpus case green.
 
 - Version rules live in `spec/` as data (7.0: unmodified FamilySearch term files, see
-  `spec/7.0/README.md`; 5.5 and 5.5.1: our transcriptions of the specification grammar, see
-  `spec/5.5.1/README.md`) and are compiled to PHP arrays; never edit `resources/profiles/*.php` by hand.
+  `spec/7.0/README.md`; 5.x: our transcriptions of the specification grammars, see
+  `spec/5.5.1/README.md` and `spec/5.5.5/README.md`) and are compiled to PHP arrays; never edit `resources/profiles/*.php` by hand.
 
 ## Corpus
 

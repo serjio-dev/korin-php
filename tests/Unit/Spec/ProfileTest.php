@@ -154,6 +154,30 @@ final class ProfileTest extends TestCase
     }
 
     #[Test]
+    public function version555HasItsOwnGrammarAndSizes(): void
+    {
+        $profile = Profile::for(Version::V5_5_5);
+        $base = 'https://www.gedcom.org/specs/GEDCOM555.zip#';
+
+        self::assertSame(Version::V5_5_5, $profile->version());
+        // No SUBN; exactly one SUBM.
+        self::assertSame(['FAM', 'HEAD', 'INDI', 'NOTE', 'OBJE', 'REPO', 'SOUR', 'SUBM', 'TRLR'], array_keys($profile->records()));
+        self::assertSame('{1:1}', (string) $profile->record('SUBM')?->cardinality);
+        self::assertSame('LINEAGE-LINKED', $profile->resolve(['HEAD', 'GEDC', 'FORM'])?->payload);
+        self::assertSame('{1:1}', (string) $profile->resolve(['HEAD', 'GEDC', 'FORM'])->substructure('VERS')?->cardinality);
+        // Pointers written <XREF:FAM> without "@".
+        self::assertSame($base . 'FAM_GROUP_RECORD/FAM', $profile->resolve(['INDI', 'FAMC'])?->pointerTarget());
+        // The TYPE written in an attribute takes precedence over the TYPE of its event detail.
+        self::assertSame($base . 'INDIVIDUAL_ATTRIBUTE_STRUCTURE/IDNO/TYPE', $profile->resolve(['INDI', 'IDNO', 'TYPE'])?->uri);
+        self::assertSame('{1:1}', (string) $profile->resolve(['INDI', 'IDNO'])?->substructure('TYPE')?->cardinality);
+        self::assertSame($base . 'EVENT_DETAIL/TYPE', $profile->resolve(['INDI', 'BIRT', 'TYPE'])?->uri);
+        self::assertNull($profile->resolve(['INDI', 'BIRT'])?->payload);
+        self::assertSame([1, 60], $profile->size('<ADDRESS_CITY>'));
+        self::assertNull($profile->size('<DATE_VALUE>'));
+        self::assertNull(Profile::for(Version::V5_5_1)->size('<ADDRESS_CITY>'));
+    }
+
+    #[Test]
     #[DataProvider('grammarVersions')]
     public function everyGrammarStructureIsReachable(Version $version, int $count): void
     {
@@ -178,13 +202,14 @@ final class ProfileTest extends TestCase
     {
         yield '5.5' => [Version::V5_5, 219];
         yield '5.5.1' => [Version::V5_5_1, 248];
+        yield '5.5.5' => [Version::V5_5_5, 195];
     }
 
     #[Test]
-    public function missingProfileIsRejected(): void
+    public function everyVersionHasAProfile(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-
-        Profile::for(Version::V5_5_5);
+        foreach (Version::cases() as $version) {
+            self::assertSame($version, Profile::for($version)->version());
+        }
     }
 }
