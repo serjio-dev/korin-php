@@ -10,6 +10,7 @@ use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Validation\Rule\ReferenceRule;
 use Korin\Gedcom\Validation\Rule\Rule;
 use Korin\Gedcom\Validation\Rule\StructureRule;
+use Korin\Gedcom\Validation\Rule\ValueRule;
 
 /**
  * Checks a document against the profile of its version. The report starts with the syntax
@@ -22,7 +23,7 @@ final readonly class Validator
 
     public function __construct()
     {
-        $this->rules = [new StructureRule(), new ReferenceRule()];
+        $this->rules = [new StructureRule(), new ValueRule(), new ReferenceRule()];
     }
 
     public function validate(Document $document, ValidationOptions $options = new ValidationOptions()): ValidationReport

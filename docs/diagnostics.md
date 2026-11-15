@@ -7,7 +7,7 @@ new codes may be added in minor releases. Messages are informative and may chang
 | --- | --- |
 | `KV1xxx` | Syntax: line format, levels, encoding, HEAD/TRLR |
 | `KV2xxx` | Structure: allowed substructures and cardinality |
-| `KV3xxx` | Values: dates, ages, enumerations, … *(0.2)* |
+| `KV3xxx` | Values: payload presence and data types (dates later in 0.2) |
 | `KV4xxx` | References: dangling and duplicate xrefs, record types, family links |
 | `KV5xxx` | Plausibility, optional *(0.2)* |
 | `KL0001`–`KL9999` | Loss report entries of conversions *(0.3)* |
@@ -50,6 +50,23 @@ Every code can be left out or reported with another severity:
 $options = (new ValidationOptions())->withDisabled('KV2001')->withSeverity('KV1101', Severity::Error);
 $report = Gedcom::validate($doc, $options);
 ```
+
+## KV3 — values
+
+Reported by `Gedcom::validate()` for GEDCOM 7.0 against the payload type of each standard
+structure (specification chapter 2); extension structures are not checked. Dates are not
+checked yet. Messages name the expected type and never quote a value, except an enumeration
+value shortened to 20 characters.
+
+| Code | Severity | Meaning |
+| --- | --- | --- |
+| `KV3001` | error | A value is required but missing (`Age`, `DateValue`, `DatePeriod` and `Y\|<NULL>` may be omitted) |
+| `KV3002` | error | The structure must not have a value |
+| `KV3003` | error | The value must be a pointer to a record |
+| `KV3004` | error | A pointer where a value is expected (in 7.0 a leading `@` of text is written `@@`) |
+| `KV3005` | error | The value does not match its data type: integer, personal name, BCP 47 language, media type, age, time, latitude, longitude, file path, URI, tag definition, `Y` |
+| `KV3006` | error | An enumeration value that the structure does not permit; extension values (`_X`) are always permitted |
+| `KV3007` | error | A structure with neither a value nor substructures (`TRLR` excepted; a missing required substructure is `KV2003`) |
 
 ## KV4 — references
 

@@ -29,8 +29,9 @@ final class ReferenceRule implements Rule
     private const INDI_TO_FAM = ['FAMC' => ['CHIL'], 'FAMS' => ['HUSB', 'WIFE']];
     private const FAM_TO_INDI = ['CHIL' => 'FAMC', 'HUSB' => 'FAMS', 'WIFE' => 'FAMS'];
 
-    public function check(Document $document, ?Profile $profile): iterable
+    public function check(Document $document, ?Profile $profile): array
     {
+        $out = [];
         /** @var array<string, int> $records xref => first record with it */
         $records = [];
         foreach ($document->childIds(0) as $id) {
@@ -39,7 +40,7 @@ final class ReferenceRule implements Rule
                 continue;
             }
             if (isset($records[$xref])) {
-                yield $this->diagnostic($document, 'KV4002', Severity::Error, 'Xref is already used by the record on line ' . $document->lineOf($records[$xref]), $id);
+                $out[] = $this->diagnostic($document, 'KV4002', Severity::Error, 'Xref is already used by the record on line ' . $document->lineOf($records[$xref]), $id);
                 continue;
             }
             $records[$xref] = $id;
@@ -47,42 +48,42 @@ final class ReferenceRule implements Rule
 
         $void = $document->version() === Version::V7_0 ? self::VOID : null;
         foreach ($document->childIds(0) as $id) {
-            yield from $this->pointers($document, $profile, $records, $void, $id, $this->definition($profile, $profile?->record($document->tagOf($id))));
+            $this->pointers($document, $profile, $records, $void, $id, $this->definition($profile, $profile?->record($document->tagOf($id))), $out);
         }
-        yield from $this->familyLinks($document, $records);
+        $this->familyLinks($document, $records, $out);
+
+        return $out;
     }
 
     /**
      * @param array<string, int> $records
-     *
-     * @return \Generator<int, Diagnostic>
+     * @param list<Diagnostic> $out
      */
-    private function pointers(Document $document, ?Profile $profile, array $records, ?string $void, int $id, ?Structure $structure): \Generator
+    private function pointers(Document $document, ?Profile $profile, array $records, ?string $void, int $id, ?Structure $structure, array &$out): void
     {
         $payload = $document->payloadOf($id);
         if ($payload !== null && $payload !== $void && Escaping::isPointer($payload) && !$document->isInvalid($id)) {
             $target = $records[$payload] ?? null;
             if ($target === null) {
-                yield $this->diagnostic($document, 'KV4001', Severity::Error, 'Pointer to a record that does not exist', $id);
+                $out[] = $this->diagnostic($document, 'KV4001', Severity::Error, 'Pointer to a record that does not exist', $id);
             } elseif ($profile !== null && $structure !== null) {
                 $expected = $structure->pointerTarget();
                 if ($expected !== null && $profile->record($document->tagOf($target))?->uri !== $expected) {
                     $want = $profile->structure($expected)->tag ?? $expected;
-                    yield $this->diagnostic($document, 'KV4003', Severity::Error, "{$structure->tag} must point to a {$want} record, not {$document->tagOf($target)}", $id, $structure->uri);
+                    $out[] = $this->diagnostic($document, 'KV4003', Severity::Error, "{$structure->tag} must point to a {$want} record, not {$document->tagOf($target)}", $id, $structure->uri);
                 }
             }
         }
         foreach ($document->childIds($id) as $child) {
-            yield from $this->pointers($document, $profile, $records, $void, $child, $this->definition($profile, $structure?->substructure($document->tagOf($child))));
+            $this->pointers($document, $profile, $records, $void, $child, $this->definition($profile, $structure?->substructure($document->tagOf($child))), $out);
         }
     }
 
     /**
      * @param array<string, int> $records
-     *
-     * @return \Generator<int, Diagnostic>
+     * @param list<Diagnostic> $out
      */
-    private function familyLinks(Document $document, array $records): \Generator
+    private function familyLinks(Document $document, array $records, array &$out): void
     {
         foreach ($records as $xref => $id) {
             $tag = $document->tagOf($id);
@@ -99,7 +100,7 @@ final class ReferenceRule implements Rule
                     continue;
                 }
                 if (!$this->pointsTo($document, $target, $back, $xref)) {
-                    yield $this->diagnostic($document, 'KV4004', Severity::Warning, $document->payloadOf($child) . ' has no ' . implode(' or ', $back) . " pointing back to {$xref}", $child);
+                    $out[] = $this->diagnostic($document, 'KV4004', Severity::Warning, $document->payloadOf($child) . ' has no ' . implode(' or ', $back) . " pointing back to {$xref}", $child);
                 }
             }
         }

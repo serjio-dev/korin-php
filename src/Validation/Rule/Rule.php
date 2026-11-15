@@ -14,7 +14,7 @@ interface Rule
     /**
      * @param ?Profile $profile null when the version has no profile yet
      *
-     * @return iterable<Diagnostic>
+     * @return list<Diagnostic>
      */
-    public function check(Document $document, ?Profile $profile): iterable;
+    public function check(Document $document, ?Profile $profile): array;
 }
