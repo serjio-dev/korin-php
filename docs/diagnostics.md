@@ -6,7 +6,7 @@ new codes may be added in minor releases. Messages are informative and may chang
 | Range | Level |
 | --- | --- |
 | `KV1xxx` | Syntax: line format, levels, encoding, HEAD/TRLR |
-| `KV2xxx` | Structure: allowed substructures and cardinality *(0.2)* |
+| `KV2xxx` | Structure: allowed substructures and cardinality |
 | `KV3xxx` | Values: dates, ages, enumerations, … *(0.2)* |
 | `KV4xxx` | References: dangling and duplicate xrefs *(0.2)* |
 | `KV5xxx` | Plausibility, optional *(0.2)* |
@@ -30,3 +30,23 @@ new codes may be added in minor releases. Messages are informative and may chang
 
 In strict mode (`ReadOptions::withStrict()`) every error-level `KV1` diagnostic throws
 `ParseException` instead.
+
+## KV2 — structure
+
+Reported by `Gedcom::validate()` against the profile of the document's version. Extension tags
+(`_X`) and everything under them are not checked. `reference` names the profile term of the
+structure that contains the problem, e.g. `https://gedcom.io/terms/v7/record-INDI`.
+
+| Code | Severity | Meaning |
+| --- | --- | --- |
+| `KV2000` | info | The version has no profile yet (5.x until 0.2 is complete); structures are not checked |
+| `KV2001` | error | A standard tag that is not allowed where it stands (in this superstructure, or as a record); its substructures are not checked |
+| `KV2002` | error | A substructure occurs more often than allowed; reported once, at the first extra occurrence |
+| `KV2003` | error | A required substructure is missing; reported at the structure that lacks it |
+
+Every code can be left out or reported with another severity:
+
+```php
+$options = (new ValidationOptions())->withDisabled('KV2001')->withSeverity('KV1101', Severity::Error);
+$report = Gedcom::validate($doc, $options);
+```

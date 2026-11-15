@@ -1,0 +1,106 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Korin\Gedcom\Tests\Unit\Validation;
+
+use Korin\Gedcom\Diagnostic;
+use Korin\Gedcom\Gedcom;
+use Korin\Gedcom\ReadOptions;
+use Korin\Gedcom\Severity;
+use Korin\Gedcom\Validation\ValidationOptions;
+use Korin\Gedcom\Version;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+
+final class ValidatorTest extends TestCase
+{
+    private const HEAD_70 = "0 HEAD\n1 GEDC\n2 VERS 7.0\n";
+
+    #[Test]
+    public function validDocumentHasNoDiagnostics(): void
+    {
+        $report = Gedcom::validate(Gedcom::parse(self::HEAD_70 . "0 @I1@ INDI\n1 NAME Анна /Коваль/\n2 GIVN Анна\n1 BIRT\n2 DATE 1921\n1 _UID 1234\n2 _ANY deep\n0 TRLR\n"));
+
+        self::assertTrue($report->isValid());
+        self::assertSame([], $report->diagnostics());
+    }
+
+    #[Test]
+    public function tagNotAllowedHere(): void
+    {
+        $report = Gedcom::validate(Gedcom::parse(self::HEAD_70 . "0 @I1@ INDI\n1 DATE 1921\n2 TIME 10:00\n1 BIRT\n2 GIVN x\n0 @X1@ PLAC Somewhere\n0 TRLR\n"));
+
+        self::assertSame([
+            'KV2001 error line 5 (@I1@/DATE): DATE is not allowed in INDI',
+            'KV2001 error line 8 (@I1@/BIRT/GIVN): GIVN is not allowed in BIRT',
+            'KV2001 error line 9 (@X1@): PLAC is not allowed as a record',
+        ], $this->lines($report->diagnostics()));
+        self::assertSame('https://gedcom.io/terms/v7/record-INDI', $report->diagnostics()[0]->reference);
+        self::assertFalse($report->isValid());
+    }
+
+    #[Test]
+    public function cardinalityIsChecked(): void
+    {
+        $report = Gedcom::validate(Gedcom::parse(self::HEAD_70 . "1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 SEX F\n1 SEX M\n1 SEX U\n0 TRLR\n"));
+
+        // Only the first extra occurrence is reported.
+        self::assertSame([
+            'KV2002 error line 4 (HEAD/GEDC[1]): GEDC occurs more than 1 time(s) in HEAD',
+            'KV2002 error line 8 (@I1@/SEX[1]): SEX occurs more than 1 time(s) in INDI',
+        ], $this->lines($report->diagnostics()));
+    }
+
+    #[Test]
+    public function requiredSubstructuresAreChecked(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n0 @F1@ FAM\n1 MARR\n2 HUSB\n2 WIFE\n3 AGE 25y\n0 TRLR\n", (new ReadOptions())->withVersion(Version::V7_0));
+
+        self::assertSame([
+            'KV2003 error line 1 (HEAD): HEAD requires GEDC',
+            'KV2003 error line 4 (@F1@/MARR/HUSB): HUSB requires AGE',
+        ], $this->lines(Gedcom::validate($doc)->errors()));
+    }
+
+    #[Test]
+    public function optionsDisableAndEscalateCodes(): void
+    {
+        $doc = Gedcom::parse(self::HEAD_70 . "0 @I1@ INDI\n1 DATE 1921\n\n0 TRLR\n");
+
+        $report = Gedcom::validate($doc, (new ValidationOptions())->withDisabled('KV2001')->withSeverity('KV1001', Severity::Error));
+
+        self::assertSame(['KV1001 error line 6: Empty line'], $this->lines($report->diagnostics()));
+        self::assertCount(1, $report);
+        self::assertSame('[{"code":"KV1001","severity":"error","message":"Empty line","line":6,"path":null,"reference":null}]', json_encode($report));
+    }
+
+    #[Test]
+    public function versionsWithoutAProfileAreReportedAsNotChecked(): void
+    {
+        $report = Gedcom::validate(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 TRLR\n"));
+
+        self::assertSame('KV2000', $report->diagnostics()[0]->code ?? null);
+        self::assertTrue($report->isValid());
+    }
+
+    #[Test]
+    public function validationDoesNotChangeTheDocument(): void
+    {
+        $bytes = self::HEAD_70 . "0 @I1@ INDI\n1 DATE 1921\n0 TRLR\n";
+        $doc = Gedcom::parse($bytes);
+        Gedcom::validate($doc);
+
+        self::assertSame($bytes, Gedcom::serialize($doc));
+    }
+
+    /**
+     * @param list<Diagnostic> $diagnostics
+     *
+     * @return list<string>
+     */
+    private function lines(array $diagnostics): array
+    {
+        return array_map(static fn(Diagnostic $d): string => (string) $d, $diagnostics);
+    }
+}

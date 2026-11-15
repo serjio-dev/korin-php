@@ -7,6 +7,9 @@ namespace Korin\Gedcom;
 use Korin\Gedcom\Exception\IoException;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Syntax\Parser;
+use Korin\Gedcom\Validation\ValidationOptions;
+use Korin\Gedcom\Validation\ValidationReport;
+use Korin\Gedcom\Validation\Validator;
 use Korin\Gedcom\Writer\Writer;
 
 /** Entry point for common tasks; the classes behind it can be injected directly. */
@@ -25,6 +28,12 @@ final class Gedcom
     public static function parse(string $bytes, ReadOptions $options = new ReadOptions()): Document
     {
         return (new Parser())->parse($bytes, $options);
+    }
+
+    /** Checks the document against the profile of its version; the document is not changed. */
+    public static function validate(Document $document, ValidationOptions $options = new ValidationOptions()): ValidationReport
+    {
+        return (new Validator())->validate($document, $options);
     }
 
     public static function write(Document $document, string $path, WriteOptions $options = new WriteOptions()): void
