@@ -215,6 +215,18 @@ final class ValidatorTest extends TestCase
     }
 
     #[Test]
+    public function danglingPointersOfExtensionsAreWarnings(): void
+    {
+        $report = Gedcom::validate(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 _FAMC @VOID@\n1 _X\n2 FAMC @F9@\n1 FAMC @F9@\n0 TRLR\n"), (new ValidationOptions())->withDisabled('KV2003'));
+
+        self::assertSame([
+            'KV4001 warning line 5 (@I1@/_FAMC): Pointer to a record that does not exist',
+            'KV4001 warning line 7 (@I1@/_X/FAMC): Pointer to a record that does not exist',
+            'KV4001 error line 8 (@I1@/FAMC): Pointer to a record that does not exist',
+        ], self::lines($report->diagnostics()));
+    }
+
+    #[Test]
     public function voidIsANullPointerOnlyIn7(): void
     {
         $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 SUBM @VOID@\n0 TRLR\n");

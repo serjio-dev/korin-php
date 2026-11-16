@@ -99,7 +99,7 @@ case-sensitive (`@test@` is not `@TEST@`). In 7.0 `@VOID@` is a null pointer and
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
-| `KV4001` | error | Pointer to a record that does not exist |
+| `KV4001` | error (warning in an extension) | Pointer to a record that does not exist. In an extension structure or inside one it is a warning: what an extension points to is not defined (`_FAMC @VOID@`, a 7.0 null pointer kept in 5.5.1) |
 | `KV4002` | error | Xref already used by an earlier record; pointers resolve to the first one |
 | `KV4003` | error | Pointer to a record of the wrong type, e.g. `FAMC` to an `INDI` |
 | `KV4004` | warning | A family link is not mutual: `INDI.FAMC` without `FAM.CHIL`, `INDI.FAMS` without `FAM.HUSB`/`WIFE`, or the reverse; only checked when the target exists |

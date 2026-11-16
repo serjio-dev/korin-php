@@ -185,6 +185,29 @@ final class Context
     }
 
     /**
+     * A structure the target version has no place for: kept as an extension, "_" and its tag,
+     * with its substructures, or removed under LossPolicy::DropWithReport; reported either way.
+     *
+     * @return bool whether the structure is still there
+     *
+     * @throws ConversionException under LossPolicy::Fail
+     */
+    public function unsupported(int $node, string $code, string $message): bool
+    {
+        if ($this->options->policy === LossPolicy::DropWithReport) {
+            $this->loss($code, Severity::Warning, $node, StoredAs::Dropped, $message);
+            $this->document->removeNode($node);
+
+            return false;
+        }
+        $this->loss($code, Severity::Warning, $node, StoredAs::Extension, $message);
+        $this->document->setTag($node, '_' . $this->document->tagOf($node));
+        unset($this->extensions[$node]);
+
+        return true;
+    }
+
+    /**
      * Reports data that the target version cannot hold as it was.
      *
      * @throws ConversionException under LossPolicy::Fail
@@ -238,8 +261,11 @@ final class Context
         return Profile::for($this->step?->from() ?? $this->source->version());
     }
 
-    /** Whether a structure of the document being converted is an extension or inside one; cached for one record at a time. */
-    private function inExtension(int $id): bool
+    /**
+     * Whether a structure of the document being converted is an extension or inside one, by the
+     * tags it has now; cached for one record at a time, so ask before renaming its ancestors.
+     */
+    public function inExtension(int $id): bool
     {
         if ($id === 0) {
             return false;
