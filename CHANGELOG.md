@@ -32,7 +32,12 @@ break the API; such changes are described in `UPGRADE.md`.
   `PHRASE` back into the date), ages, `HEAD.LANG`/`SUBM.LANG` names, media types to file
   extensions, URLs to paths, `MEDI` to `FORM.TYPE`, `ROLE` to `RELA` and enumeration values in
   5.5.1 form, each chosen so that converting up gives the 7.0 value back; values 5.5.1 cannot
-  write so are kept as extensions (`KL3001`).
+  write so are kept as extensions (`KL3001`); `TRAN` back to `FONE`/`ROMN`, `SEX X` to
+  `SEX U` + `_SEX X` (`KL3002`), and any other structure 5.5.1 does not have where it stands
+  (`NO`, `SDATE`, `CREA`, `HEAD.SCHMA`, a remaining `PHRASE`) to an extension with its tag
+  (`KL2001`). 5.5.1 → 7.0 turns these extensions back into the 7.0 structures, so a 7.0 file
+  converted to 5.5.1 and back has the same fingerprint, except for `KL3` losses (tested on
+  every 7.0 input of the corpus).
 - `WriteOptions::normalize()` writes every line anew by the version's rules with one line
   terminator; `withEncoding()` writes in another encoding (unchanged lines are re-encoded in
   preserve mode), `withBom()` sets the byte order mark, by default by the version (SPEC

@@ -230,6 +230,16 @@ final class V551ToV70Test extends TestCase
     }
 
     #[Test]
+    public function extensionsNamedAfterSevenStructuresGetTheirTags(): void
+    {
+        $output = $this->convert(self::HEAD . "0 @I1@ INDI\n1 SEX U\n2 _SEX X\n1 _NO MARR\n1 BIRT\n2 _DATE 1900\n2 DATE 1901\n3 _PHRASE then\n2 _SDATE 1901\n"
+            . "1 _FAMC @VOID@\n1 _X\n2 _NO BIRT\n1 _APID 1,7602::1\n0 TRLR\n");
+
+        self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 SEX X\n1 NO MARR\n1 BIRT\n2 _DATE 1900\n2 DATE 1901\n3 PHRASE then\n2 SDATE 1901\n"
+            . "1 FAMC @VOID@\n1 _X\n2 _NO BIRT\n1 _APID 1,7602::1\n0 TRLR\n", $output);
+    }
+
+    #[Test]
     public function inlineMediaKeepsItsFiveFiveOneMeaning(): void
     {
         $output = $this->convert(self::HEAD . "0 @I1@ INDI\n1 OBJE\n2 FILE a.wav\n3 FORM wav\n4 MEDI Audio\n0 TRLR\n");

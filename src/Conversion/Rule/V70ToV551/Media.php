@@ -21,7 +21,8 @@ use Korin\Gedcom\Version;
  *   file://server/x → \\server\x, a relative path without its percent-encoding; another URL
  *   (https://…) stays.
  *
- * Every value is one that converts up to the same value again; anything else stays as it is.
+ * Every value is one that converts up to the same value again (a percent-encoding may come back
+ * in uppercase: https%3a/x is https%3A/x); anything else stays as it is.
  *
  * @internal
  */
@@ -82,6 +83,12 @@ final readonly class Media implements NodeRule
             default => rawurldecode($url),
         };
 
-        return $this->upgrade->url($candidate) === $url ? $candidate : $url;
+        return self::normalize($this->upgrade->url($candidate)) === self::normalize($url) ? $candidate : $url;
+    }
+
+    /** Percent-encodings in uppercase: "%3a" and "%3A" are the same URL (RFC 3986, section 6.2.2.1). */
+    public static function normalize(string $url): string
+    {
+        return (string) preg_replace_callback('/%[0-9a-f]{2}/i', static fn(array $m): string => strtoupper($m[0]), $url);
     }
 }

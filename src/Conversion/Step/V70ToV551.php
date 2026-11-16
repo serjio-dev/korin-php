@@ -45,6 +45,9 @@ final class V70ToV551 implements Step
                 new Rules\Languages(),
                 new Rules\Media(),
                 new Rules\Enumerations(),
+                new Rules\Translations(),
+                new Rules\Sexes(),
+                new Rules\Structures(),
             ),
         ];
     }
