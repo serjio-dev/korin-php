@@ -65,3 +65,27 @@ gives their standard meaning but 5.5.1 does not, documents extensions of the
 input it knows (`_LOC`) in `HEAD.SCHMA`, and reads `1701/99` as 1699 (Korin keeps 1701: the second part is
 not the following year, so it is not a new-year dual date) and writes Dogri as `dgr`, which is
 Dogrib (Korin: `doi`). Where the two agree, its 7.0 file is the corpus golden file.
+
+## 7.0 → 5.5.1
+
+Downgrading drops nothing by default: what 5.5.1 has no structure for becomes an extension
+and a [loss report](losses.md) entry. Converting the result up again gives the 7.0 document
+back, except for what the loss report lists. Implemented so far:
+
+| 7.0 | 5.5.1 |
+| --- | --- |
+| UTF-8 | UTF-8, `HEAD.CHAR UTF-8`, no BOM |
+| — | `HEAD.GEDC.FORM LINEAGE-LINKED`, after `GEDC.VERS` |
+| Text with `@` | Every `@` doubled: `a@b` → `a@@b`. `@#DJULIAN@` in a 7.0 text is text, written `@#DJULIAN@` again (converting up reads it as text too) |
+| Lines of any length | Split into `CONC` at 255 bytes, between characters, never before a space |
+| `SNOTE` record, `SNOTE` pointer | `NOTE` |
+| `HEAD._SUBN` | A `SUBN` record `@X<n>@` before `TRLR` with its substructures; `HEAD.SUBN` points to the first in its place |
+| `UID` | `_UID` |
+| `EXID` + `TYPE https://gedcom.io/terms/v7/AFN` | `AFN` |
+| `EXID xyz` + `TYPE https://gedcom.io/terms/v7/RFN#123abc`, `…/RFN` | `RFN xyz:123abc`, `RFN xyz` (not for a value with `:`) |
+| `EXID` + `TYPE https://gedcom.io/terms/v7/RIN#<HEAD.SOUR>` | `RIN` |
+| Any other `EXID`, or one on a record without that tag in 5.5.1 | `_EXID` with its `TYPE`, `KL2001`. Not `REFN`: a number the user assigned is another kind of identifier, and it would stay `REFN` when converted up |
+| A pointer to `@VOID@` (`FAMC @VOID@` + `PHRASE`) | An extension with its tag and substructures (`_FAMC @VOID@`), `KL4001` |
+
+Xrefs are kept: every 7.0 xref is a valid 5.5.1 one. Extensions (`_X`) and what is inside them
+only get the 5.5.1 line syntax.

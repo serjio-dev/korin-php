@@ -25,6 +25,10 @@ break the API; such changes are described in `UPGRADE.md`.
   enumeration values in 7.0 form (`OTHER` + `PHRASE` for values 7.0 does not have);
   `HEAD.FILE` removed, `FONE`/`ROMN` to `TRAN` with a BCP 47 `LANG`, and `HEAD.SCHMA` for
   the extension tags the conversion writes.
+- Conversion 7.0 → 5.5.1, first rules: `GEDC.FORM` and `CHAR UTF-8` added, `@` escaped by
+  the 5.5.1 rules and long lines split into `CONC`, `SNOTE` to `NOTE`, `HEAD._SUBN` back to a
+  `SUBN` record, `UID` to `_UID`, `EXID` back to `AFN`/`RFN`/`RIN` (others to `_EXID`,
+  `KL2001`), pointers to `@VOID@` to extensions (`KL4001`).
 - `WriteOptions::normalize()` writes every line anew by the version's rules with one line
   terminator; `withEncoding()` writes in another encoding (unchanged lines are re-encoded in
   preserve mode), `withBom()` sets the byte order mark, by default by the version (SPEC
@@ -35,6 +39,8 @@ break the API; such changes are described in `UPGRADE.md`.
 - 7.0 validation: an empty `Text` or `List:Text` payload is valid (section 1 of the
   specification: `1 EVEN` is an `EVEN` with an empty payload), so `1 RESI` with a `PLAC` no
   longer gets `KV3001`. A structure with neither a payload nor substructures is still `KV3007`.
+- `KV4001` for a pointer of an extension structure, or inside one, is a warning: what an
+  extension points to is not defined.
 
 ## [0.2.0] - 2026-11-15
 

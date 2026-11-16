@@ -53,9 +53,9 @@ reading it. `convertFile()` will convert large files in constant memory.
 | Range | Level |
 | --- | --- |
 | `KL1xxx` | Syntax: lines, encoding |
-| `KL2xxx` | Structures the target version does not have *(0.3)* |
+| `KL2xxx` | Structures the target version does not have |
 | `KL3xxx` | Values the target version cannot express *(0.3)* |
-| `KL4xxx` | References *(0.3)* |
+| `KL4xxx` | References |
 
 ## KL1 — syntax
 
@@ -63,3 +63,15 @@ reading it. `convertFile()` will convert large files in constant memory.
 | --- | --- | --- |
 | `KL1001` | warning | A line that is not a GEDCOM line (`KV1001`) is dropped; reported at the structure it is in. Empty lines are dropped without an entry |
 | `KL1002` | warning | A line with bytes invalid in the source encoding (`KV1003`): they were read as U+FFFD, and the output keeps U+FFFD |
+
+## KL2 — structures
+
+| Code | Severity | Meaning |
+| --- | --- | --- |
+| `KL2001` | warning | A structure the target version does not have where it stands: kept as an extension with its tag and substructures (`EXID` with a `TYPE` 5.5.1 has no tag for → `_EXID`), or dropped under `DropWithReport` |
+
+## KL4 — references
+
+| Code | Severity | Meaning |
+| --- | --- | --- |
+| `KL4001` | warning | 7.0 → 5.5.1: a pointer to `@VOID@`, the 7.0 null pointer, which 5.5.1 does not have: the structure is kept as an extension with its tag (`FAMC @VOID@` → `_FAMC @VOID@`), or dropped under `DropWithReport` |

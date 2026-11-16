@@ -260,7 +260,7 @@ Conversion runs along a chain of adjacent versions: 4.0 → 5.5 → 5.5.1 ↔ 7.
 | `NOTE` record | `SNOTE` | `NOTE` |
 | `SUBN` | Removed, contents moved to `_SUBN` | Restored from `_SUBN` |
 | `_UID` | `UID` | `_UID` |
-| `AFN`, `RFN`, `RIN` | `EXID` with `TYPE` | Back to the original tag, otherwise `REFN` + `TYPE` |
+| `AFN`, `RFN`, `RIN` | `EXID` with `TYPE` | Back to the original tag, otherwise `_EXID` + `TYPE` and a `LossReport` entry (`REFN` would stay `REFN` when converted up again) |
 | Media `FORM` (`jpg`) | MIME (`image/jpeg`), `FILE` as a URI | Back to a file extension |
 | `LANG` as a word (`Ukrainian`) | BCP 47 (`uk`) | Back to the language name |
 | `ASSO` + `RELA` | `ASSO` + `ROLE` (+ `PHRASE`) | `RELA` |
@@ -297,6 +297,7 @@ Some steps cannot write output before they have seen the whole input, because th
 | `HEAD.SCHMA` | An extension may first appear in the last record, while `SCHMA` sits in `HEAD` | 5.5.1 → 7.0 |
 | `SUBN` → `HEAD._SUBN` | The `SUBN` record can be anywhere | 5.5.1 → 7.0 |
 | Xrefs for extracted `OBJE` / `SOUR` | The set of all used xrefs is needed | 5.5.1 → 7.0 |
+| `HEAD._SUBN` → `SUBN` record | The new record's xref must not be one the input has | 7.0 → 5.5.1 |
 | Encoding | A heuristic at the start of the file can be wrong (CP1251 / CP1252 look the same on Latin text) | Any, from an 8-bit encoding |
 
 **Two passes.**
@@ -304,7 +305,7 @@ Some steps cannot write output before they have seen the whole input, because th
 1. **Prepass** — lexer only, no tree (roughly a third of the full read time). Collects the set of xrefs and record offsets, extension tags, the `SUBN` offset, and the encoding over the whole file. This is the same information as the `open()` index, so `convertFile()` is built on `open()` plus a sequential walk rather than separate code.
 2. **Main pass** — records one at a time: conversion steps, writing. New records (extracted `OBJE` / `SOUR`) are accumulated and written before `TRLR`.
 
-**Prepass only when needed.** Each step declares `needsPrepass()`; the chain runs a prepass only if at least one step needs it. 7.0 → 5.5.1 and 5.5 ↔ 5.5.1 ↔ 5.5.5 are single-pass.
+**Prepass only when needed.** Each step declares `needsPrepass()`; the chain runs a prepass only if at least one step needs it. 5.5 ↔ 5.5.1 ↔ 5.5.5 are single-pass; 7.0 → 5.5.1 needs only the xrefs.
 
 **Inputs that cannot be read twice:**
 

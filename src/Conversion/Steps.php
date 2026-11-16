@@ -14,6 +14,6 @@ final class Steps
     /** @return list<Step> */
     public static function all(): array
     {
-        return [new Step\V551ToV70()];
+        return [new Step\V551ToV70(), new Step\V70ToV551()];
     }
 }
