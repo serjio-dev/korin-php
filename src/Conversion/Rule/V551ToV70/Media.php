@@ -18,8 +18,9 @@ use Korin\Gedcom\Validation\Rule\PayloadGrammar;
  * - FILE becomes a URL or a relative path with "/" separators: /x → file:///x,
  *   c:\x → file:///c:/x, \\server\x → file://server/x, a\b → a/b; spaces, "%", "?", "#",
  *   "[", "]" and characters a URL cannot hold are percent-encoded, as is ":" in the first
- *   segment of a relative path (https:/x is not a URL). A URL with a scheme ("http://…") only
- *   has spaces and such characters encoded; ".." stays, though 7.0 does not allow it.
+ *   segment of a relative path (https:/x is not a URL). A URI with a scheme ("http://…",
+ *   "urn:isbn:…") only has spaces and such characters encoded, a file: URL its backslashes
+ *   turned into "/" too (file://C:\x → file:///C:/x); ".." stays, though 7.0 does not allow it.
  *
  * @internal
  */
@@ -33,6 +34,9 @@ final class Media implements NodeRule
         'png' => 'image/png', 'rtf' => 'application/rtf', 'svg' => 'image/svg+xml', 'tif' => 'image/tiff',
         'tiff' => 'image/tiff', 'txt' => 'text/plain', 'wav' => 'audio/wav', 'webp' => 'image/webp',
     ];
+
+    /** Schemes whose URLs start with "//". */
+    private const AUTHORITY = ['ftp' => true, 'http' => true, 'https' => true];
 
     /** Characters a URL cannot hold. */
     private const UNSAFE = '/[\x00-\x20"<>\\\\^`{|}\x7F]/';
@@ -87,8 +91,18 @@ final class Media implements NodeRule
         if (preg_match('~^([A-Za-z]):[\\\\/]+(.*)$~s', $value, $m) === 1) {
             return 'file:///' . $m[1] . ':/' . $this->path($m[2]);
         }
-        if (preg_match('~^[A-Za-z][A-Za-z0-9+.\-]*://~', $value) === 1) {
-            return $this->encode($value, self::UNSAFE);
+        if (preg_match('~^([A-Za-z][A-Za-z0-9+.\-]+):(.*)$~s', $value, $m) === 1) {
+            $scheme = strtolower($m[1]);
+            if ($scheme === 'file') {
+                // file://C:\x, as Windows programs write it.
+                $path = preg_replace('~^//([A-Za-z]:)~', '///$1', str_replace('\\', '/', $m[2]));
+
+                return $m[1] . ':' . $this->encode((string) $path, self::UNSAFE);
+            }
+            // http:/x is not a URL; any other scheme (urn:, mailto:) needs no "//".
+            if (!isset(self::AUTHORITY[$scheme]) || str_starts_with($m[2], '//')) {
+                return $this->encode($value, self::UNSAFE);
+            }
         }
         if (preg_match('~^(?:\\\\\\\\|//)(.*)$~s', $value, $m) === 1) {
             return 'file://' . $this->path($m[1]);

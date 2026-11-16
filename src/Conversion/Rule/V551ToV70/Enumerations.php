@@ -35,6 +35,7 @@ final class Enumerations implements NodeRule
         '<CERTAINTY_ASSESSMENT>' => ['QUAY', false],
         '<CHILD_LINKAGE_STATUS>' => ['FAMC-STAT', true],
         '<EVENT_TYPE_CITED_FROM>' => ['EVENATTR', true],
+        '<EVENTS_RECORDED>' => ['EVENATTR', false],
         '<LDS_BAPTISM_DATE_STATUS>' => ['ord-STAT', false],
         '<LDS_CHILD_SEALING_DATE_STATUS>' => ['ord-STAT', false],
         '<LDS_ENDOWMENT_DATE_STATUS>' => ['ord-STAT', false],
@@ -57,6 +58,12 @@ final class Enumerations implements NodeRule
         'QUAY' => ['0' => true, '1' => true, '2' => true, '3' => true],
         'ROLE' => ['CHIL' => true, 'HUSB' => true, 'WIFE' => true, 'MOTH' => true, 'FATH' => true, 'SPOU' => true],
     ];
+
+    /** Enumerations whose payload is a list in 7.0: "BIRT, DEAT". */
+    private const LISTS = ['<EVENTS_RECORDED>' => true, '<RESTRICTION_NOTICE>' => true];
+
+    /** A 5.5.1 role description, "(midwife)". */
+    private const DESCRIPTION = '/^\((.*)\)$/s';
 
     /** Values whose spelling changed. */
     private const RENAMED = ['PRE-1970' => 'PRE_1970', 'DNS/CAN' => 'DNS_CAN'];
@@ -109,13 +116,17 @@ final class Enumerations implements NodeRule
         $enum = strtoupper(trim($value));
         $enum = self::RENAMED[$enum] ?? $enum;
         $phrase = null;
-        if ($element === '<RELATION_IS_DESCRIPTOR>' && !in_array($enum, $permitted, true)) {
+        $list = isset(self::LISTS[$element]);
+        if ($list) {
+            $enum = implode(', ', array_map(static fn(string $item): string => self::RENAMED[$item] ?? $item, PayloadGrammar::listItems($enum)));
+        }
+        if ($element === '<RELATION_IS_DESCRIPTOR>' && !$this->permits($enum, $permitted, false)) {
             // Written like a 5.5.1 role description, "(godmother)", by some programs.
-            $phrase = preg_match('/^\((.*)\)$/s', trim($value), $m) === 1 ? $m[1] : $value;
+            $phrase = preg_match(self::DESCRIPTION, trim($value), $m) === 1 ? $m[1] : $value;
             $enum = self::ROLES[strtolower(trim($phrase))] ?? 'OTHER';
-        } elseif ($element === '<ROLE_IN_EVENT>' && preg_match('/^\((.*)\)$/s', $value, $m) === 1) {
+        } elseif ($element === '<ROLE_IN_EVENT>' && preg_match(self::DESCRIPTION, $value, $m) === 1) {
             [$enum, $phrase] = ['OTHER', $m[1]];
-        } elseif (!$this->permits($enum, $permitted, $set === 'RESN')) {
+        } elseif (!$this->permits($enum, $permitted, $list)) {
             if (!$phrases || !in_array('OTHER', $permitted, true)) {
                 return true;
             }
@@ -125,7 +136,7 @@ final class Enumerations implements NodeRule
             $context->setValue($id, $enum);
         }
         if ($phrase !== null && $phrase !== '') {
-            $context->setValue($document->createNode($id, null, 'PHRASE', null), $phrase);
+            $context->addText($id, 'PHRASE', $phrase);
         }
 
         return true;

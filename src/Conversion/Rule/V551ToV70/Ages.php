@@ -45,7 +45,7 @@ final class Ages implements NodeRule
         [$age, $phrase] = $converted;
         $context->setValue($id, $age === '' ? null : $age);
         if ($phrase !== null) {
-            $context->setValue($document->createNode($id, null, 'PHRASE', null), $phrase);
+            $context->addText($id, 'PHRASE', $phrase);
         }
 
         return true;

@@ -23,7 +23,7 @@ use Korin\Gedcom\Version;
  *   the appendix's example), a dual year whose second part is not the following year the first
  *   one, with the original value as PHRASE;
  * - "INT date (text)" → the date with PHRASE text (the whole value when the date had a dual
- *   year); "(text)" → no date, PHRASE text;
+ *   year or the text has parentheses); "(text)" → no date, PHRASE text;
  * - a value that is not a 5.5.1 date is kept when it is a 7.0 one ("JULIAN 1650", written
  *   without the escape), otherwise it becomes PHRASE of an empty date.
  *
@@ -86,7 +86,7 @@ final class Dates implements NodeRule
             $context->setValue($id, $date === '' ? null : $date);
         }
         if ($phrase !== null) {
-            $context->setValue($document->createNode($id, null, 'PHRASE', null), $phrase);
+            $context->addText($id, 'PHRASE', $phrase);
         }
 
         return true;
@@ -124,7 +124,8 @@ final class Dates implements NodeRule
     /** @return ?array{string, string|true|null} the date and its phrase, true for the whole value */
     private function dateValue(string $value, string $upper): ?array
     {
-        if (preg_match('/^\((.+)\)$/s', $value, $m) === 1) {
+        // A phrase with parentheses inside, "(spring) or (summer)", is kept whole.
+        if (preg_match('/^\(([^()]+)\)$/s', $value, $m) === 1) {
             return ['', $m[1]];
         }
         if (preg_match('/^INT (.+?) \((.+)\)$/s', $upper, $m) === 1) {
@@ -132,8 +133,9 @@ final class Dates implements NodeRule
             if ($date === null) {
                 return null;
             }
+            $text = substr($value, strlen($m[1]) + 6, -1);
 
-            return [$date[0], $date[1] ? true : substr($value, strlen($m[1]) + 6, -1)];
+            return [$date[0], $date[1] || strpbrk($text, '()') !== false ? true : $text];
         }
         if (preg_match('/^BET (.+?) AND (.+)$/', $upper, $m) === 1) {
             return $this->compose('BET %s AND %s', $m[1], $m[2]);

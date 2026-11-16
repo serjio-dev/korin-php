@@ -174,11 +174,15 @@ final class V551ToV70Test extends TestCase
     {
         $output = $this->convert(self::HEAD . "0 @I1@ INDI\n1 BIRT\n2 DATE ABT 19\n3 CONC 00\n1 DEAT\n2 DATE 1 1900\n"
             . "1 ASSO @I1@\n2 RELA god@@@@mother\n1 ASSO @I1@\n2 RELA\n1 ASSO @I1@\n2 RELA (godmother)\n"
-            . "1 OBJE\n2 FILE a@@@@b c.jpg\n3 FORM jpg\n2 FILE C://photos/a.jpg\n3 FORM jpg\n0 TRLR\n");
+            . "1 ASSO @I1@\n2 RELA _GODCHILD\n"
+            . "1 OBJE\n2 FILE a@@@@b c.jpg\n3 FORM jpg\n2 FILE C://photos/a.jpg\n3 FORM jpg\n"
+            . "0 @S1@ SOUR\n1 DATA\n2 EVEN birt,dns/can\n2 EVEN birt, deat\n0 TRLR\n");
 
         self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 BIRT\n2 DATE ABT 1900\n1 DEAT\n2 DATE\n3 PHRASE 1 1900\n"
             . "1 ASSO @I1@\n2 ROLE OTHER\n3 PHRASE god@@mother\n1 ASSO @I1@\n2 ROLE OTHER\n1 ASSO @I1@\n2 ROLE GODP\n3 PHRASE godmother\n"
+            . "1 ASSO @I1@\n2 ROLE _GODCHILD\n"
             . "1 OBJE @X1@\n"
+            . "0 @S1@ SOUR\n1 DATA\n2 EVEN birt,dns/can\n2 EVEN BIRT, DEAT\n"
             . "0 @X1@ OBJE\n1 FILE a@@b%20c.jpg\n2 FORM image/jpeg\n1 FILE file:///C:/photos/a.jpg\n2 FORM image/jpeg\n0 TRLR\n", $output);
     }
 

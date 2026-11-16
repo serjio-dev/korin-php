@@ -65,7 +65,7 @@ final class Languages implements NodeRule
         }
         $context->setValue($id, $tag ?? 'und');
         if ($tag === null) {
-            $context->setValue($document->createNode($id, null, '_PHRASE', null), $value);
+            $context->addText($id, '_PHRASE', $value);
         }
 
         return true;

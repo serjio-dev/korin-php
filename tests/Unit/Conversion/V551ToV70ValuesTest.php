@@ -30,6 +30,8 @@ final class V551ToV70ValuesTest extends TestCase
         yield 'interpreted' => ['DATE_VALUE', 'INT 5 MAR 1900 (Fifth of March)', ['5 MAR 1900', 'Fifth of March']];
         yield 'interpreted dual' => ['DATE_VALUE', 'INT 1699/00 (x)', ['1700', 'INT 1699/00 (x)']];
         yield 'phrase' => ['DATE_VALUE', '(Spring, after the flood)', ['', 'Spring, after the flood']];
+        yield 'two phrases' => ['DATE_VALUE', '(spring) or (summer)', ['', '(spring) or (summer)']];
+        yield 'interpreted with parentheses' => ['DATE_VALUE', 'INT 1900 (a) or (b)', ['1900', 'INT 1900 (a) or (b)']];
         yield 'seven date kept' => ['DATE_VALUE', 'julian 1650', ['JULIAN 1650', null]];
         yield 'not a date' => ['DATE_VALUE', 'around Easter', ['', 'around Easter']];
         yield 'hebrew without bce' => ['DATE_VALUE', '@#DHEBREW@ 5000 B.C.', ['', '@#DHEBREW@ 5000 B.C.']];
@@ -87,6 +89,9 @@ final class V551ToV70ValuesTest extends TestCase
         yield 'encoded' => ['most/paths?get#escaped[like]this 100%', 'most/paths%3Fget%23escaped%5Blike%5Dthis%20100%25'];
         yield 'not quite a url' => ['https:/not.a.url', 'https%3A/not.a.url'];
         yield 'url' => ['https://example.com/a b.jpg?x=1#y', 'https://example.com/a%20b.jpg?x=1#y'];
+        yield 'uri without authority' => ['urn:isbn:123', 'urn:isbn:123'];
+        yield 'windows file url' => ['file://C:\photos\a b.jpg', 'file:///C:/photos/a%20b.jpg'];
+        yield 'file url' => ['file:///home/a.jpg', 'file:///home/a.jpg'];
         yield 'non-ascii' => ['фото/Київ.jpg', 'фото/Київ.jpg'];
     }
 

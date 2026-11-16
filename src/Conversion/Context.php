@@ -89,8 +89,10 @@ final class Context
 
     /**
      * A new record before TRLR that the current step converts too, like a record of the input:
-     * what a rule moves or writes into it is in the step's source version (a structure taken out
-     * of a record into a record of its own).
+     * the structures a rule moves into it are converted with it (a structure taken out of a
+     * record into a record of its own). What a rule writes into it is written by the target
+     * version's rules (setValue()), like every structure a rule creates: syntax rules skip
+     * structures that are not from the source.
      */
     public function extractRecord(string $tag, string $xref): int
     {
@@ -116,6 +118,15 @@ final class Context
     public function value(int $node): ?string
     {
         return $this->document->node($node)->valueFor($this->step?->to() ?? $this->document->version());
+    }
+
+    /** A new last substructure with a text value written by setValue(): the PHRASE a value rule keeps the original in, say. */
+    public function addText(int $parent, string $tag, string $value): int
+    {
+        $node = $this->document->createNode($parent, null, $tag, null);
+        $this->setValue($node, $value);
+
+        return $node;
     }
 
     /** Sets a text value by the rules of the current step's target version: its "@" escaping, "\n" as CONT lines. */
