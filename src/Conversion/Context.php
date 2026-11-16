@@ -7,6 +7,7 @@ namespace Korin\Gedcom\Conversion;
 use Korin\Gedcom\ConvertOptions;
 use Korin\Gedcom\Exception\ConversionException;
 use Korin\Gedcom\Severity;
+use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Syntax\Document;
 
 /**
@@ -37,6 +38,14 @@ final class Context
     private ?int $trailer = null;
 
     private bool $trailerFound = false;
+
+    /** @var array<int, ?string> structure URIs of the record last looked up by sourceElement() and of its substructures */
+    private array $uris = [];
+
+    /** @var array<int, bool> whether a structure of the document being converted is an extension or inside one */
+    private array $extensions = [];
+
+    private int $urisRecord = 0;
 
     public function __construct(
         private readonly Document $source,
@@ -91,10 +100,55 @@ final class Context
         return $record;
     }
 
+    /**
+     * Whether a structure is in the input: one a rule created is written by the target version's
+     * rules already (setValue()), so a syntax rule must not rewrite it.
+     */
+    public function isFromSource(int $node): bool
+    {
+        return $this->source->contains($node);
+    }
+
+    /**
+     * A text value read by the rules of the current step's target version: what setValue() wrote,
+     * and any value once the step's syntax rule has rewritten it (5.5.1 → 7.0: TextValues).
+     */
+    public function value(int $node): ?string
+    {
+        return $this->document->node($node)->valueFor($this->step?->to() ?? $this->document->version());
+    }
+
     /** Sets a text value by the rules of the current step's target version: its "@" escaping, "\n" as CONT lines. */
     public function setValue(int $node, ?string $value): void
     {
         $this->document->node($node)->setValueFor($value, $this->step?->to() ?? $this->document->version());
+    }
+
+    /**
+     * The payload element of a structure in the current step's source version ("<DATE_VALUE>"
+     * in 5.5.1; "<MULTIMEDIA_FILE_REFN>" for "<MULTIMEDIA_FILE_REFN>|<NULL>": a value that is
+     * there is that element), found by its place in the source document: a structure a rule
+     * moved keeps what it was. Null for a structure the conversion added, one the source version does not
+     * define there, and anything inside an extension of the document being converted.
+     *
+     * The source document is the input: only the first step of a route can use this (records
+     * go through every step in turn, so there is no document as a later step got it).
+     *
+     * @throws \LogicException in a later step
+     */
+    public function sourceElement(int $node): ?string
+    {
+        if ($this->step !== null && $this->step->from() !== $this->source->version()) {
+            throw new \LogicException('sourceElement() is defined for the first step of a route only');
+        }
+        if (!$this->source->contains($node) || $this->inExtension($this->document->parentOf($node))) {
+            return null;
+        }
+        $uri = $this->sourceUri($node);
+
+        $payload = $uri === null ? null : $this->profile()->structure($uri)?->payload;
+
+        return $payload === null ? null : str_replace('|<NULL>', '', $payload);
     }
 
     /**
@@ -144,6 +198,48 @@ final class Context
         [$added, $this->added] = [$this->added, []];
 
         return $added;
+    }
+
+    private function profile(): Profile
+    {
+        return Profile::for($this->step?->from() ?? $this->source->version());
+    }
+
+    /** Whether a structure of the document being converted is an extension or inside one; cached for one record at a time. */
+    private function inExtension(int $id): bool
+    {
+        if ($id === 0) {
+            return false;
+        }
+        if (isset($this->extensions[$id])) {
+            return $this->extensions[$id];
+        }
+        $parent = $this->document->parentOf($id);
+        if ($parent === 0) {
+            $this->extensions = [];
+        }
+
+        return $this->extensions[$id] = str_starts_with($this->document->tagOf($id), '_') || $this->inExtension($parent);
+    }
+
+    /** Structure URI of a source node; the cache holds one record at a time. */
+    private function sourceUri(int $id): ?string
+    {
+        if (array_key_exists($id, $this->uris)) {
+            return $this->uris[$id];
+        }
+        $parent = $this->source->parentOf($id);
+        if ($parent === 0) {
+            if ($id !== $this->urisRecord) {
+                $this->uris = [];
+                $this->urisRecord = $id;
+            }
+
+            return $this->uris[$id] = $this->profile()->record($this->source->tagOf($id))?->uri;
+        }
+        $above = $this->sourceUri($parent);
+
+        return $this->uris[$id] = $above === null ? null : $this->profile()->structure($above)?->substructure($this->source->tagOf($id))?->uri;
     }
 
     private function insertRecord(string $tag, ?string $xref): int

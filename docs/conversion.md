@@ -21,7 +21,7 @@ Implemented so far:
 | `HEAD.GEDC.FORM` | Removed (7.0 is always lineage-linked) |
 | `CONC` | Joined into one line: 7.0 has no line length limit; `CONT` stays |
 | `@@` anywhere in text | Only a leading `@` is doubled: `a@@b` → `a@b`, `@@ x` stays |
-| `@#…@` in text | Kept as text: `@#DJULIAN@ x` → `@@#DJULIAN@ x`. In `DATE` it is a calendar escape, left to the date rule |
+| `@#…@` in text | Kept as text: `@#DJULIAN@ x` → `@@#DJULIAN@ x`. In a 5.5.1 `DATE` it is a calendar escape, which the date rule converts; elsewhere (a `DATE` inside an extension) it is text like any other |
 | Xref with anything but `A–Z`, `0–9`, `_`, or `@VOID@` (`@fam 1@`, `@note@`) | `@X<n>@`, the next free `n` in record order; every pointer follows. Valid xrefs (`@1@`, `@I1@`) are kept |
 | Pointer to a record that does not exist, compared case-sensitively (`@test@` ≠ `@TEST@`) | `@VOID@`, without a loss entry: the source already has `KV4001` and the name of a missing record is not data |
 | `NOTE` whose pointer leads nowhere (`NOTE @Smith family@`: text written without `@@`) | Text: `NOTE @@Smith family@` |
@@ -33,12 +33,28 @@ Implemented so far:
 | `RFN xyz:123abc`, `RFN x` | `EXID xyz` + `TYPE https://gedcom.io/terms/v7/RFN#123abc` (the conversion the 7.0 term file recommends), `EXID x` + `TYPE https://gedcom.io/terms/v7/RFN` |
 | `RIN x` | `EXID x` + `TYPE https://gedcom.io/terms/v7/RIN#<HEAD.SOUR>` (percent-encoded; no fragment without `HEAD.SOUR`) |
 | `_UID` | `UID`, value unchanged |
+| Calendar escape in `DATE` (`@#DJULIAN@`, `@#DFRENCH R@`) | Calendar name (`JULIAN`, `FRENCH_R`); `@#DROMAN@`, `@#DUNKNOWN@` → `_ROMAN`, `_UNKNOWN` with extension months (`_ROMAN 24 _IUL 15`) |
+| `B.C.` | `BCE` |
+| Dual year `30 JAN 1648/49` | The year by a 1 January new year, the original as `PHRASE`: `DATE 30 JAN 1649` + `PHRASE 30 JAN 1648/49`, as in the 7.0 appendix; `1701/99` (not the following year) keeps the first year |
+| `INT 1900 (text)`, `(text)` | `DATE 1900` + `PHRASE text`, `DATE` without a payload + `PHRASE text`; the whole value as `PHRASE` when the date also had a dual year |
+| A `DATE` that is not a 5.5.1 date | Kept when it is a 7.0 date (`JULIAN 1650`, written without the escape), otherwise `PHRASE` of an empty `DATE`. Keywords and months in uppercase; `CHAN.DATE` and `HEAD.DATE`, which have no `PHRASE` in 7.0, only change case |
+| `AGE` | 7.0 form: `<0Y` → `< 0y`, `11m 99y` → `99y 11m`, a bare number is years; `CHILD`, `INFANT`, `STILLBORN` → `< 8y`, `< 1y`, `0y` + `PHRASE`; anything else `PHRASE` of an empty `AGE` |
+| `LANG` name (`Ukrainian`, any case) | BCP 47 (`uk`); a value that is already a tag stays; anything else `und` + `_PHRASE` (7.0 `LANG` has no `PHRASE`) |
+| Media `FORM` (`jpg`) | Media type (`image/jpeg`); an unknown extension `application/x-<ext>` |
+| `FORM.TYPE` (medium of a file) | `FORM.MEDI` |
+| `FILE` | URL or relative path: `/x` → `file:///x`, `c:\x` → `file:///c:/x`, `\\server\x` → `file://server/x`, `\` → `/`; spaces, `%`, `?`, `#`, `[`, `]` percent-encoded. `..` stays, though 7.0 does not allow it |
+| Enumerations (`PEDI birth`, `SEX f`, `STAT PRE-1970`, `DNS/CAN`) | 7.0 values (`BIRTH`, `F`, `PRE_1970`, `DNS_CAN`); a value 7.0 does not have becomes `OTHER` + `PHRASE` where 7.0 has both (`NAME.TYPE Screen`, `MEDI document`, `ROLE (midwife)`), and stays otherwise |
+| `ASSO.RELA` | `ROLE`: a 7.0 role (`friend` → `FRIEND`), a common word with `PHRASE` (`Godmother` → `GODP`, `neighbor` → `NGHBR`), otherwise `OTHER` + `PHRASE` |
 
 `HEAD.SOUR` names the program and is not a source; inside extensions (`_X`, `_SUBN`) nothing
-is converted but the line syntax. Dates, ages, `LANG`, media values (`FORM`, `FILE`, `MEDI`),
-`ASSO`/`RELA` and `HEAD.SCHMA` follow in 0.3.
+is converted but the line syntax. Values are converted by the 5.5.1 structure they belong to
+(`DATE` in `CHAN` is an exact date, `TYPE` under `FORM` a medium), not by tag alone.
+Structures 7.0 has in another form (`HEAD.FILE`, `RESI` without a value) and `HEAD.SCHMA`
+follow in 0.3.
 
 Not everything the gedcom7code converter does is done here: it strips `@#…@` escapes from
 text (`obsolete @#OLD FORM@ escape` → `obsolete escape`), which drops data, and renames valid
 xrefs (`@1@` → `@S1@`); it drops `SUBN` and its `RIN`, and puts extracted records before the
-record that points to them. Where the two agree, its 7.0 file is the corpus golden file.
+record that points to them. It reads `1701/99` as 1699 (Korin keeps 1701: the second part is
+not the following year, so it is not a new-year dual date) and writes Dogri as `dgr`, which is
+Dogrib (Korin: `doi`). Where the two agree, its 7.0 file is the corpus golden file.

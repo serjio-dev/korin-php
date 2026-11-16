@@ -67,9 +67,9 @@ final class InlineRecords implements NodeRule
                 }
             }
         }
-        // The value is in the source version: this step converts the new record too.
+        // Written by the 7.0 rules, like every structure a rule creates; the moved ones are converted with the new record.
         if ($value !== null && $value !== '') {
-            $document->node($document->createNode($record, null, 'NOTE', null))->setValue($value);
+            $context->setValue($document->createNode($record, null, 'NOTE', null), $value);
         }
         $node->setPointer($xref);
 

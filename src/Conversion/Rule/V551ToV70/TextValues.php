@@ -12,8 +12,9 @@ use Korin\Gedcom\Syntax\Escaping;
 /**
  * Text values by the 7.0 line rules: CONC lines are joined (7.0 has no CONC and no line length
  * limit; CONT stays), and "@" is doubled only at the start of a line instead of everywhere
- * ("with @@ inside" → "with @ inside"). "@#…@" sequences in text are kept as text; in DATE
- * they are calendar escapes, which the date rule converts.
+ * ("with @@ inside" → "with @ inside"). "@#…@" sequences are kept as text ("@#DJULIAN@ x" →
+ * "@@#DJULIAN@ x"); the date rule, which runs after this one, reads calendar escapes in DATE
+ * from that text. Rules after this one read values by the 7.0 rules (Context::value()).
  *
  * @internal
  */
@@ -31,7 +32,7 @@ final class TextValues implements NodeRule
 
     public function node(Document $document, int $id, Context $context): bool
     {
-        if ($document->tagOf($id) !== 'DATE' && $this->changes($document, $id)) {
+        if ($this->changes($document, $id) && $context->isFromSource($id)) {
             $context->setValue($id, $document->node($id)->value());
         }
 
