@@ -32,7 +32,7 @@ final class V70ToV551ValuesTest extends TestCase
         yield 'interpreted' => ["1 BIRT\n2 DATE 5 MAR 1900\n3 PHRASE Fifth of March\n", "1 BIRT\n2 DATE INT 5 MAR 1900 (Fifth of March)\n", []];
         yield 'phrase only' => ["1 BIRT\n2 DATE\n3 PHRASE Spring, after the flood\n", "1 BIRT\n2 DATE (Spring, after the flood)\n", []];
         yield 'phrase with parentheses' => ["1 BIRT\n2 DATE\n3 PHRASE (spring) or (summer)\n", "1 BIRT\n2 DATE (spring) or (summer)\n", []];
-        yield 'phrase of a range stays' => ["1 BIRT\n2 DATE ABT 1900\n3 PHRASE about then\n", "1 BIRT\n2 DATE ABT 1900\n3 PHRASE about then\n", []];
+        yield 'phrase of a range' => ["1 BIRT\n2 DATE ABT 1900\n3 PHRASE about then\n", "1 BIRT\n2 DATE ABT 1900\n3 _PHRASE about then\n", ['KL2001 @I1@/BIRT/DATE/PHRASE extension']];
         yield 'extension calendar' => ["1 BIRT\n2 DATE _MAYAN 1000\n", "1 BIRT\n2 _DATE _MAYAN 1000\n", ['KL3001 @I1@/BIRT/DATE extension']];
         yield 'exact date' => ["1 CHAN\n2 DATE 1 JAN 2020\n3 TIME 10:00\n", "1 CHAN\n2 DATE 1 JAN 2020\n3 TIME 10:00\n", []];
         yield 'age' => ["1 DEAT\n2 AGE > 72y 3m\n", "1 DEAT\n2 AGE >72y 3m\n", []];
@@ -58,7 +58,7 @@ final class V70ToV551ValuesTest extends TestCase
 
         self::assertSame("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @I1@ INDI\n{$five}{$tail}", $down->output());
         self::assertSame($losses, array_map(static fn(\Korin\Gedcom\Conversion\Loss $loss): string => "{$loss->code} {$loss->path} {$loss->storedAs->value}", $down->losses()->entries()));
-        if ($losses === []) {
+        if (!str_starts_with($losses[0] ?? '', 'KL3')) {
             self::assertSame($input, Gedcom::convert($down->document(), Version::V7_0)->output(), 'up again');
         }
     }
@@ -71,7 +71,7 @@ final class V70ToV551ValuesTest extends TestCase
         self::assertStringContainsString("1 LANG Ukrainian\n", $down->output());
         self::assertStringContainsString("1 NAME Me\n1 LANG Hmong\n", $down->output());
         self::assertStringContainsString("1 NAME You\n1 _LANG en-GB\n", $down->output());
-        self::assertSame(['KL3001'], array_map(static fn(\Korin\Gedcom\Conversion\Loss $loss): string => $loss->code, $down->losses()->entries()));
+        self::assertSame(['KL2001', 'KL3001'], array_map(static fn(\Korin\Gedcom\Conversion\Loss $loss): string => $loss->code, $down->losses()->entries()));
     }
 
     /** @return iterable<string, array{string, string}> */

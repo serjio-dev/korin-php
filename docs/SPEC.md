@@ -269,7 +269,8 @@ Conversion runs along a chain of adjacent versions: 4.0 → 5.5 → 5.5.1 ↔ 7.
 | Xref with lowercase letters, spaces, etc. (`@NoTe ref@`) | An xref valid in 7.0 is kept; any other becomes `@X<n>@` (next free `n` in document order) | Kept as is |
 | Pointer to a non-existent record (case-sensitive: `@test@` ≠ `@TEST@`) | `@VOID@` + a diagnostic | — |
 | — | Structure with `@VOID@` | Becomes a `_` tag with its substructures, `LossReport` entry |
-| — | `NO`, `SDATE`, `CREA`, `INIL`, `TRAN`, `CROP`, `SEX X` | `_NO`, `_SDATE`, `_CREA`, `_INIL`, `_TRAN`, `_CROP`, `SEX U` + `_SEX X` |
+| `_NO`, `_SDATE`, … where 5.5.1 has no such structure | `NO`, `SDATE`, …: an extension named after a 7.0 structure is that structure | — |
+| — | `NO`, `SDATE`, `CREA`, `INIL`, `TRAN`, `CROP`, `SEX X`, any structure 5.5.1 does not have where it stands | `_NO`, `_SDATE`, `_CREA`, `_INIL`, `_TRAN` (or `FONE`/`ROMN` where 5.5.1 has the type), `_CROP`, `SEX U` + `_SEX X` |
 
 **Other steps:** 5.5 ↔ 5.5.1 (including `EMAIL`, `FAX`, `WWW`, `MAP`/`LATI`/`LONG`, introduced in 5.5.1); 5.5.5 ↔ 5.5.1 (the stricter 5.5.5 rules apply when writing); 4.0 / 5.0–5.4 → 5.5 (best effort).
 

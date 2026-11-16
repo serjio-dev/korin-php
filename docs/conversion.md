@@ -48,6 +48,7 @@ Implemented so far:
 | `FONE`, `ROMN` (of a name or place) | `TRAN` with `LANG` from the `TYPE`: `hangul` → `ko-Hang`, `kana` → `ja-Kana`, `romaji` → `ja-Latn`, `pinyin` → `zh-Latn-pinyin`, `wadegiles` → `zh-Latn-wadegile`; a `FONE` type only for `FONE`, a `ROMN` type only for `ROMN`; another `TYPE` stays as `_TYPE`, with `LANG und` (`FONE`) or `und-Latn` (`ROMN`); an empty `TYPE` is dropped |
 | `RESI`, `EVEN` without a value | Unchanged: 7.0 requires the payload, but an empty `Text` is one (`1 EVEN` in section 1 of the specification) |
 | — | `HEAD.SCHMA` lists the extension tags the conversion writes with a standard meaning: `_PHRASE https://gedcom.io/terms/v7/PHRASE`, unless the input already has `_PHRASE`; added to an existing `SCHMA`. Known from the prepass, so `HEAD` is complete when it is converted |
+| `_NO`, `_SDATE`, `_CREA`, `_SCHMA`, `_PHRASE` and other extensions named after a 7.0 structure, where 7.0 has it and 5.5.1 does not; `_FAMC @VOID@` and the like; `SEX U` + `_SEX X` | The 7.0 structure (`NO`, `SDATE`, `SEX X`): how the conversion to 5.5.1 writes it. An extension 5.5.1 has the structure for (`_DATE` under `BIRT`) stays |
 | `ASSO.RELA` | `ROLE`: a 7.0 role (`friend` → `FRIEND`), a common word with `PHRASE` (`Godmother` → `GODP`, `neighbor` → `NGHBR`), otherwise `OTHER` + `PHRASE` |
 
 `HEAD.SOUR` names the program and is not a source; inside extensions (`_X`, `_SUBN`) nothing
@@ -96,6 +97,9 @@ back, except for what the loss report lists. Implemented so far:
 | `FILE` | A path: `file:///c:/My%20Photos/a.jpg` → `c:\My Photos\a.jpg`, `file:///x` → `/x`, `file://server/x` → `\\server\x`, a relative path without percent-encoding. Other URLs stay |
 | Enumerations | 5.5.1 case and spelling (`BIRTH` → `birth`, `PRE_1970` → `PRE-1970`, `DNS_CAN` → `DNS/CAN`); `OTHER` + `PHRASE` → the phrase (`(midwife)` for a role in an event) |
 | `ASSO.ROLE` | `RELA`: `GODP` + `PHRASE godmother` → `godmother`, `FRIEND` → `Friend`, `OTHER` + `PHRASE land-lord` → `land-lord` |
+| `TRAN` of a name or place | `FONE`/`ROMN` with `TYPE` where 5.5.1 has the type: `ko-Hang` → `FONE hangul`, `ja-Kana` → `FONE kana`, `ja-Latn` → `ROMN romaji`, `zh-Latn-pinyin` → `ROMN pinyin`, `zh-Latn-wadegile` → `ROMN wadegiles`; `und`/`und-Latn` + `_TYPE x` → `FONE`/`ROMN` + `TYPE x`. Another language → `_TRAN`, `KL2001` |
+| `SEX X` | `SEX U` + `_SEX X`, `KL3002` |
+| A structure 5.5.1 does not have where it stands: `NO`, `SDATE`, `CREA`, `INIL`, `CROP`, `HEAD.SCHMA`, `MIME`/`LANG` of a note, `ASSO` of an event, a `PHRASE` no value could take | An extension with its tag and substructures (`_NO`, `_SDATE`, `_SCHMA`), `KL2001`; converting up gives the structure back |
 
 Every value is chosen so that converting it up gives the same 7.0 value and `PHRASE` again
 (so `ROLE GODP` without a phrase is `RELA Godp`: `Godparent` would come back with a

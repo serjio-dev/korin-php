@@ -39,7 +39,8 @@ final class Schema implements Rule
             return;
         }
         $head = $document->tagOf($record) === 'HEAD' ? $record : $document->createNode(0, null, 'HEAD', null, $record);
-        $schema = $document->node($head)->first('SCHMA');
+        // _SCHMA: a 7.0 SCHMA kept in 5.5.1, which becomes SCHMA again (Extensions).
+        $schema = $document->node($head)->first('SCHMA') ?? $document->node($head)->first('_SCHMA');
         foreach ($schema?->all('TAG') ?? [] as $tag) {
             if (str_starts_with((string) $tag->value(), '_PHRASE ')) {
                 return;

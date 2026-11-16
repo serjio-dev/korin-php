@@ -87,6 +87,25 @@ final class V70ToV551Test extends TestCase
     }
 
     #[Test]
+    public function structuresFiveFiveOneDoesNotHaveBecomeExtensions(): void
+    {
+        $input = "\u{FEFF}" . self::HEAD . "1 SCHMA\n2 TAG _LOC https://example.org/loc\n0 @I1@ INDI\n1 NAME 山田 /太郎/\n2 TRAN Yamada /Taro/\n3 LANG ja-Latn\n"
+            . "2 TRAN やまだ /たろう/\n3 LANG und\n3 _TYPE hiragana\n2 TRAN Jamada\n3 LANG uk\n1 SEX X\n1 NO MARR\n2 DATE TO 1900\n"
+            . "1 BIRT\n2 DATE ABT 1900\n3 PHRASE around then\n2 ASSO @VOID@\n3 ROLE WITN\n1 CREA\n2 DATE 1 JAN 2020\n0 @N1@ SNOTE Text\n1 MIME text/plain\n0 TRLR\n";
+
+        $down = Gedcom::convert(Gedcom::parse($input), Version::V5_5_1);
+        self::assertSame(substr(self::HEAD_551, 0, -13) . "1 _SCHMA\n2 TAG _LOC https://example.org/loc\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME 山田 /太郎/\n2 ROMN Yamada /Taro/\n3 TYPE romaji\n"
+            . "2 FONE やまだ /たろう/\n3 TYPE hiragana\n2 _TRAN Jamada\n3 LANG uk\n1 SEX U\n2 _SEX X\n1 _NO MARR\n2 DATE TO 1900\n"
+            . "1 BIRT\n2 DATE ABT 1900\n3 _PHRASE around then\n2 _ASSO @VOID@\n3 ROLE WITN\n1 _CREA\n2 DATE 1 JAN 2020\n0 @N1@ NOTE Text\n1 _MIME text/plain\n0 TRLR\n", $down->output());
+        self::assertSame(['KL2001 warning line 6 (HEAD/SCHMA)', 'KL2001 warning line 15 (@I1@/NAME/TRAN[2])', 'KL3002 warning line 17 (@I1@/SEX)', 'KL2001 warning line 18 (@I1@/NO)',
+            'KL2001 warning line 22 (@I1@/BIRT/DATE/PHRASE)', 'KL4001 warning line 23 (@I1@/BIRT/ASSO)', 'KL2001 warning line 25 (@I1@/CREA)', 'KL2001 warning line 28 (@N1@/MIME)'], $this->where($down->losses()->entries()));
+        self::assertSame($input, Gedcom::convert($down->document(), Version::V7_0)->output());
+
+        $dropped = Gedcom::convert(Gedcom::parse($input), Version::V5_5_1, (new ConvertOptions())->withPolicy(LossPolicy::DropWithReport));
+        self::assertStringContainsString("1 SEX U\n1 BIRT\n2 DATE ABT 1900\n0 @N1@ NOTE Text\n0 TRLR\n", $dropped->output());
+    }
+
+    #[Test]
     public function upDownUpKeepsWhatTheseRulesConvert(): void
     {
         $input = "\u{FEFF}" . self::HEAD . "1 _SUBN\n2 FAMF Family file\n0 @I1@ INDI\n1 NAME Anna @ home\n1 SNOTE @N1@\n1 UID 1234\n"

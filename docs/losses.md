@@ -68,13 +68,14 @@ reading it. `convertFile()` will convert large files in constant memory.
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
-| `KL2001` | warning | A structure the target version does not have where it stands: kept as an extension with its tag and substructures (`EXID` with a `TYPE` 5.5.1 has no tag for → `_EXID`), or dropped under `DropWithReport` |
+| `KL2001` | warning | A structure the target version does not have where it stands: kept as an extension with its tag and substructures (7.0 → 5.5.1: `NO` → `_NO`, `HEAD.SCHMA` → `_SCHMA`, a `PHRASE` → `_PHRASE`, an `EXID` with a `TYPE` 5.5.1 has no tag for → `_EXID`), or dropped under `DropWithReport`. Converting up again gives the structure back |
 
 ## KL3 — values
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
 | `KL3001` | warning | A value the target version cannot write so that converting back gives it again (7.0 → 5.5.1: a date of an extension calendar, an age in weeks, a language without a 5.5.1 name such as `en-GB`): the structure is kept as an extension with its tag (`_DATE`, `_AGE`, `_LANG`), or dropped under `DropWithReport` |
+| `KL3002` | warning | 7.0 → 5.5.1: `SEX X`, which 5.5.1 does not have, is `SEX U` with `_SEX X` (converting up gives `SEX X` back), or `SEX U` alone under `DropWithReport` |
 
 ## KL4 — references
 
