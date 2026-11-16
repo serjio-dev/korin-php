@@ -146,7 +146,7 @@ final class V551ToV70Test extends TestCase
             . "0 @S1@ SUBM\n1 NAME Korin\n1 LANG Hmong\n"
             . "0 TRLR\n");
 
-        self::assertSame(self::HEAD_70 . "1 LANG uk\n"
+        self::assertSame(self::HEAD_70 . "1 LANG uk\n1 SCHMA\n2 TAG _PHRASE https://gedcom.io/terms/v7/PHRASE\n"
             . "0 @I1@ INDI\n1 SEX M\n1 NAME Anna /Koval/\n2 TYPE OTHER\n3 PHRASE Screen\n1 FAMC @F1@\n2 PEDI BIRTH\n"
             . "1 BIRT\n2 DATE 1700\n3 PHRASE int 1699/00 (as told)\n2 AGE < 0y\n"
             . "1 DEAT\n2 DATE\n3 PHRASE in the war\n2 AGE 0y\n3 PHRASE stillborn\n"
@@ -184,6 +184,49 @@ final class V551ToV70Test extends TestCase
             . "1 OBJE @X1@\n"
             . "0 @S1@ SOUR\n1 DATA\n2 EVEN birt,dns/can\n2 EVEN BIRT, DEAT\n"
             . "0 @X1@ OBJE\n1 FILE a@@b%20c.jpg\n2 FORM image/jpeg\n1 FILE file:///C:/photos/a.jpg\n2 FORM image/jpeg\n0 TRLR\n", $output);
+    }
+
+    #[Test]
+    public function structuresSevenHasInAnotherForm(): void
+    {
+        $output = $this->convert(self::HEAD . "1 FILE tree.ged\n1 LANG Hmong\n0 @I1@ INDI\n"
+            . "1 NAME Kim /Minjun/\n2 FONE 김 /민준/\n3 TYPE hangul\n2 ROMN Gim /Minjun/\n3 TYPE McCune\n"
+            . "1 RESI\n2 PLAC Kyiv\n3 ROMN Kyiv\n0 TRLR\n");
+
+        self::assertSame("\u{FEFF}0 HEAD\n1 SOUR Korin\n1 DATE 1 JAN 2020\n1 GEDC\n2 VERS 7.0\n1 LANG und\n2 _PHRASE Hmong\n"
+            . "1 SCHMA\n2 TAG _PHRASE https://gedcom.io/terms/v7/PHRASE\n0 @I1@ INDI\n"
+            . "1 NAME Kim /Minjun/\n2 TRAN 김 /민준/\n3 LANG ko-Hang\n2 TRAN Gim /Minjun/\n3 LANG und-Latn\n3 _TYPE McCune\n"
+            . "1 RESI\n2 PLAC Kyiv\n3 TRAN Kyiv\n4 LANG und-Latn\n0 TRLR\n", $output);
+    }
+
+    #[Test]
+    public function translationTypesAreReadForTheirKind(): void
+    {
+        $output = $this->convert(self::HEAD . "0 @I1@ INDI\n1 NAME A\n2 FONE a\n3 TYPE\n2 FONE b\n3 TYPE romaji\n2 ROMN c\n3 TYPE Kana\n0 TRLR\n");
+
+        self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 NAME A\n2 TRAN a\n3 LANG und\n2 TRAN b\n3 LANG und\n3 _TYPE romaji\n"
+            . "2 TRAN c\n3 LANG und-Latn\n3 _TYPE Kana\n0 TRLR\n", $output);
+    }
+
+    #[Test]
+    public function schemaIsAddedToAnExistingOneOrANewHead(): void
+    {
+        self::assertSame(
+            self::HEAD_70 . "1 LANG und\n2 _PHRASE Hmong\n1 SCHMA\n2 TAG _X http://x\n2 TAG _PHRASE https://gedcom.io/terms/v7/PHRASE\n0 TRLR\n",
+            $this->convert(self::HEAD . "1 LANG Hmong\n1 SCHMA\n2 TAG _X http://x\n0 TRLR\n"),
+        );
+        self::assertSame(
+            "\u{FEFF}0 HEAD\n1 SCHMA\n2 TAG _PHRASE https://gedcom.io/terms/v7/PHRASE\n1 GEDC\n2 VERS 7.0\n0 @U1@ SUBM\n1 NAME Me\n1 LANG und\n2 _PHRASE Hmong\n0 TRLR\n",
+            $this->convert("0 @U1@ SUBM\n1 NAME Me\n1 LANG Hmong\n0 TRLR\n"),
+        );
+    }
+
+    #[Test]
+    public function schemaLeavesOutTagsTheInputAlreadyHas(): void
+    {
+        $output = $this->convert(self::HEAD . "1 LANG Hmong\n0 @I1@ INDI\n1 _PHRASE own meaning\n0 TRLR\n");
+
+        self::assertSame(self::HEAD_70 . "1 LANG und\n2 _PHRASE Hmong\n0 @I1@ INDI\n1 _PHRASE own meaning\n0 TRLR\n", $output);
     }
 
     #[Test]

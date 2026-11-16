@@ -20,7 +20,7 @@ final class ValueRuleTest extends TestCase
             "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 SEX Female\n1 NAME A/B/C/D\n1 BIRT\n2 AGE 35 years\n1 DEAT Y\n"
             . "1 RESN CONFIDENTIAL, LOCKED, secret\n1 FAMC\n1 SNOTE text\n0 @S1@ SNOTE @I1@\n0 @O1@ OBJE\n"
             . "1 FILE C:\\photos\\a.jpg\n2 FORM jpeg\n1 FILE media/a.jpg\n2 FORM image/jpeg\n0 @N1@ SUBM\n1 NAME Me\n"
-            . "1 LANG Ukrainian\n1 ADDR\n2 CITY Kyiv\n0 TRLR\n",
+            . "1 LANG Ukrainian\n1 ADDR\n2 CITY Kyiv\n0 @F1@ FAM\n1 NCHI\n2 TYPE counted\n0 TRLR\n",
         );
 
         self::assertSame([
@@ -34,7 +34,7 @@ final class ValueRuleTest extends TestCase
             'KV3005 error line 15 (@O1@/FILE[0]): FILE must be a file path: a relative path or an ftp, http, https or file URL',
             'KV3005 error line 16 (@O1@/FILE[0]/FORM): FORM must be a media type, e.g. "image/jpeg"',
             'KV3005 error line 21 (@N1@/LANG): LANG must be a BCP 47 language tag, e.g. "uk" or "en-US"',
-            'KV3001 error line 22 (@N1@/ADDR): ADDR requires a value',
+            'KV3001 error line 25 (@F1@/NCHI): NCHI requires a value',
         ], array_map(static fn(Diagnostic $d): string => (string) $d, Gedcom::validate($doc)->diagnostics()));
     }
 
@@ -43,7 +43,7 @@ final class ValueRuleTest extends TestCase
     {
         $doc = Gedcom::parse(
             "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 SEX _OTHER\n1 BIRT\n2 DATE\n3 PHRASE Spring, year unknown\n"
-            . "2 AGE\n3 PHRASE young\n1 DEAT Y\n1 NOTE First line\n2 CONT second\n1 _EXT\n2 SEX anything\n0 TRLR\n",
+            . "2 AGE\n3 PHRASE young\n1 DEAT Y\n1 RESI\n2 PLAC Kyiv\n1 NOTE First line\n2 CONT second\n1 _EXT\n2 SEX anything\n0 TRLR\n",
         );
 
         self::assertSame([], Gedcom::validate($doc)->diagnostics());

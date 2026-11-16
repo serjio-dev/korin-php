@@ -42,6 +42,9 @@ final class Context
     /** @var array<int, ?string> structure URIs of the record last looked up by sourceElement() and of its substructures */
     private array $uris = [];
 
+    /** @var ?array<string, true> extension tags of the input, collected on first use */
+    private ?array $inputExtensions = null;
+
     /** @var array<int, bool> whether a structure of the document being converted is an extension or inside one */
     private array $extensions = [];
 
@@ -127,6 +130,25 @@ final class Context
         $this->setValue($node, $value);
 
         return $node;
+    }
+
+    /**
+     * Whether the input has a structure with this extension tag. The first call walks every line
+     * of the input once; convertFile() will take the tags from its prepass (SPEC section 7).
+     */
+    public function inputHasExtension(string $tag): bool
+    {
+        if ($this->inputExtensions === null) {
+            $this->inputExtensions = [];
+            foreach ($this->source->walk() as $id) {
+                $found = $this->source->tagOf($id);
+                if ($found[0] === '_') {
+                    $this->inputExtensions[$found] = true;
+                }
+            }
+        }
+
+        return isset($this->inputExtensions[$tag]);
     }
 
     /** Sets a text value by the rules of the current step's target version: its "@" escaping, "\n" as CONT lines. */

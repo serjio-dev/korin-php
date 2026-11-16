@@ -32,6 +32,7 @@ final class V551ToV70 implements Step
     {
         return [
             new Rules\FileHeader(),
+            new Rules\Schema(),
             new Rules\Submissions(),
             new Nodes(
                 new Rules\Xrefs(),
@@ -40,6 +41,7 @@ final class V551ToV70 implements Step
                 new Rules\Identifiers(),
                 new Rules\Uids(),
                 new Rules\TextValues(),
+                new Rules\Translations(),
                 new Rules\Dates(),
                 new Rules\Ages(),
                 new Rules\Languages(),
