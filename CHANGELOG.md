@@ -47,6 +47,15 @@ break the API; such changes are described in `UPGRADE.md`.
   added and removed, the value of `EVEN` becomes its 5.5 `TYPE` or a `NOTE` (`KL3004`, the
   new `StoredAs::Moved`). Converting up turns such extensions back into the structures. A
   7.0 file converted to 5.5 and back has the same fingerprint, except for `KL3` losses.
+- Conversion 5.5.1 ↔ 5.5.5, and so 7.0 and 5.5 ↔ 5.5.5 through 5.5.1: `GEDC.FORM` gets
+  `VERS 5.5.5`, the `SUBM` record `HEAD.SUBM` points to moves after `HEAD` (others become
+  `_SUBM` records, `KL2002`), `SUBN` moves to `HEAD._SUBN`, inline `SOUR` and `OBJE` become
+  records, the value of `ADDR` goes to `ADR1`–`ADR3` (or `_ADDR`, `KL3001`) and comes back,
+  structures with neither a value nor substructures (`BURI`, `BIRT Y`) become extensions
+  (`KL3001`), dates, ages and times are respelled for the stricter 5.5.5 grammars
+  (`05 JAN 50` → `5 JAN 050`, `<1y` → `< 1y`) and back, `SEX X`/`N` become `SEX U` + `_SEX`
+  in 5.5.1 (`KL3002`). A 7.0 file converted to 5.5.5 and back has the same fingerprint,
+  except for `KL3` losses.
 - Every conversion step writes the `Y` of an event the target has no value for as no value
   (`KL3003` when the event has substructures), and 5.5.1 → 7.0 writes an event with neither
   a value nor substructures as `Y`.

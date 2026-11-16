@@ -10,6 +10,7 @@ use Korin\Gedcom\Conversion\StoredAs;
 use Korin\Gedcom\Severity;
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Syntax\Escaping;
 use Korin\Gedcom\Version;
 
 /**
@@ -23,7 +24,10 @@ use Korin\Gedcom\Version;
  * - one more than the target allows (5.5 → 5.5.1: a second PEDI; 5.5.1 → 5.5: a second REPO
  *   of a source) likewise (KL2002);
  * - the value Y of an event the target has no value for (7.0 or 5.5 BURI Y → 5.5.1 BURI) is
- *   removed: an event without substructures means the same, one with them is reported (KL3003).
+ *   removed: an event without substructures means the same, one with them is reported (KL3003);
+ * - 5.5.5 has no structure with neither a value nor substructures: such a structure (1 BURI,
+ *   BIRT Y, whose Y 5.5.5 does not have) becomes an extension (KL3001);
+ * - a record the target does not have (SUBN in 5.5.5) becomes an extension record (KL2001).
  *
  * Converting back gives the structures back (the rule Extensions). The last rule of the walk:
  * it sees the tags the other rules wrote.
@@ -58,6 +62,9 @@ final class Structures implements NodeRule
         if ($parent === 0) {
             $this->uris = [$id => $profile->record($tag)?->uri];
             $this->counts = [];
+            if ($this->uris[$id] === null && $tag[0] !== '_' && !$document->isInvalid($id)) {
+                return $context->unsupported($id, 'KL2001', "{$this->target->value} has no {$tag} record");
+            }
 
             return true;
         }
@@ -80,14 +87,29 @@ final class Structures implements NodeRule
             return $context->unsupported($id, 'KL2002', "{$this->target->value} allows {$max} {$tag} here");
         }
         $this->counts[$key] = ($this->counts[$key] ?? 0) + 1;
-        if ($document->payloadOf($id) === 'Y' && $profile->structure($substructure->uri)?->payload === null) {
+        $payload = $document->payloadOf($id);
+        $empty = !$this->hasSubstructures($document, $id);
+        if ($payload === 'Y' && $profile->structure($substructure->uri)?->payload === null) {
+            if ($empty && $this->target === Version::V5_5_5) {
+                return $this->bare($id, $tag, $context);
+            }
             $document->setPayload($id, null);
-            if ($this->hasSubstructures($document, $id)) {
+            if (!$empty) {
                 $context->loss('KL3003', Severity::Warning, $id, StoredAs::Dropped, "{$this->target->value} {$tag} has no value Y");
             }
+        } elseif ($empty && $this->target === Version::V5_5_5 && ($context->value($id) ?? '') === '' && ($payload === null || !Escaping::isPointer($payload))) {
+            return $this->bare($id, $tag, $context);
         }
 
         return true;
+    }
+
+    /** 5.5.5: "every GEDCOM record without subrecords must have a line value" (1 BURI, BIRT Y without its Y). */
+    private function bare(int $id, string $tag, Context $context): bool
+    {
+        $this->uris[$id] = null;
+
+        return $context->unsupported($id, 'KL3001', "5.5.5 {$tag} needs a value or substructures");
     }
 
     private function hasSubstructures(Document $document, int $id): bool

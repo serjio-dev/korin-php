@@ -9,6 +9,7 @@ use Korin\Gedcom\Conversion\NodeRule;
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Spec\Structure;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Syntax\Escaping;
 use Korin\Gedcom\Version;
 
 /**
@@ -27,11 +28,22 @@ final class Values implements NodeRule
     /** @var ?list<string> */
     private ?array $tags = null;
 
-    /** @param array<string, array<string, string>> $spellings by target element ("<MULTIMEDIA_FORMAT>"): source value (lowercase) => target value */
+    /** @var array<string, ?Structure> target structures by tag path ("INDI BIRT DATE") */
+    private array $targets = [];
+
+    /**
+     * @param array<string, array<string, string>> $spellings by target element ("<MULTIMEDIA_FORMAT>"): source value (lowercase) => target value
+     * @param bool                                 $grammars  whether dates, ages and lengths must fit too (to and from 5.5.5)
+     * @param ?\Closure(string, string): ?string   $respell   target grammar ("AGE_AT_EVENT") and value => the target's spelling of a value that does not fit (5.5.5 "<1y" → "< 1y")
+     * @param list<string>                         $kept      target elements whose values stay when none of their spellings fits (5.5.1 programs write FORM png)
+     */
     public function __construct(
         private readonly Version $from,
         private readonly Version $to,
         private readonly array $spellings = [],
+        private readonly bool $grammars = false,
+        private readonly ?\Closure $respell = null,
+        private readonly array $kept = [],
     ) {}
 
     public function needsPrepass(): bool
@@ -39,14 +51,15 @@ final class Values implements NodeRule
         return false;
     }
 
-    /** The tags of the structures with an enumeration or a pointer in either version. */
+    /** The tags of the structures with an enumeration or a pointer in either version; with grammars, also those with a grammar or a literal. */
     public function tags(): array
     {
         if ($this->tags === null) {
             $tags = [];
             foreach ([Profile::for($this->from), Profile::for($this->to)] as $profile) {
                 foreach (self::structures($profile) as $structure) {
-                    if (Payloads::enumerated($profile, $structure) !== null || $structure->pointerTarget() !== null) {
+                    if (Payloads::enumerated($profile, $structure) !== null || $structure->pointerTarget() !== null
+                        || ($this->grammars && $this->typed($profile, $structure))) {
                         $tags[$structure->tag] = true;
                     }
                 }
@@ -64,27 +77,61 @@ final class Values implements NodeRule
         if ($parent === 0 || $document->isInvalid($id) || $context->inExtension($id) || ($document->tagOf($id) === 'CHAR' && $document->parentOf($parent) === 0)) {
             return true;
         }
-        $source = $context->sourceStructure($id);
-        $tags = [$document->tagOf($id)];
+        $path = $document->tagOf($id);
         for ($above = $parent; $above !== 0; $above = $document->parentOf($above)) {
-            array_unshift($tags, $document->tagOf($above));
+            $path = $document->tagOf($above) . ' ' . $path;
         }
         $profile = Profile::for($this->to);
-        $target = $profile->resolve($tags);
+        $target = array_key_exists($path, $this->targets) ? $this->targets[$path] : ($this->targets[$path] = $profile->resolve(explode(' ', $path)));
         $payload = $document->payloadOf($id);
-        if ($source === null || $target === null || Payloads::fits($profile, $target, $payload)
-            || !Payloads::fits(Profile::for($this->from), $source, $payload) || ($payload === 'Y' && $target->payload === null)) {
+        $value = $this->value($document, $id, $payload, $context);
+        if ($target === null || Payloads::fits($profile, $target, $value, $this->grammars)) {
             return true;
         }
-        $spelling = $this->spellings[(string) Payloads::enumerated($profile, $target)][strtolower((string) $payload)] ?? null;
-        if ($spelling !== null) {
-            $document->setPayload($id, $spelling);
+        $source = $context->sourceStructure($id);
+        if ($source === null || !Payloads::fits(Profile::for($this->from), $source, $value, $this->grammars) || ($value === 'Y' && $target->payload === null)) {
+            return true;
+        }
+        $element = Payloads::enumerated($profile, $target) ?? (preg_match('/<[A-Z_0-9]+>/', (string) $target->payload, $m) === 1 ? $m[0] : '');
+        $spelled = $value === null ? null : $this->spellings[$element][strtolower($value)] ?? ($this->respell === null ? null : ($this->respell)($profile->type($element) ?? '', $value));
+        $kept = in_array($element, $this->kept, true);
+        if ($spelled !== null && ($kept || Payloads::fits($profile, $target, $spelled, $this->grammars))) {
+            $context->setValue($id, $spelled);
 
+            return true;
+        }
+        if ($kept) {
             return true;
         }
         $tag = $document->tagOf($id);
 
-        return $context->unsupported($id, 'KL3001', $payload === null ? "{$this->to->value} {$tag} needs a value" : "{$this->to->value} {$tag} has no such value");
+        return $context->unsupported($id, 'KL3001', $value === null ? "{$this->to->value} {$tag} needs a value" : "{$this->to->value} {$tag} has no such value");
+    }
+
+    /** The value of a structure; the payload but for continuation lines and escapes, and faster to read. */
+    private function value(Document $document, int $id, ?string $payload, Context $context): ?string
+    {
+        if ($payload !== null && Escaping::isPointer($payload)) {
+            return $payload;
+        }
+        $first = $document->hasChildren($id) ? $document->childIds($id)[0] : null;
+        if (($first === null || ($document->tagOf($first) !== 'CONC' && $document->tagOf($first) !== 'CONT')) && ($payload === null || !str_contains($payload, '@'))) {
+            return $payload;
+        }
+
+        return $context->value($id);
+    }
+
+    /** Whether a payload has an alternative other than text: a grammar ("<DATE_VALUE>"), a literal ("Y"). */
+    private function typed(Profile $profile, Structure $structure): bool
+    {
+        foreach ($structure->payload === null ? [] : explode('|', $structure->payload) as $alternative) {
+            if ($alternative !== '<NULL>' && (!str_starts_with($alternative, '<') || $profile->type($alternative) !== null)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return array<string, Structure> every structure of a version, by URI */

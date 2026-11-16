@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * SPEC section 10, test type 5: converting every 7.0 input of the corpus to 5.5.1 or 5.5 and
+ * SPEC section 10, test type 5: converting every 7.0 input of the corpus to 5.5.1, 5.5 or 5.5.5 and
  * back gives the same fingerprint, except for the structures the loss report names with a KL3
  * code (values the older version cannot write so that they come back). Percent-encodings of
  * FILE compare in uppercase, as URLs do.
@@ -33,7 +33,7 @@ final class UpDownUpTest extends TestCase
             /** @var array{input: array{file: string, version: string}} $case */
             $case = Yaml::parseFile($file);
             if ($case['input']['version'] === '7.0' && str_ends_with($case['input']['file'], '.ged')) {
-                foreach ([Version::V5_5_1, Version::V5_5] as $via) {
+                foreach ([Version::V5_5_1, Version::V5_5, Version::V5_5_5] as $via) {
                     yield basename(dirname($file)) . ' via ' . $via->value => [dirname($file) . '/' . $case['input']['file'], $via];
                 }
             }

@@ -272,7 +272,7 @@ Conversion runs along a chain of adjacent versions: 4.0 → 5.5 → 5.5.1 ↔ 7.
 | `_NO`, `_SDATE`, … where 5.5.1 has no such structure | `NO`, `SDATE`, …: an extension named after a 7.0 structure is that structure | — |
 | — | `NO`, `SDATE`, `CREA`, `INIL`, `TRAN`, `CROP`, `SEX X`, any structure 5.5.1 does not have where it stands | `_NO`, `_SDATE`, `_CREA`, `_INIL`, `_TRAN` (or `FONE`/`ROMN` where 5.5.1 has the type), `_CROP`, `SEX U` + `_SEX X` |
 
-**Other steps:** 5.5 ↔ 5.5.1 (including `EMAIL`, `FAX`, `WWW`, `MAP`/`LATI`/`LONG`, introduced in 5.5.1: extensions in 5.5; media `FORM` moves between the file and the object, a 5.5.1 media record keeps its file as `_FILE`; the value of `EVEN` becomes its `TYPE` or a `NOTE`; see docs/conversion.md); 5.5.5 ↔ 5.5.1 (the stricter 5.5.5 rules apply when writing); 4.0 / 5.0–5.4 → 5.5 (best effort).
+**Other steps:** 5.5 ↔ 5.5.1 (including `EMAIL`, `FAX`, `WWW`, `MAP`/`LATI`/`LONG`, introduced in 5.5.1: extensions in 5.5; media `FORM` moves between the file and the object, a 5.5.1 media record keeps its file as `_FILE`; the value of `EVEN` becomes its `TYPE` or a `NOTE`; see docs/conversion.md); 5.5.5 ↔ 5.5.1 (the stricter 5.5.5 rules apply when writing: inline sources and media become records, `ADDR` loses its value to `ADR1`–`ADR3`, a structure with neither a value nor substructures becomes an extension, dates, ages and times are respelled, the `SUBM` record follows `HEAD`); 4.0 / 5.0–5.4 → 5.5 (best effort).
 
 **Conversion output conventions** (the corpus golden files depend on them; changing any of them changes expected results):
 
@@ -296,8 +296,9 @@ Some steps cannot write output before they have seen the whole input, because th
 | --- | --- | --- |
 | Renaming xrefs and `@VOID@` | A pointer may precede the record it points to; a new name must not collide with an xref further down the file | 5.5.1 → 7.0 |
 | `HEAD.SCHMA` | An extension may first appear in the last record, while `SCHMA` sits in `HEAD` | 5.5.1 → 7.0 |
-| `SUBN` → `HEAD._SUBN` | The `SUBN` record can be anywhere | 5.5.1 → 7.0 |
-| Xrefs for extracted `OBJE` / `SOUR` | The set of all used xrefs is needed | 5.5.1 → 7.0 |
+| `SUBN` → `HEAD._SUBN` | The `SUBN` record can be anywhere | 5.5.1 → 7.0, 5.5.5 |
+| Xrefs for extracted `OBJE` / `SOUR` | The set of all used xrefs is needed | 5.5.1 → 7.0, 5.5.5 |
+| The `SUBM` record directly after `HEAD` | The record may be anywhere | 5.5.1 → 5.5.5 |
 | `HEAD._SUBN` → `SUBN` record | The new record's xref must not be one the input has | 7.0 → 5.5.1 |
 | Encoding | A heuristic at the start of the file can be wrong (CP1251 / CP1252 look the same on Latin text) | Any, from an 8-bit encoding |
 
@@ -306,7 +307,7 @@ Some steps cannot write output before they have seen the whole input, because th
 1. **Prepass** — lexer only, no tree (roughly a third of the full read time). Collects the set of xrefs and record offsets, extension tags, the `SUBN` offset, and the encoding over the whole file. This is the same information as the `open()` index, so `convertFile()` is built on `open()` plus a sequential walk rather than separate code.
 2. **Main pass** — records one at a time: conversion steps, writing. New records (extracted `OBJE` / `SOUR`) are accumulated and written before `TRLR`.
 
-**Prepass only when needed.** Each step declares `needsPrepass()`; the chain runs a prepass only if at least one step needs it. 5.5 ↔ 5.5.1 ↔ 5.5.5 are single-pass; 7.0 → 5.5.1 needs only the xrefs.
+**Prepass only when needed.** Each step declares `needsPrepass()`; the chain runs a prepass only if at least one step needs it. 5.5 ↔ 5.5.1 are single-pass; 7.0 → 5.5.1 and 5.5.5 → 5.5.1 need only the xrefs (a `SUBN` record from `HEAD._SUBN` gets a new one).
 
 **Inputs that cannot be read twice:**
 

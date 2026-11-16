@@ -307,14 +307,15 @@ final class Document
 
     /**
      * @internal moves a substructure with its own substructures under another structure,
-     * before $before or last (conversion); ids are kept, the moved lines are written anew
+     * before $before or last, or a record among the records (5.5.5 SUBM after HEAD; parent 0)
+     * (conversion); ids are kept, the moved lines are written anew
      */
     public function moveNode(int $id, int $parent, ?int $before = null): void
     {
         $this->assertAttached($id);
         $this->assertAttached($parent);
-        if ($this->parent[$id] === self::ROOT || $parent === self::ROOT) {
-            throw new \InvalidArgumentException('Only substructures move');
+        if (($this->parent[$id] === self::ROOT) !== ($parent === self::ROOT)) {
+            throw new \InvalidArgumentException('Records stay records and substructures substructures');
         }
         for ($node = $parent; $node > 0; $node = $this->parent[$node]) {
             if ($node === $id) {

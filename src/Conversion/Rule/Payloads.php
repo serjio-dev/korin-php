@@ -4,21 +4,35 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Conversion\Rule;
 
+use Korin\Gedcom\Severity;
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Spec\Structure;
 use Korin\Gedcom\Syntax\Escaping;
+use Korin\Gedcom\Validation\Rule\Payloads5;
 use Korin\Gedcom\Version;
 
 /**
  * Whether a structure of a version can have a payload, as far as the conversion between
- * versions needs to know: a value or none, a pointer or not, and enumeration values. Other
- * grammars (dates, ages) are left to the value rules: any text fits them here.
+ * versions needs to know: a value or none, a pointer or not, and enumeration values; with
+ * $grammars, in 5.x the grammars too (dates, ages, times, 5.5.5 place names), as the validator
+ * checks them. Without, any text fits a grammar: the value rules convert dates and ages.
+ * Lengths (5.5.5 {Size=min:max}, KV3010) are never checked: a value too long for 5.5.5 is still
+ * its value, and the printed sizes contradict the listed values (NAME_TYPE aka, {Size=5:30}).
  *
  * @internal
  */
 final class Payloads
 {
-    public static function fits(Profile $profile, Structure $structure, ?string $payload): bool
+    /** @var array<string, Payloads5> by version */
+    private static array $validators = [];
+
+    /** Values checked lately by version, element and value: at most this many. */
+    private const CHECKED = 4096;
+
+    /** @var array<string, bool> */
+    private static array $checked = [];
+
+    public static function fits(Profile $profile, Structure $structure, ?string $payload, bool $grammars = false): bool
     {
         $type = $structure->payload;
         if ($payload === null || $payload === '') {
@@ -50,7 +64,8 @@ final class Payloads
                 }
                 continue;
             }
-            if ($profile->type($alternative) !== 'ENUM' || self::listed($profile->enumeration($alternative), $payload)) {
+            $type = $profile->type($alternative);
+            if ($type === 'ENUM' ? self::listed($profile->enumeration($alternative), $payload) : !$grammars || self::valid($profile, $structure, $alternative, $payload)) {
                 return true;
             }
         }
@@ -68,6 +83,27 @@ final class Payloads
         }
 
         return null;
+    }
+
+    private static function valid(Profile $profile, Structure $structure, string $element, string $value): bool
+    {
+        $version = $profile->version()->value;
+        // Files repeat their dates and places; the grammars are the slow part of a conversion.
+        $key = "{$version} {$element} {$value}";
+        if (isset(self::$checked[$key])) {
+            return self::$checked[$key];
+        }
+        if (count(self::$checked) >= self::CHECKED) {
+            self::$checked = [];
+        }
+        $validator = self::$validators[$version] ??= new Payloads5($profile);
+        foreach ($validator->problems($structure, $element, $value) as [$code, $severity]) {
+            if ($severity === Severity::Error && $code !== 'KV3010') {
+                return self::$checked[$key] = false;
+            }
+        }
+
+        return self::$checked[$key] = true;
     }
 
     /** @param list<string> $permitted */
