@@ -19,8 +19,11 @@ break the API; such changes are described in `UPGRADE.md`.
   a BOM, `CHAR` and `GEDC.FORM` removed, `CONC` joined, `@` escaped by the 7.0 rules, xrefs
   invalid in 7.0 renamed to `@X<n>@`, dangling pointers to `@VOID@`, `NOTE` records and
   pointers to them to `SNOTE`; `SUBN` to `HEAD._SUBN`, inline `OBJE` and `SOUR` to records,
-  `AFN`/`RFN`/`RIN` to `EXID` with the 7.0 `TYPE` URIs, `_UID` to `UID`. Dates, ages, `LANG`,
-  media values, `ASSO` and `SCHMA` follow.
+  `AFN`/`RFN`/`RIN` to `EXID` with the 7.0 `TYPE` URIs, `_UID` to `UID`; dates (calendar
+  names, `BCE`, dual years and date phrases to `PHRASE`), ages, `LANG` to BCP 47, media `FORM`
+  to media types, `FILE` to URLs, `FORM.TYPE` to `MEDI`, `ASSO.RELA` to `ROLE` and
+  enumeration values in 7.0 form (`OTHER` + `PHRASE` for values 7.0 does not have).
+  `HEAD.SCHMA` and structures 7.0 has in another form follow.
 - `WriteOptions::normalize()` writes every line anew by the version's rules with one line
   terminator; `withEncoding()` writes in another encoding (unchanged lines are re-encoded in
   preserve mode), `withBom()` sets the byte order mark, by default by the version (SPEC

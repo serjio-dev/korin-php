@@ -44,12 +44,17 @@ final readonly class Node
     /** Text value with CONC/CONT joined (CONT as "\n") and "@" escaping removed; null for pointers and empty lines. */
     public function value(): ?string
     {
+        return $this->valueFor($this->document->version());
+    }
+
+    /** @internal value() by the rules of another version than the document's (conversion) */
+    public function valueFor(Version $version): ?string
+    {
         $this->document->assertAttached($this->id);
         $payload = $this->document->payloadOf($this->id);
         if ($payload !== null && Escaping::isPointer($payload)) {
             return null;
         }
-        $version = $this->document->version();
         $value = $payload === null ? null : Escaping::unescape($payload, $version);
         foreach ($this->document->childIds($this->id) as $child) {
             $tag = $this->document->tagOf($child);

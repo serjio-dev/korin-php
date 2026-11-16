@@ -40,6 +40,11 @@ final class V551ToV70 implements Step
                 new Rules\Identifiers(),
                 new Rules\Uids(),
                 new Rules\TextValues(),
+                new Rules\Dates(),
+                new Rules\Ages(),
+                new Rules\Languages(),
+                new Rules\Media(),
+                new Rules\Enumerations(),
             ),
         ];
     }

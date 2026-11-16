@@ -74,7 +74,7 @@ final class V551ToV70Test extends TestCase
             . "1 NOTE @@ leading, @#DJULIAN@ inside\n"
             . "1 NOTE @@#DJULIAN@ leading escape\n"
             . "1 NOTE Plain\n2 CONT second line\n"
-            . "1 BIRT\n2 DATE @#DJULIAN@ 1 JAN 1700\n"
+            . "1 BIRT\n2 DATE JULIAN 1 JAN 1700\n"
             . '1 NOTE ' . $long . "\n"
             . "0 TRLR\n", $output);
     }
@@ -113,7 +113,7 @@ final class V551ToV70Test extends TestCase
             . "1 SOUR @S1@\n2 PAGE 3\n"
             . "1 _X\n2 SOUR kept inside an extension\n"
             . "0 @N1@ SNOTE n\n0 @S1@ SOUR\n1 TITL Register\n"
-            . "0 @X1@ OBJE\n1 FILE a.jpg\n2 FORM jpg\n1 _MARK x\n"
+            . "0 @X1@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n1 _MARK x\n"
             . "0 @X2@ SOUR\n1 NOTE Letters of 1920\n2 CONT and @ 1921\n"
             . "0 TRLR\n", $output);
     }
@@ -129,6 +129,70 @@ final class V551ToV70Test extends TestCase
             . "1 EXID reg\n2 TYPE https://gedcom.io/terms/v7/RFN#9\n"
             . "1 EXID 42\n2 TYPE https://gedcom.io/terms/v7/RIN\n"
             . "1 UID 0A1B\n1 _X\n2 RIN 5\n2 _UID 1\n0 TRLR\n", $output);
+    }
+
+    #[Test]
+    public function valuesFollowTheSevenTypes(): void
+    {
+        $output = $this->convert(self::HEAD . "1 LANG ukrainian\n"
+            . "0 @I1@ INDI\n1 SEX m\n1 NAME Anna /Koval/\n2 TYPE Screen\n1 FAMC @F1@\n2 PEDI birth\n"
+            . "1 BIRT\n2 DATE int 1699/00 (as told)\n2 AGE <0Y\n"
+            . "1 DEAT\n2 DATE (in the war)\n2 AGE stillborn\n"
+            . "1 ASSO @I2@\n2 RELA neighbor\n"
+            . "1 OBJE @O1@\n1 _X\n2 DATE @#DJULIAN@ 1700\n"
+            . "1 CHAN\n2 DATE 1 jan 2020\n"
+            . "0 @I2@ INDI\n0 @F1@ FAM\n1 CHIL @I1@\n"
+            . "0 @O1@ OBJE\n1 FILE c:\\photos\\my file.jpg\n2 FORM JPG\n3 TYPE photo\n"
+            . "0 @S1@ SUBM\n1 NAME Korin\n1 LANG Hmong\n"
+            . "0 TRLR\n");
+
+        self::assertSame(self::HEAD_70 . "1 LANG uk\n"
+            . "0 @I1@ INDI\n1 SEX M\n1 NAME Anna /Koval/\n2 TYPE OTHER\n3 PHRASE Screen\n1 FAMC @F1@\n2 PEDI BIRTH\n"
+            . "1 BIRT\n2 DATE 1700\n3 PHRASE int 1699/00 (as told)\n2 AGE < 0y\n"
+            . "1 DEAT\n2 DATE\n3 PHRASE in the war\n2 AGE 0y\n3 PHRASE stillborn\n"
+            . "1 ASSO @I2@\n2 ROLE NGHBR\n3 PHRASE neighbor\n"
+            . "1 OBJE @O1@\n1 _X\n2 DATE @@#DJULIAN@ 1700\n"
+            . "1 CHAN\n2 DATE 1 JAN 2020\n"
+            . "0 @I2@ INDI\n0 @F1@ FAM\n1 CHIL @I1@\n"
+            . "0 @O1@ OBJE\n1 FILE file:///c:/photos/my%20file.jpg\n2 FORM image/jpeg\n3 MEDI PHOTO\n"
+            . "0 @S1@ SUBM\n1 NAME Korin\n1 LANG und\n2 _PHRASE Hmong\n"
+            . "0 TRLR\n", $output);
+    }
+
+    #[Test]
+    public function valuesAreConvertedByTheirStructureNotByTag(): void
+    {
+        $output = $this->convert(self::HEAD . "1 LANG en-GB\n0 @S1@ SOUR\n1 DATA\n2 EVEN BIRT\n3 DATE 1850\n"
+            . "0 @I1@ INDI\n1 EVEN Fair\n2 DATE 1850\n2 TYPE Show\n1 SEX M\n2 _NOTE u\n0 TRLR\n");
+
+        self::assertSame(self::HEAD_70 . "1 LANG en-GB\n0 @S1@ SOUR\n1 DATA\n2 EVEN BIRT\n3 DATE\n4 PHRASE 1850\n"
+            . "0 @I1@ INDI\n1 EVEN Fair\n2 DATE 1850\n2 TYPE Show\n1 SEX M\n2 _NOTE u\n0 TRLR\n", $output);
+    }
+
+    #[Test]
+    public function valuesAreReadAfterTheLineSyntaxIsConverted(): void
+    {
+        $output = $this->convert(self::HEAD . "0 @I1@ INDI\n1 BIRT\n2 DATE ABT 19\n3 CONC 00\n1 DEAT\n2 DATE 1 1900\n"
+            . "1 ASSO @I1@\n2 RELA god@@@@mother\n1 ASSO @I1@\n2 RELA\n1 ASSO @I1@\n2 RELA (godmother)\n"
+            . "1 ASSO @I1@\n2 RELA _GODCHILD\n"
+            . "1 OBJE\n2 FILE a@@@@b c.jpg\n3 FORM jpg\n2 FILE C://photos/a.jpg\n3 FORM jpg\n"
+            . "0 @S1@ SOUR\n1 DATA\n2 EVEN birt,dns/can\n2 EVEN birt, deat\n0 TRLR\n");
+
+        self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 BIRT\n2 DATE ABT 1900\n1 DEAT\n2 DATE\n3 PHRASE 1 1900\n"
+            . "1 ASSO @I1@\n2 ROLE OTHER\n3 PHRASE god@@mother\n1 ASSO @I1@\n2 ROLE OTHER\n1 ASSO @I1@\n2 ROLE GODP\n3 PHRASE godmother\n"
+            . "1 ASSO @I1@\n2 ROLE _GODCHILD\n"
+            . "1 OBJE @X1@\n"
+            . "0 @S1@ SOUR\n1 DATA\n2 EVEN birt,dns/can\n2 EVEN BIRT, DEAT\n"
+            . "0 @X1@ OBJE\n1 FILE a@@b%20c.jpg\n2 FORM image/jpeg\n1 FILE file:///C:/photos/a.jpg\n2 FORM image/jpeg\n0 TRLR\n", $output);
+    }
+
+    #[Test]
+    public function inlineMediaKeepsItsFiveFiveOneMeaning(): void
+    {
+        $output = $this->convert(self::HEAD . "0 @I1@ INDI\n1 OBJE\n2 FILE a.wav\n3 FORM wav\n4 MEDI Audio\n0 TRLR\n");
+
+        self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 OBJE @X1@\n"
+            . "0 @X1@ OBJE\n1 FILE a.wav\n2 FORM audio/wav\n3 MEDI AUDIO\n0 TRLR\n", $output);
     }
 
     #[Test]
