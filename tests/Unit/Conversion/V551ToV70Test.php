@@ -80,6 +80,58 @@ final class V551ToV70Test extends TestCase
     }
 
     #[Test]
+    public function submissionRecordsMoveIntoTheHeader(): void
+    {
+        $output = $this->convert(self::HEAD . "1 SUBN @S1@\n"
+            . "0 @S1@ SUBN\n1 FAMF Koval\n1 NOTE a@@b\n"
+            . "0 @I1@ INDI\n"
+            . "0 @S2@ SUBN\n1 ANCE 2\n"
+            . "0 TRLR\n");
+
+        self::assertSame(self::HEAD_70
+            . "1 _SUBN\n2 FAMF Koval\n2 NOTE a@b\n1 _SUBN\n2 ANCE 2\n"
+            . "0 @I1@ INDI\n"
+            . "0 TRLR\n", $output);
+    }
+
+    #[Test]
+    public function inlineMediaAndSourcesBecomeRecords(): void
+    {
+        $output = $this->convert(self::HEAD
+            . "0 @I1@ INDI\n"
+            . "1 OBJE\n2 FILE a.jpg\n3 FORM jpg\n2 TITL Portrait\n2 _MARK x\n"
+            . "1 SOUR Letters of\n2 CONC  1920\n2 CONT and @@ 1921\n2 TEXT Dear Anna\n2 NOTE @N1@\n"
+            . "1 SOUR @S1@\n2 PAGE 3\n"
+            . "1 _X\n2 SOUR kept inside an extension\n"
+            . "0 @N1@ NOTE n\n0 @S1@ SOUR\n1 TITL Register\n"
+            . "0 TRLR\n");
+
+        self::assertSame(self::HEAD_70
+            . "0 @I1@ INDI\n"
+            . "1 OBJE @X1@\n2 TITL Portrait\n"
+            . "1 SOUR @X2@\n2 DATA\n3 TEXT Dear Anna\n2 SNOTE @N1@\n"
+            . "1 SOUR @S1@\n2 PAGE 3\n"
+            . "1 _X\n2 SOUR kept inside an extension\n"
+            . "0 @N1@ SNOTE n\n0 @S1@ SOUR\n1 TITL Register\n"
+            . "0 @X1@ OBJE\n1 FILE a.jpg\n2 FORM jpg\n1 _MARK x\n"
+            . "0 @X2@ SOUR\n1 NOTE Letters of 1920\n2 CONT and @ 1921\n"
+            . "0 TRLR\n", $output);
+    }
+
+    #[Test]
+    public function identifiersBecomeExidAndUidLosesItsUnderscore(): void
+    {
+        $head = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n";
+        $output = $this->convert($head . "0 @I1@ INDI\n1 AFN 1A\n1 RFN reg:9\n1 RIN 42\n1 _UID 0A1B\n1 _X\n2 RIN 5\n2 _UID 1\n0 TRLR\n");
+
+        self::assertSame("\u{FEFF}0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n"
+            . "1 EXID 1A\n2 TYPE https://gedcom.io/terms/v7/AFN\n"
+            . "1 EXID reg\n2 TYPE https://gedcom.io/terms/v7/RFN#9\n"
+            . "1 EXID 42\n2 TYPE https://gedcom.io/terms/v7/RIN\n"
+            . "1 UID 0A1B\n1 _X\n2 RIN 5\n2 _UID 1\n0 TRLR\n", $output);
+    }
+
+    #[Test]
     public function theOutputIsValidSevenAndTheInputIsNotChanged(): void
     {
         $input = "0 HEAD\r\n1 SOUR Korin\r\n1 SUBM @u@\r\n1 GEDC\r\n2 VERS 5.5.1\r\n2 FORM LINEAGE-LINKED\r\n1 CHAR UTF-8\r\n"

@@ -113,6 +113,26 @@ final class DocumentTest extends TestCase
     }
 
     #[Test]
+    public function moveNodeKeepsIdsAndWritesTheMovedLinesAnew(): void
+    {
+        $doc = Gedcom::parse(self::FILE);
+        $note = $doc->find('@I1@/NOTE');
+        $wife = $doc->find('@F1@/WIFE');
+        self::assertNotNull($note);
+        self::assertNotNull($wife);
+
+        $doc->moveNode($note->id(), $wife->id());
+
+        $moved = $doc->find('@F1@/WIFE/NOTE');
+        self::assertSame($note->id(), $moved?->id());
+        self::assertSame("Line one\nline @two and more", $moved->value());
+        self::assertStringContainsString("1 FAMS @F1@\n0 @F1@ FAM\n1 WIFE @I1@\n2 NOTE Line one\n3 CONT line @@two\n3 CONC  and more\n0 TRLR\n", Gedcom::serialize($doc));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $doc->moveNode($wife->id(), $note->id());
+    }
+
+    #[Test]
     public function setXrefMayLeaveDuplicatesAndRecordFindsTheFirst(): void
     {
         $doc = Gedcom::parse("0 HEAD\n0 @a b@ INDI\n0 @a b@ FAM\n0 @I1@ SUBM\n0 TRLR\n");

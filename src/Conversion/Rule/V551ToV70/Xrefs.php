@@ -35,6 +35,11 @@ final class Xrefs implements NodeRule
         return true;
     }
 
+    public function tags(): ?array
+    {
+        return null;
+    }
+
     public function node(Document $document, int $id, Context $context): bool
     {
         if ($this->xrefs === null) {

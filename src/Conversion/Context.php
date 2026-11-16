@@ -28,7 +28,7 @@ final class Context
 
     private int $nextXref = 1;
 
-    /** @var list<int> records added by the current step */
+    /** @var list<array{int, bool}> records added by the current step, and whether it converts them too */
     private array $added = [];
 
     private ?Step $step = null;
@@ -69,21 +69,24 @@ final class Context
      */
     public function addRecord(string $tag, ?string $xref = null, ?string $value = null): int
     {
-        if (!$this->trailerFound || ($this->trailer !== null && !$this->document->contains($this->trailer))) {
-            $this->trailerFound = true;
-            $this->trailer = null;
-            foreach ($this->document->childIds(0) as $id) {
-                if ($this->document->tagOf($id) === 'TRLR') {
-                    $this->trailer = $id;
-                    break;
-                }
-            }
-        }
-        $record = $this->document->createNode(0, $xref, $tag, null, $this->trailer);
+        $record = $this->insertRecord($tag, $xref);
         if ($value !== null) {
             $this->setValue($record, $value);
         }
-        $this->added[] = $record;
+        $this->added[] = [$record, false];
+
+        return $record;
+    }
+
+    /**
+     * A new record before TRLR that the current step converts too, like a record of the input:
+     * what a rule moves or writes into it is in the step's source version (a structure taken out
+     * of a record into a record of its own).
+     */
+    public function extractRecord(string $tag, string $xref): int
+    {
+        $record = $this->insertRecord($tag, $xref);
+        $this->added[] = [$record, true];
 
         return $record;
     }
@@ -133,12 +136,29 @@ final class Context
     /**
      * @internal for Converter
      *
-     * @return list<int> records added since the last call
+     * @return list<array{int, bool}> records added since the last call, and whether the step that
+     *                               added them converts them too
      */
     public function takeAdded(): array
     {
         [$added, $this->added] = [$this->added, []];
 
         return $added;
+    }
+
+    private function insertRecord(string $tag, ?string $xref): int
+    {
+        if (!$this->trailerFound || ($this->trailer !== null && !$this->document->contains($this->trailer))) {
+            $this->trailerFound = true;
+            $this->trailer = null;
+            foreach ($this->document->childIds(0) as $id) {
+                if ($this->document->tagOf($id) === 'TRLR') {
+                    $this->trailer = $id;
+                    break;
+                }
+            }
+        }
+
+        return $this->document->createNode(0, $xref, $tag, null, $this->trailer);
     }
 }

@@ -26,10 +26,19 @@ Implemented so far:
 | Pointer to a record that does not exist, compared case-sensitively (`@test@` ≠ `@TEST@`) | `@VOID@`, without a loss entry: the source already has `KV4001` and the name of a missing record is not data |
 | `NOTE` whose pointer leads nowhere (`NOTE @Smith family@`: text written without `@@`) | Text: `NOTE @@Smith family@` |
 | `NOTE` record, `NOTE` pointer | `SNOTE` |
+| `SUBN` record, `HEAD.SUBN` | `HEAD._SUBN` with the record's substructures, one per `SUBN`; the record and the pointer are removed |
+| `OBJE` without a pointer | A new `OBJE` record `@X<n>@` (before `TRLR`, in order of appearance) with its substructures; the link keeps `TITL` |
+| `SOUR` with a description instead of a pointer | A new `SOUR` record `@X<n>@` with the description as `NOTE`; `TEXT` moves under a new `DATA` of the citation, `NOTE`, `QUAY` and the rest stay on it |
+| `AFN x` | `EXID x` + `TYPE https://gedcom.io/terms/v7/AFN` |
+| `RFN xyz:123abc`, `RFN x` | `EXID xyz` + `TYPE https://gedcom.io/terms/v7/RFN#123abc` (the conversion the 7.0 term file recommends), `EXID x` + `TYPE https://gedcom.io/terms/v7/RFN` |
+| `RIN x` | `EXID x` + `TYPE https://gedcom.io/terms/v7/RIN#<HEAD.SOUR>` (percent-encoded; no fragment without `HEAD.SOUR`) |
+| `_UID` | `UID`, value unchanged |
 
-Dates, ages, `LANG`, media, `ASSO`/`RELA`, `SUBN`, inline `OBJE`/`SOUR`, identifiers and
-`HEAD.SCHMA` follow in 0.3.
+`HEAD.SOUR` names the program and is not a source; inside extensions (`_X`, `_SUBN`) nothing
+is converted but the line syntax. Dates, ages, `LANG`, media values (`FORM`, `FILE`, `MEDI`),
+`ASSO`/`RELA` and `HEAD.SCHMA` follow in 0.3.
 
 Not everything the gedcom7code converter does is done here: it strips `@#…@` escapes from
 text (`obsolete @#OLD FORM@ escape` → `obsolete escape`), which drops data, and renames valid
-xrefs (`@1@` → `@S1@`). Where the two agree, its 7.0 file is the corpus golden file.
+xrefs (`@1@` → `@S1@`); it drops `SUBN` and its `RIN`, and puts extracted records before the
+record that points to them. Where the two agree, its 7.0 file is the corpus golden file.

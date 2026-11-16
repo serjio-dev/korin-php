@@ -87,8 +87,8 @@ final readonly class Converter
                     $rule->record($work, $record, $context);
                 }
                 // Records added in this step, even by a rule that then removed its own record.
-                foreach ($context->takeAdded() as $added) {
-                    $pending[] = [$added, $step + 1];
+                foreach ($context->takeAdded() as [$added, $again]) {
+                    $pending[] = [$added, $again ? $step : $step + 1];
                 }
             }
         }

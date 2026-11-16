@@ -268,18 +268,7 @@ final class Document
     {
         $this->assertAttached($id);
         $parent = $this->parent[$id];
-        $prev = $this->prevOf($id);
-        $next = $this->nextOf($id);
-        if ($prev >= 0) {
-            $this->setLinks($prev, $this->prevOf($prev), $next);
-        } else {
-            $this->setChildren($parent, $next, $this->lastChildOf($parent));
-        }
-        if ($next >= 0) {
-            $this->setLinks($next, $prev, $this->nextOf($next));
-        } else {
-            $this->setChildren($parent, $this->firstChildOf($parent), $prev);
-        }
+        $this->unlink($id);
         $xref = $this->xref[$id] ?? null;
         if ($parent === self::ROOT && $xref !== null && ($this->xrefIndex[$xref] ?? null) === $id) {
             unset($this->xrefIndex[$xref]);
@@ -308,6 +297,33 @@ final class Document
         $this->assertAttached($id);
         $this->payload[$id] = $payload;
         $this->dirty[$id] = true;
+    }
+
+    /**
+     * @internal moves a substructure with its own substructures under another structure,
+     * before $before or last (conversion); ids are kept, the moved lines are written anew
+     */
+    public function moveNode(int $id, int $parent, ?int $before = null): void
+    {
+        $this->assertAttached($id);
+        $this->assertAttached($parent);
+        if ($this->parent[$id] === self::ROOT || $parent === self::ROOT) {
+            throw new \InvalidArgumentException('Only substructures move');
+        }
+        for ($node = $parent; $node > 0; $node = $this->parent[$node]) {
+            if ($node === $id) {
+                throw new \InvalidArgumentException('A structure cannot move under itself');
+            }
+        }
+        $this->unlink($id);
+        $this->parent[$id] = $parent;
+        $this->link($id, $parent, $before);
+        $stack = [$id];
+        while ($stack !== []) {
+            $node = array_pop($stack);
+            $this->markDirty($node);
+            array_push($stack, ...$this->childIds($node));
+        }
     }
 
     /** @internal a new tag for a node, its value and substructures kept (conversion) */
@@ -572,10 +588,18 @@ final class Document
                 $this->xrefIndex[$xref] ??= $id;
             }
         }
+        $this->link($id, $parent, $before);
+
+        return $id;
+    }
+
+    /** Inserts a node that is in no list into the children of $parent, before $before or last. */
+    private function link(int $id, int $parent, ?int $before): void
+    {
         $first = $this->firstChildOf($parent);
         $last = $this->lastChildOf($parent);
         if ($before === null) {
-            $this->links[$id] = $last + 1;
+            $this->setLinks($id, $last, -1);
             if ($last >= 0) {
                 $this->setLinks($last, $this->prevOf($last), $id);
             } else {
@@ -592,8 +616,24 @@ final class Document
                 $this->setChildren($parent, $id, $last);
             }
         }
+    }
 
-        return $id;
+    /** Takes a node out of its parent's children; its own children stay with it. */
+    private function unlink(int $id): void
+    {
+        $parent = $this->parent[$id];
+        $prev = $this->prevOf($id);
+        $next = $this->nextOf($id);
+        if ($prev >= 0) {
+            $this->setLinks($prev, $this->prevOf($prev), $next);
+        } else {
+            $this->setChildren($parent, $next, $this->lastChildOf($parent));
+        }
+        if ($next >= 0) {
+            $this->setLinks($next, $prev, $this->nextOf($next));
+        } else {
+            $this->setChildren($parent, $this->firstChildOf($parent), $prev);
+        }
     }
 
     /** Keeps the current value of an unmodified line when the line is about to be rewritten. */
