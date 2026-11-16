@@ -28,7 +28,11 @@ break the API; such changes are described in `UPGRADE.md`.
 - Conversion 7.0 → 5.5.1, first rules: `GEDC.FORM` and `CHAR UTF-8` added, `@` escaped by
   the 5.5.1 rules and long lines split into `CONC`, `SNOTE` to `NOTE`, `HEAD._SUBN` back to a
   `SUBN` record, `UID` to `_UID`, `EXID` back to `AFN`/`RFN`/`RIN` (others to `_EXID`,
-  `KL2001`), pointers to `@VOID@` to extensions (`KL4001`).
+  `KL2001`), pointers to `@VOID@` to extensions (`KL4001`); dates (escapes, `B.C.`, a
+  `PHRASE` back into the date), ages, `HEAD.LANG`/`SUBM.LANG` names, media types to file
+  extensions, URLs to paths, `MEDI` to `FORM.TYPE`, `ROLE` to `RELA` and enumeration values in
+  5.5.1 form, each chosen so that converting up gives the 7.0 value back; values 5.5.1 cannot
+  write so are kept as extensions (`KL3001`).
 - `WriteOptions::normalize()` writes every line anew by the version's rules with one line
   terminator; `withEncoding()` writes in another encoding (unchanged lines are re-encoded in
   preserve mode), `withBom()` sets the byte order mark, by default by the version (SPEC

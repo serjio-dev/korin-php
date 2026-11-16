@@ -86,6 +86,23 @@ back, except for what the loss report lists. Implemented so far:
 | `EXID` + `TYPE https://gedcom.io/terms/v7/RIN#<HEAD.SOUR>` | `RIN` |
 | Any other `EXID`, or one on a record without that tag in 5.5.1 | `_EXID` with its `TYPE`, `KL2001`. Not `REFN`: a number the user assigned is another kind of identifier, and it would stay `REFN` when converted up |
 | A pointer to `@VOID@` (`FAMC @VOID@` + `PHRASE`) | An extension with its tag and substructures (`_FAMC @VOID@`), `KL4001` |
+| Calendar names in `DATE` (`JULIAN`, `FRENCH_R`, `_ROMAN 24 _IUL 15`) | Escapes (`@#DJULIAN@`, `@#DFRENCH R@`, `@#DROMAN@ 24 IUL 15`); `BCE` → `B.C.` |
+| `DATE` + `PHRASE` | One 5.5.1 date: the `PHRASE` when it is the date it came from (`30 JAN 1649` + `PHRASE 30 JAN 1648/49` → `30 JAN 1648/49`), otherwise `INT 5 MAR 1900 (phrase)`, or `(phrase)` without a date. A `PHRASE` of an approximate date or a range stays |
+| A date 5.5.1 cannot write (an extension calendar) | `_DATE`, `KL3001` |
+| `AGE` | `< 8y` → `<8y`; `< 8y` + `PHRASE CHILD` → `CHILD`. An age in weeks → `_AGE`, `KL3001` |
+| `HEAD.LANG`, `SUBM.LANG` | 5.5.1 names: `uk` → `Ukrainian`, `und` + `_PHRASE Hmong` → `Hmong`. A tag without a 5.5.1 name (`en-GB`) → `_LANG`, `KL3001` |
+| Media `FORM` | A file extension: one 5.5.1 lists (`image/jpeg` → `jpg`, `image/tiff` → `tif`), another known one (`image/png` → `png`), `application/x-x` → `x`; others stay |
+| `FORM.MEDI` | `FORM.TYPE` |
+| `FILE` | A path: `file:///c:/My%20Photos/a.jpg` → `c:\My Photos\a.jpg`, `file:///x` → `/x`, `file://server/x` → `\\server\x`, a relative path without percent-encoding. Other URLs stay |
+| Enumerations | 5.5.1 case and spelling (`BIRTH` → `birth`, `PRE_1970` → `PRE-1970`, `DNS_CAN` → `DNS/CAN`); `OTHER` + `PHRASE` → the phrase (`(midwife)` for a role in an event) |
+| `ASSO.ROLE` | `RELA`: `GODP` + `PHRASE godmother` → `godmother`, `FRIEND` → `Friend`, `OTHER` + `PHRASE land-lord` → `land-lord` |
+
+Every value is chosen so that converting it up gives the same 7.0 value and `PHRASE` again
+(so `ROLE GODP` without a phrase is `RELA Godp`: `Godparent` would come back with a
+`PHRASE`). Where no 5.5.1 value does, the structure is kept as an extension with a loss entry,
+or, for a `PHRASE` alone, left to the rule for structures 5.5.1 does not have. Values 5.5.1
+programs write although 5.5.1 does not list them stay as they are (`PEDI guardian`,
+`FORM png`, `RESN confidential, locked`).
 
 Xrefs are kept: every 7.0 xref is a valid 5.5.1 one. Extensions (`_X`) and what is inside them
 only get the 5.5.1 line syntax.
