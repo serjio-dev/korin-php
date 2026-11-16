@@ -19,7 +19,8 @@ use Korin\Gedcom\Version;
  * SEX U as _SEX U), and it gets its tag back. Its substructures are already in the target's
  * form. The source could not write it so when it has no such structure there, the value does
  * not fit the source's (an enumeration value it does not list) but fits the target's, the
- * source allows no more of them there, or (to 7.0) it points to @VOID@; and its value fits the
+ * source allows no more of them there, it is empty (5.5.5 has no empty structure), or (to
+ * 7.0) it points to @VOID@; and its value fits the
  * target's (a 5.5 _SOUR with a text under NOTE stays: 7.0 NOTE.SOUR is a pointer). Any other extension
  * (_DATE under BIRT) stays: a program wrote it so on purpose. The last rule of the walk but
  * Structures: it sees the tags the other rules wrote.
@@ -31,9 +32,11 @@ final class Extensions implements NodeRule
     /** @var ?array<string, true> the tags of the target's structures */
     private ?array $standard = null;
 
+    /** @param bool $grammars whether a value fits a grammar only when it matches it (to and from 5.5.5: dates, ages) */
     public function __construct(
         private readonly Version $from,
         private readonly Version $to,
+        private readonly bool $grammars = false,
     ) {}
 
     public function needsPrepass(): bool
@@ -64,7 +67,7 @@ final class Extensions implements NodeRule
         $payload = $document->payloadOf($id);
         $targetStructure = $target === null ? null : $profile->structure($target->uri);
         // The value must fit too: a 5.5 _SOUR with a text under NOTE is no 7.0 NOTE.SOUR, a pointer.
-        if ($target === null || $targetStructure === null || !Payloads::fits($profile, $targetStructure, $payload)) {
+        if ($target === null || $targetStructure === null || !Payloads::fits($profile, $targetStructure, $payload, $this->grammars)) {
             return true;
         }
         $source = $context->isFromSource($parent) ? $context->sourceStructure($parent)?->substructure($standard) : null;
@@ -80,12 +83,16 @@ final class Extensions implements NodeRule
     /** Whether the source could not write the extension as the structure it has there. */
     private function notWritable(Document $document, int $id, int $parent, string $tag, Substructure $source, Substructure $target, ?string $payload): bool
     {
+        // 5.5.5 has no structure with neither a value nor substructures (1 BURI).
+        if ($this->from === Version::V5_5_5 && ($payload === null || $payload === '') && !$document->hasChildren($id)) {
+            return true;
+        }
         $from = Profile::for($this->from);
         $to = Profile::for($this->to);
         $sourceStructure = $from->structure($source->uri);
         $targetStructure = $to->structure($target->uri);
         if ($sourceStructure !== null && $targetStructure !== null
-            && !Payloads::fits($from, $sourceStructure, $payload) && Payloads::fits($to, $targetStructure, $payload)) {
+            && !Payloads::fits($from, $sourceStructure, $payload, $this->grammars) && Payloads::fits($to, $targetStructure, $payload, $this->grammars)) {
             return true;
         }
         $max = $source->cardinality->max;

@@ -155,3 +155,52 @@ A conversion between 5.5 and 7.0 goes through 5.5.1: 7.0 → 5.5 is 7.0 → 5.5.
 5.5.1 → 5.5, with one loss report for both, located in the input. Converting a 7.0 file to 5.5
 and back gives the same fingerprint, except for `KL3` losses, as it does through 5.5.1 (tested
 on every 7.0 input of the corpus).
+
+## 5.5.1 → 5.5.5
+
+5.5.5 is 5.5.1 made strict: UTF-8 with a BOM, `GEDC.FORM LINEAGE-LINKED` with its own
+`VERS 5.5.5`, no inline sources or media, no structure with neither a value nor substructures,
+and stricter grammars for values. Nothing is dropped by default; converting the result up
+again gives the 5.5.1 document back, except for what the loss report lists with a `KL3` code,
+the inline sources and media (records in 5.5.5), new `ADR` lines and respelled values.
+
+| 5.5.1 | 5.5.5 |
+| --- | --- |
+| `HEAD.GEDC.FORM` | `FORM LINEAGE-LINKED` with `VERS 5.5.5`, added when missing |
+| `HEAD.SUBM` and the `SUBM` records | The record `HEAD.SUBM` points to (or else the first; a missing `HEAD.SUBM` then points to it, unless `HEAD` has `_SUBM`, a pointer to no record) moves directly after `HEAD`; any other `SUBM` record → `_SUBM`, `KL2002`. A file without a `SUBM` record keeps none |
+| `SUBN` record, `HEAD.SUBN` | `HEAD._SUBN` with the record's substructures, as 5.5.1 → 7.0 |
+| Inline `SOUR Family Bible` + `TEXT` | A `SOUR` record `@X<n>@` with `TITL Family Bible`; the citation points to it, its `TEXT` under a new `DATA` |
+| Inline `OBJE` + `FILE` + `FORM` + `MEDI` + `TITL` | An `OBJE` record `@X<n>@` with the `FILE`, `TITL` under the first `FILE`, `MEDI` as `FORM.TYPE`; a `FORM` beside `FILE` moves into it |
+| `ADDR 12 Main St` + `CONT apt. 4` | 5.5.5 `ADDR` has no value: its lines are `ADR1`–`ADR3`. Lines an `ADR` line repeats are dropped, missing `ADR` lines added. A value made of `CITY`, `STAE` `POST` and `CTRY` is dropped. Any other value (more than three lines, an empty line, a line other than its `ADR`) → a first substructure `_ADDR`, `KL3001` |
+| A structure with neither a value nor substructures (`BURI`, `BIRT Y`: 5.5.5 has `Y` only for `MARR`, `CHR`, `DEAT`) | An extension (`_BURI`, `_BIRT Y`), `KL3001` |
+| `SEX U` + `_SEX X` (7.0 → 5.5.1 writes it for `SEX X`) | `SEX X` |
+| A structure 5.5.5 does not have where it stands: LDS ordinances, `RESN`, `ALIA`, `ANCI`, `DESI`, `AFN`, `RFN`, `HEAD.PLAC`, `HEAD.CHAR.VERS`, `SUBM.LANG`, `SOUR` of a note | An extension with its tag and substructures, `KL2001` |
+| More than 5.5.5 allows: a second `FILE` of a media record, a second `CALN` | The extra ones as extensions, `KL2002` |
+| Dates: `05 JAN 50`, `ABT 50` | Days without a leading zero, years of at least 3 digits: `5 JAN 050`, `ABT 050` |
+| Ages: `<01y 0m` | `< 1y`: a space after `<` and `>`, no leading zeroes, no zero parts. An age with no part left (`0y`) → `_AGE`, `KL3001` |
+| Times: `09:05:00.5` | `9:05:00.50` |
+| Places: `Kyiv,Ukraine` | `Kyiv, Ukraine`; a place with an empty part (`Kyiv, , Ukraine`) stays as it is |
+| A value no 5.5.5 spelling fits (`HEAD.SOUR.VERS 7.0 beta`) | The structure as an extension, `KL3001` |
+
+Lengths (5.5.5 `{Size=min:max}`, `KV3010`) are not converted: a value too long or too short
+for 5.5.5 is still its value, and the printed sizes contradict the values the specification
+lists (`NAME.TYPE aka` with `{Size=5:30}`). `FACT` and `IDNO` without the `TYPE` 5.5.5
+requires get none: there is nothing to name it by.
+
+## 5.5.5 → 5.5.1
+
+| 5.5.5 | 5.5.1 |
+| --- | --- |
+| `GEDC.FORM.VERS` | Removed |
+| `ADDR` without a value | The value: the first substructure `_ADDR` (removed), or else `ADR1`–`ADR3` as lines, or else `CITY, STAE POST, CTRY` |
+| `HEAD._SUBN` | A `SUBN` record, as 7.0 → 5.5.1 |
+| `_SUBM` records | `SUBM` records |
+| `SEX X`, `SEX N` | `SEX U` + `_SEX X`, `_SEX N`, `KL3002` |
+| Dates: `ABT 050`, `1000 BCE` | `ABT 50`, `1000 B.C.` |
+| A day and month without a year (`5 MAR`) | `_DATE`, `KL3001`: 5.5.1 has no such date |
+| Ages: `< 1y` | `<1y` |
+| Media `FORM JPEG`, `TIFF` | `jpg`, `tif`; other formats 5.5.1 does not list (`PNG`, `PDF`) stay, as 5.5.1 programs write them |
+| `_BURI`, `_BIRT Y`, `_DATE` and other extensions 5.5.1 could write as the structure it has there | The structure |
+
+5.5.5 ↔ 7.0 goes through 5.5.1. A 7.0 file converted to 5.5.5 and back has the same
+fingerprint, except for `KL3` losses (tested on every 7.0 input of the corpus).
