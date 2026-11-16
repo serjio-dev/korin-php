@@ -28,4 +28,12 @@ final class LineSplitterTest extends TestCase
 
         self::assertSame([[0, 4, 4], [8, 2, 0]], iterator_to_array(LineSplitter::split($bytes, Encoding::Utf16Le), false));
     }
+
+    #[Test]
+    public function keepsEveryTerminatorKindInUtf16(): void
+    {
+        $bytes = Codecs::for(Encoding::Utf16Be)->encode("a\r\nbb\rc\nd\n\ne");
+
+        self::assertSame([[0, 2, 4], [6, 4, 2], [12, 2, 2], [16, 2, 2], [20, 0, 2], [22, 2, 0]], iterator_to_array(LineSplitter::split($bytes, Encoding::Utf16Be), false));
+    }
 }

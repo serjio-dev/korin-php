@@ -230,6 +230,14 @@ final class V551ToV70Test extends TestCase
     }
 
     #[Test]
+    public function eventsWithoutAnythingOccurred(): void
+    {
+        self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 BURI Y\n1 DEAT Y\n1 BIRT\n2 DATE 1900\n1 _X\n2 BURI\n0 @F1@ FAM\n1 DIV Y\n0 TRLR\n", $this->convert(
+            self::HEAD . "0 @I1@ INDI\n1 BURI\n1 DEAT\n1 BIRT\n2 DATE 1900\n1 _X\n2 BURI\n0 @F1@ FAM\n1 DIV\n0 TRLR\n",
+        ));
+    }
+
+    #[Test]
     public function extensionsNamedAfterSevenStructuresGetTheirTags(): void
     {
         $output = $this->convert(self::HEAD . "0 @I1@ INDI\n1 SEX U\n2 _SEX X\n1 _NO MARR\n1 BIRT\n2 _DATE 1900\n2 DATE 1901\n3 _PHRASE then\n2 _SDATE 1901\n"

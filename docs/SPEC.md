@@ -272,7 +272,7 @@ Conversion runs along a chain of adjacent versions: 4.0 → 5.5 → 5.5.1 ↔ 7.
 | `_NO`, `_SDATE`, … where 5.5.1 has no such structure | `NO`, `SDATE`, …: an extension named after a 7.0 structure is that structure | — |
 | — | `NO`, `SDATE`, `CREA`, `INIL`, `TRAN`, `CROP`, `SEX X`, any structure 5.5.1 does not have where it stands | `_NO`, `_SDATE`, `_CREA`, `_INIL`, `_TRAN` (or `FONE`/`ROMN` where 5.5.1 has the type), `_CROP`, `SEX U` + `_SEX X` |
 
-**Other steps:** 5.5 ↔ 5.5.1 (including `EMAIL`, `FAX`, `WWW`, `MAP`/`LATI`/`LONG`, introduced in 5.5.1); 5.5.5 ↔ 5.5.1 (the stricter 5.5.5 rules apply when writing); 4.0 / 5.0–5.4 → 5.5 (best effort).
+**Other steps:** 5.5 ↔ 5.5.1 (including `EMAIL`, `FAX`, `WWW`, `MAP`/`LATI`/`LONG`, introduced in 5.5.1: extensions in 5.5; media `FORM` moves between the file and the object, a 5.5.1 media record keeps its file as `_FILE`; the value of `EVEN` becomes its `TYPE` or a `NOTE`; see docs/conversion.md); 5.5.5 ↔ 5.5.1 (the stricter 5.5.5 rules apply when writing); 4.0 / 5.0–5.4 → 5.5 (best effort).
 
 **Conversion output conventions** (the corpus golden files depend on them; changing any of them changes expected results):
 
@@ -284,7 +284,7 @@ Conversion runs along a chain of adjacent versions: 4.0 → 5.5 → 5.5.1 ↔ 7.
 - **Order** of records and substructures is as in the source; extracted and new records go before `TRLR` in order of appearance.
 - **New xrefs** — `@X<n>@`, the next free `n` in document order.
 
-**`LossReport`** — a list of entries with the fields: stable code (`KL2001`), severity, tree path (`@I1@/BIRT[0]/DATE`, path format as in the corpus), source line, how it was kept (`extension` / `note` / `dropped`), message. Exported as JSON.
+**`LossReport`** — a list of entries with the fields: stable code (`KL2001`), severity, tree path (`@I1@/BIRT[0]/DATE`, path format as in the corpus), source line, how it was kept (`extension` / `note` / `moved` / `dropped`), message. Exported as JSON.
 
 ### Streaming conversion
 

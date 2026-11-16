@@ -234,6 +234,12 @@ final class Document
      *
      * @param ?int $before sibling to insert before; null appends
      */
+    /** @internal the id the next node created gets: ids only grow, so a node with a lower id was there before */
+    public function nextId(): int
+    {
+        return count($this->parent);
+    }
+
     public function createNode(int $parent, ?string $xref, string $tag, ?string $payload, ?int $before = null): int
     {
         $id = $this->append($parent, $xref, $tag, -1, $before);

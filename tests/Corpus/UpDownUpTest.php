@@ -14,14 +14,14 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * SPEC section 10, test type 5: converting every 7.0 input of the corpus to 5.5.1 and back
- * gives the same fingerprint, except for the structures the loss report names (KL3: values
- * 5.5.1 cannot write so that they come back, kept as extensions). Percent-encodings of FILE
- * compare in uppercase, as URLs do.
+ * SPEC section 10, test type 5: converting every 7.0 input of the corpus to 5.5.1 or 5.5 and
+ * back gives the same fingerprint, except for the structures the loss report names with a KL3
+ * code (values the older version cannot write so that they come back). Percent-encodings of
+ * FILE compare in uppercase, as URLs do.
  */
 final class UpDownUpTest extends TestCase
 {
-    /** @return iterable<string, array{string}> */
+    /** @return iterable<string, array{string, Version}> */
     public static function inputs(): iterable
     {
         $root = getenv('KORIN_CORPUS');
@@ -33,27 +33,35 @@ final class UpDownUpTest extends TestCase
             /** @var array{input: array{file: string, version: string}} $case */
             $case = Yaml::parseFile($file);
             if ($case['input']['version'] === '7.0' && str_ends_with($case['input']['file'], '.ged')) {
-                yield basename(dirname($file)) => [dirname($file) . '/' . $case['input']['file']];
+                foreach ([Version::V5_5_1, Version::V5_5] as $via) {
+                    yield basename(dirname($file)) . ' via ' . $via->value => [dirname($file) . '/' . $case['input']['file'], $via];
+                }
             }
         }
     }
 
     #[Test]
     #[DataProvider('inputs')]
-    public function upDownUpKeepsTheDocument(string $file): void
+    public function upDownUpKeepsTheDocument(string $file, Version $via): void
     {
         $input = Gedcom::parse((string) file_get_contents($file));
-        $down = Gedcom::convert($input, Version::V5_5_1);
+        $down = Gedcom::convert($input, $via);
         $up = Gedcom::convert($down->document(), Version::V7_0)->document()->copy();
         $before = $input->copy();
+        $chains = $paths = [];
         foreach ($down->losses()->entries() as $loss) {
             if (!str_starts_with($loss->code, 'KL3')) {
                 continue;
             }
-            $id = $this->find($before, $loss->path);
+            $paths = $paths !== [] ? $paths : $this->paths($before);
+            $id = $paths[$loss->path] ?? null;
             self::assertNotNull($id, "the loss path {$loss->path} names a structure");
-            $chain = $this->chain($before, $id);
-            $before->removeNode($id);
+            $chains[$id] = $this->chain($before, $id);
+        }
+        // From the last: removing a structure moves the ones after it.
+        rsort($chains);
+        foreach ($chains as $chain) {
+            $before->removeNode($this->at($before, $chain));
             $up->removeNode($this->at($up, $chain));
         }
 
@@ -67,15 +75,17 @@ final class UpDownUpTest extends TestCase
         return (string) preg_replace_callback('/("tag": "FILE",\n\s*"value": ")([^"]*)/', static fn(array $m): string => $m[1] . preg_replace_callback('/%[0-9a-f]{2}/i', static fn(array $e): string => strtoupper($e[0]), $m[2]), $json);
     }
 
-    private function find(Document $document, string $path): ?int
+    /** @return array<string, int> the structures of a document by path */
+    private function paths(Document $document): array
     {
+        $paths = [];
         foreach ($document->walk() as $id) {
-            if (!$document->isInvalid($id) && $document->node($id)->path() === $path) {
-                return $id;
+            if (!$document->isInvalid($id)) {
+                $paths[$document->node($id)->path()] ??= $id;
             }
         }
 
-        return null;
+        return $paths;
     }
 
     /** @return list<int> the position of a node: its index among its parent's children, from the top */

@@ -13,6 +13,9 @@ enum StoredAs: string
     /** As the text of a NOTE. */
     case Note = 'note';
 
+    /** In another standard structure of the target version (5.5: the value of EVEN as its TYPE). */
+    case Moved = 'moved';
+
     /** Not at all. */
     case Dropped = 'dropped';
 }

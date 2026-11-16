@@ -38,6 +38,18 @@ break the API; such changes are described in `UPGRADE.md`.
   (`KL2001`). 5.5.1 → 7.0 turns these extensions back into the 7.0 structures, so a 7.0 file
   converted to 5.5.1 and back has the same fingerprint, except for `KL3` losses (tested on
   every 7.0 input of the corpus).
+- Conversion 5.5.1 ↔ 5.5, and so 7.0 ↔ 5.5 through 5.5.1: 5.5 is written in UTF-16 with
+  `CHAR UNICODE`; structures 5.5 does not have (`EMAIL`, `FAX`, `WWW`, `MAP`, `FONE`, `ROMN`,
+  the `FILE` of a media record) and those 5.5.1 does not have (`BLOB`, the `AGE` of a family
+  event) become extensions (`KL2001`), more than the target allows too (`KL2002`), values
+  the target does not list (`SEX U` in 5.5) likewise (`KL3001`); media `FORM` moves between
+  the file and the object and is spelled by the version (`jpg` ↔ `jpeg`), `ASSO.TYPE INDI` is
+  added and removed, the value of `EVEN` becomes its 5.5 `TYPE` or a `NOTE` (`KL3004`, the
+  new `StoredAs::Moved`). Converting up turns such extensions back into the structures. A
+  7.0 file converted to 5.5 and back has the same fingerprint, except for `KL3` losses.
+- Every conversion step writes the `Y` of an event the target has no value for as no value
+  (`KL3003` when the event has substructures), and 5.5.1 → 7.0 writes an event with neither
+  a value nor substructures as `Y`.
 - `WriteOptions::normalize()` writes every line anew by the version's rules with one line
   terminator; `withEncoding()` writes in another encoding (unchanged lines are re-encoded in
   preserve mode), `withBom()` sets the byte order mark, by default by the version (SPEC
@@ -50,6 +62,8 @@ break the API; such changes are described in `UPGRADE.md`.
   longer gets `KV3001`. A structure with neither a payload nor substructures is still `KV3007`.
 - `KV4001` for a pointer of an extension structure, or inside one, is a warning: what an
   extension points to is not defined.
+- Reading UTF-16 took quadratic time in a file without CR (11 s for a 10 000-line file): the
+  line splitter searched the rest of the file for a CR on every line.
 
 ## [0.2.0] - 2026-11-15
 
