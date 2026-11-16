@@ -96,21 +96,41 @@ final class Enumerations implements NodeRule
         if ($element === null || !isset(self::ELEMENTS[$element])) {
             return true;
         }
-        [$set, $phrases] = self::ELEMENTS[$element];
         $value = $context->value($id);
         if ($element === '<RELATION_IS_DESCRIPTOR>') {
             $document->setTag($id, 'ROLE');
-            if ($value === null || $value === '') {
-                // 7.0 ROLE needs a value; an empty RELA says nothing more than OTHER.
-                $context->setValue($id, 'OTHER');
-
-                return true;
-            }
         } elseif ($element === '<SOURCE_MEDIA_TYPE>' && $document->tagOf($id) === 'TYPE') {
             $document->setTag($id, 'MEDI');
         }
-        if ($value === null || $value === '') {
+        $converted = $this->convert($element, $value);
+        if ($converted === null) {
             return true;
+        }
+        [$enum, $phrase] = $converted;
+        if ($enum !== $value) {
+            $context->setValue($id, $enum);
+        }
+        if ($phrase !== null) {
+            $context->addText($id, 'PHRASE', $phrase);
+        }
+
+        return true;
+    }
+
+    /**
+     * The 7.0 value and PHRASE of a value of a 5.5.1 element; null when it stays as it is.
+     *
+     * @return ?array{string, ?string}
+     */
+    public function convert(string $element, ?string $value): ?array
+    {
+        if (!isset(self::ELEMENTS[$element])) {
+            return null;
+        }
+        [$set, $phrases] = self::ELEMENTS[$element];
+        if ($value === null || $value === '') {
+            // 7.0 ROLE needs a value; an empty RELA says nothing more than OTHER.
+            return $element === '<RELATION_IS_DESCRIPTOR>' ? ['OTHER', null] : null;
         }
         $permitted = Profile::for(Version::V7_0)->enumeration(self::SET . $set);
         $enum = strtoupper(trim($value));
@@ -128,18 +148,13 @@ final class Enumerations implements NodeRule
             [$enum, $phrase] = ['OTHER', $m[1]];
         } elseif (!$this->permits($enum, $permitted, $list)) {
             if (!$phrases || !in_array('OTHER', $permitted, true)) {
-                return true;
+                return null;
             }
             [$enum, $phrase] = ['OTHER', $value];
         }
-        if ($enum !== $value) {
-            $context->setValue($id, $enum);
-        }
-        if ($phrase !== null && $phrase !== '') {
-            $context->addText($id, 'PHRASE', $phrase);
-        }
+        $phrase = $phrase === '' ? null : $phrase;
 
-        return true;
+        return $enum === $value && $phrase === null ? null : [$enum, $phrase];
     }
 
     /** @param list<string> $permitted */

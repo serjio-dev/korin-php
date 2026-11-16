@@ -8,6 +8,7 @@ use Korin\Gedcom\ConvertOptions;
 use Korin\Gedcom\Exception\ConversionException;
 use Korin\Gedcom\Severity;
 use Korin\Gedcom\Spec\Profile;
+use Korin\Gedcom\Spec\Structure;
 use Korin\Gedcom\Syntax\Document;
 
 /**
@@ -174,12 +175,7 @@ final class Context
         if ($this->step !== null && $this->step->from() !== $this->source->version()) {
             throw new \LogicException('sourceElement() is defined for the first step of a route only');
         }
-        if (!$this->source->contains($node) || $this->inExtension($this->document->parentOf($node))) {
-            return null;
-        }
-        $uri = $this->sourceUri($node);
-
-        $payload = $uri === null ? null : $this->profile()->structure($uri)?->payload;
+        $payload = $this->sourceStructure($node)?->payload;
 
         return $payload === null ? null : str_replace('|<NULL>', '', $payload);
     }
@@ -205,6 +201,26 @@ final class Context
         unset($this->extensions[$node]);
 
         return true;
+    }
+
+    /**
+     * The structure of a node in the current step's source version, by its place in the source
+     * document (like sourceElement()): null for a structure the conversion added, one the
+     * version does not define there, and anything inside an extension.
+     *
+     * @throws \LogicException in a later step of a route
+     */
+    public function sourceStructure(int $node): ?Structure
+    {
+        if ($this->step !== null && $this->step->from() !== $this->source->version()) {
+            throw new \LogicException('sourceStructure() is defined for the first step of a route only');
+        }
+        if (!$this->source->contains($node) || $this->inExtension($this->document->parentOf($node))) {
+            return null;
+        }
+        $uri = $this->sourceUri($node);
+
+        return $uri === null ? null : $this->profile()->structure($uri);
     }
 
     /**

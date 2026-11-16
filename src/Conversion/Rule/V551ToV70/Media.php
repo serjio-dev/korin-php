@@ -72,6 +72,12 @@ final class Media implements NodeRule
         return true;
     }
 
+    /** @return list<string> the file extensions of a media type ("image/jpeg" → jpeg, jpg) */
+    public function extensions(string $type): array
+    {
+        return array_keys(self::TYPES, $type, true);
+    }
+
     public function mediaType(string $value): string
     {
         $extension = strtolower(ltrim(trim($value), '.'));

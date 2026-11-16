@@ -6,8 +6,10 @@ namespace Korin\Gedcom\Conversion\Rule\V551ToV70;
 
 use Korin\Gedcom\Conversion\Context;
 use Korin\Gedcom\Conversion\NodeRule;
+use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Validation\Rule\PayloadGrammar;
+use Korin\Gedcom\Version;
 
 /**
  * Languages as BCP 47 tags: the 5.5.1 language names (case-insensitive) map to their tags as
@@ -53,6 +55,22 @@ final class Languages implements NodeRule
         }
 
         return $tag;
+    }
+
+    /** The 5.5.1 language name of a BCP 47 tag ("uk" → "Ukrainian"), spelled as 5.5.1 lists it; null when it has none. */
+    public static function name(string $tag): ?string
+    {
+        $name = array_search($tag, self::TAGS, true);
+        if ($name === false) {
+            return null;
+        }
+        foreach (Profile::for(Version::V5_5_1)->enumeration('<LANGUAGE_ID>') as $listed) {
+            if (strtolower($listed) === $name) {
+                return $listed;
+            }
+        }
+
+        return ucwords($name, '-_');
     }
 
     public function needsPrepass(): bool
