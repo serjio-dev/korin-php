@@ -243,7 +243,7 @@ Conversion runs along a chain of adjacent versions: 4.0 → 5.5 → 5.5.1 ↔ 7.
 
 **Guarantees:**
 
-- upgrading is lossless: anything without a structure in the newer version stays an extension described in `SCHMA`;
+- upgrading is lossless: anything without a structure in the newer version stays an extension, described in `SCHMA` where its meaning has a standard URI;
 - downgrading drops no data by default: whatever is incompatible becomes a `_` tag and a `LossReport` entry;
 - determinism: the same input gives the same output byte for byte;
 - idempotence: converting again to the same version changes nothing;
@@ -279,7 +279,7 @@ Conversion runs along a chain of adjacent versions: 4.0 → 5.5 → 5.5.1 ↔ 7.
 - **Line endings** — as in the source; if the source mixes them, the dominant (most frequent) one; `WriteOptions` can set it explicitly.
 - **`HEAD.SOUR`** is carried over from the source unchanged: it names the program that created the data, not the converter. Korin does not add itself to `HEAD`.
 - **`HEAD.DATE`** is not updated, so that the output is deterministic.
-- **Source housekeeping structures** that do not exist in the target version and describe the file itself (`CHAR`, `GEDC.FORM` when moving to 7.0) are removed without a `LossReport` entry: they are not data.
+- **Source housekeeping structures** that do not exist in the target version and describe the file itself (`CHAR`, `GEDC.FORM` and `HEAD.FILE` when moving to 7.0) are removed without a `LossReport` entry: they are not data.
 - **Order** of records and substructures is as in the source; extracted and new records go before `TRLR` in order of appearance.
 - **New xrefs** — `@X<n>@`, the next free `n` in document order.
 

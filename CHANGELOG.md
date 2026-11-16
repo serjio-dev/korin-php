@@ -22,12 +22,19 @@ break the API; such changes are described in `UPGRADE.md`.
   `AFN`/`RFN`/`RIN` to `EXID` with the 7.0 `TYPE` URIs, `_UID` to `UID`; dates (calendar
   names, `BCE`, dual years and date phrases to `PHRASE`), ages, `LANG` to BCP 47, media `FORM`
   to media types, `FILE` to URLs, `FORM.TYPE` to `MEDI`, `ASSO.RELA` to `ROLE` and
-  enumeration values in 7.0 form (`OTHER` + `PHRASE` for values 7.0 does not have).
-  `HEAD.SCHMA` and structures 7.0 has in another form follow.
+  enumeration values in 7.0 form (`OTHER` + `PHRASE` for values 7.0 does not have);
+  `HEAD.FILE` removed, `FONE`/`ROMN` to `TRAN` with a BCP 47 `LANG`, and `HEAD.SCHMA` for
+  the extension tags the conversion writes.
 - `WriteOptions::normalize()` writes every line anew by the version's rules with one line
   terminator; `withEncoding()` writes in another encoding (unchanged lines are re-encoded in
   preserve mode), `withBom()` sets the byte order mark, by default by the version (SPEC
   section 3) when the file is written anew.
+
+### Fixed
+
+- 7.0 validation: an empty `Text` or `List:Text` payload is valid (section 1 of the
+  specification: `1 EVEN` is an `EVEN` with an empty payload), so `1 RESI` with a `PLAC` no
+  longer gets `KV3001`. A structure with neither a payload nor substructures is still `KV3007`.
 
 ## [0.2.0] - 2026-11-15
 

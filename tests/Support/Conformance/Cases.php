@@ -44,8 +44,15 @@ final class Cases
         'Y' => ['Y', ['N', 'KV3005']],
     ];
 
-    /** 7.0 types whose payload may be left out. */
+    /**
+     * 7.0 types whose payload may be left out: those whose grammar matches the empty string
+     * (specification section 1: "1 EVEN" is an EVEN with an empty Text). Written out here, not
+     * taken from PayloadGrammar::OPTIONAL: the generated cases check the validator against the
+     * specification, so they must not share its list.
+     */
     private const OPTIONAL_7 = [
+        'http://www.w3.org/2001/XMLSchema#string' => true,
+        'https://gedcom.io/terms/v7/type-List#Text' => true,
         'https://gedcom.io/terms/v7/type-Age' => true,
         'https://gedcom.io/terms/v7/type-Date' => true,
         'https://gedcom.io/terms/v7/type-Date#period' => true,

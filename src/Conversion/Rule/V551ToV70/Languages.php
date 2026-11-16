@@ -13,7 +13,8 @@ use Korin\Gedcom\Validation\Rule\PayloadGrammar;
  * Languages as BCP 47 tags: the 5.5.1 language names (case-insensitive) map to their tags as
  * in the gedcom7code converter, except Dogri, which is "doi" (it writes "dgr", Dogrib). A value
  * that already is a tag of a 2- or 3-letter language ("uk", "en-GB") stays; any other becomes
- * "und" with the value in an extension _PHRASE (7.0 LANG has no PHRASE), as gedcom7code does.
+ * "und" with the value in an extension _PHRASE (7.0 LANG has no PHRASE), as gedcom7code does;
+ * HEAD.SCHMA documents it (Schema).
  *
  * @internal
  */
@@ -43,6 +44,17 @@ final class Languages implements NodeRule
         'yiddish' => 'yi',
     ];
 
+    /** The BCP 47 tag of a 5.5.1 language: the value itself when it already is one; null when there is none. */
+    public static function tag(string $value): ?string
+    {
+        $tag = self::TAGS[strtolower(trim($value))] ?? null;
+        if ($tag === null && preg_match('/^[a-z]{2,3}(?:-|$)/i', $value) === 1 && PayloadGrammar::matches(PayloadGrammar::LANGUAGE, $value)) {
+            return $value;
+        }
+
+        return $tag;
+    }
+
     public function needsPrepass(): bool
     {
         return false;
@@ -59,8 +71,8 @@ final class Languages implements NodeRule
         if ($value === null || $value === '' || !isset(self::ELEMENTS[(string) $context->sourceElement($id)])) {
             return true;
         }
-        $tag = self::TAGS[strtolower(trim($value))] ?? null;
-        if ($tag === null && preg_match('/^[a-z]{2,3}(?:-|$)/i', $value) === 1 && PayloadGrammar::matches(PayloadGrammar::LANGUAGE, $value)) {
+        $tag = self::tag($value);
+        if ($tag === $value) {
             return true;
         }
         $context->setValue($id, $tag ?? 'und');

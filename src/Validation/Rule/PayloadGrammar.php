@@ -12,6 +12,8 @@ namespace Korin\Gedcom\Validation\Rule;
  */
 final class PayloadGrammar
 {
+    public const TEXT = 'http://www.w3.org/2001/XMLSchema#string';
+    public const LIST_TEXT = 'https://gedcom.io/terms/v7/type-List#Text';
     public const INTEGER = 'http://www.w3.org/2001/XMLSchema#nonNegativeInteger';
     public const ENUM = 'https://gedcom.io/terms/v7/type-Enum';
     public const LIST_ENUM = 'https://gedcom.io/terms/v7/type-List#Enum';
@@ -29,8 +31,12 @@ final class PayloadGrammar
     public const DATE_PERIOD = 'https://gedcom.io/terms/v7/type-Date#period';
     public const DATE_EXACT = 'https://gedcom.io/terms/v7/type-Date#exact';
 
-    /** Types whose payload may be omitted (the structure may carry only a PHRASE, say). */
-    public const OPTIONAL = [self::AGE => true, self::DATE => true, self::DATE_PERIOD => true];
+    /**
+     * Types whose payload may be omitted: those whose grammar matches the empty string, which a
+     * missing payload is equal to (7.0 section 1: "1 EVEN" is an EVEN with an empty Text). The
+     * structure still needs a payload or a substructure (KV3007).
+     */
+    public const OPTIONAL = [self::TEXT => true, self::LIST_TEXT => true, self::AGE => true, self::DATE => true, self::DATE_PERIOD => true];
 
     /** Types checked by DateGrammar. */
     public const DATES = [self::DATE => true, self::DATE_PERIOD => true, self::DATE_EXACT => true];

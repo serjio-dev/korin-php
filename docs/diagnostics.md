@@ -81,7 +81,7 @@ quote a value, except an enumeration value shortened to 20 characters.
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
-| `KV3001` | error | A value is required but missing (7.0: `Age`, `DateValue`, `DatePeriod` and `Y\|<NULL>` may be omitted; 5.x: payloads with `<NULL>`) |
+| `KV3001` | error | A value is required but missing (7.0: `Text`, `List:Text`, `Age`, `DateValue`, `DatePeriod` and `Y\|<NULL>` may be omitted, as long as the structure has substructures (`KV3007`); 5.x: payloads with `<NULL>`) |
 | `KV3002` | error | The structure must not have a value |
 | `KV3003` | error | The value must be a pointer to a record |
 | `KV3004` | error | A pointer where a value is expected (in 7.0 a leading `@` of text is written `@@`) |
