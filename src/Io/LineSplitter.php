@@ -31,8 +31,16 @@ final class LineSplitter
 
         $cr = $encoding->ascii("\r");
         $lf = $encoding->ascii("\n");
+        // The next CR and LF, found again only once passed: a file without CR has none to search for on every line.
+        $nextCr = $nextLf = -1;
         for ($pos = $start; $pos < $end;) {
-            $next = min(self::aligned($bytes, $cr, $pos, $start), self::aligned($bytes, $lf, $pos, $start));
+            if ($nextCr < $pos) {
+                $nextCr = self::aligned($bytes, $cr, $pos, $start);
+            }
+            if ($nextLf < $pos) {
+                $nextLf = self::aligned($bytes, $lf, $pos, $start);
+            }
+            $next = min($nextCr, $nextLf);
             if ($next >= $end) {
                 yield [$pos, $end - $pos, 0];
 

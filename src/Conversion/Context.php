@@ -18,6 +18,9 @@ use Korin\Gedcom\Syntax\Document;
  * located at its nearest ancestor from the source, a line that could not be parsed at the
  * structure it is in (the path of a file-level one is empty).
  *
+ * A route of several steps converts each record through every step in turn. The first step
+ * looks structures up in the input; a later one in the record as it was when the step began.
+ *
  * @internal
  */
 final class Context
@@ -50,6 +53,21 @@ final class Context
     private array $extensions = [];
 
     private int $urisRecord = 0;
+
+    /** Whether the current step is the first of the route: its source document is the input. */
+    private bool $first = true;
+
+    /** Later steps: nodes with a lower id were in the record when the step began. */
+    private int $watermark = 0;
+
+    /**
+     * @var array<int, array{int, array<int, ?string>}> later steps: for a record extractRecord()
+     *                                                   added, the watermark and structure URIs of the record it was taken from
+     */
+    private array $extracted = [];
+
+    /** @var array<int, ?string> later steps: the structure URIs of the record as the step began */
+    private array $stepUris = [];
 
     public function __construct(
         private readonly Document $source,
@@ -102,17 +120,21 @@ final class Context
     {
         $record = $this->insertRecord($tag, $xref);
         $this->added[] = [$record, true];
+        if (!$this->first) {
+            $this->extracted[$record] = [$this->watermark, $this->stepUris];
+        }
 
         return $record;
     }
 
     /**
-     * Whether a structure is in the input: one a rule created is written by the target version's
-     * rules already (setValue()), so a syntax rule must not rewrite it.
+     * Whether a structure is in the source of the current step (the input; in a later step, the
+     * record as the step began): one a rule of the step created is written by the target
+     * version's rules already (setValue()), so a syntax rule must not rewrite it.
      */
     public function isFromSource(int $node): bool
     {
-        return $this->source->contains($node);
+        return $this->first ? $this->source->contains($node) : $node < $this->watermark && $this->document->contains($node);
     }
 
     /**
@@ -165,16 +187,10 @@ final class Context
      * moved keeps what it was. Null for a structure the conversion added, one the source version does not
      * define there, and anything inside an extension of the document being converted.
      *
-     * The source document is the input: only the first step of a route can use this (records
-     * go through every step in turn, so there is no document as a later step got it).
-     *
-     * @throws \LogicException in a later step
+     * In a later step of a route, the place is the one the structure had when the step began.
      */
     public function sourceElement(int $node): ?string
     {
-        if ($this->step !== null && $this->step->from() !== $this->source->version()) {
-            throw new \LogicException('sourceElement() is defined for the first step of a route only');
-        }
         $payload = $this->sourceStructure($node)?->payload;
 
         return $payload === null ? null : str_replace('|<NULL>', '', $payload);
@@ -207,13 +223,13 @@ final class Context
      * The structure of a node in the current step's source version, by its place in the source
      * document (like sourceElement()): null for a structure the conversion added, one the
      * version does not define there, and anything inside an extension.
-     *
-     * @throws \LogicException in a later step of a route
      */
     public function sourceStructure(int $node): ?Structure
     {
-        if ($this->step !== null && $this->step->from() !== $this->source->version()) {
-            throw new \LogicException('sourceStructure() is defined for the first step of a route only');
+        if (!$this->first) {
+            $uri = $this->stepUris[$node] ?? null;
+
+            return $uri === null ? null : $this->profile()->structure($uri);
         }
         if (!$this->source->contains($node) || $this->inExtension($this->document->parentOf($node))) {
             return null;
@@ -253,10 +269,41 @@ final class Context
         return $this->losses;
     }
 
-    /** @internal for Converter: the step whose rules run now */
-    public function enter(Step $step): void
+    /** @internal for Converter: the step whose rules run now, and the record they convert */
+    public function enter(Step $step, int $record, bool $first): void
     {
         $this->step = $step;
+        $this->first = $first;
+        if ($first) {
+            return;
+        }
+        $this->extensions = [];
+        if (isset($this->extracted[$record])) {
+            // Taken out of a record of the step: its structures are where they were in that one.
+            [$this->watermark, $this->stepUris] = $this->extracted[$record];
+            unset($this->extracted[$record]);
+
+            return;
+        }
+        $this->watermark = $this->document->nextId();
+        // The record as the step begins: the rules move and rename its structures.
+        $profile = $this->profile();
+        $this->stepUris = [$record => $profile->record($this->document->tagOf($record))?->uri];
+        $stack = [$record];
+        while ($stack !== []) {
+            $id = array_pop($stack);
+            $uri = $this->stepUris[$id];
+            if ($uri === null || !$this->document->hasChildren($id)) {
+                continue;
+            }
+            $structure = $profile->structure($uri);
+            foreach ($this->document->childIds($id) as $child) {
+                if ($child < $this->watermark) {
+                    $this->stepUris[$child] = $structure?->substructure($this->document->tagOf($child))?->uri;
+                    $stack[] = $child;
+                }
+            }
+        }
     }
 
     /**

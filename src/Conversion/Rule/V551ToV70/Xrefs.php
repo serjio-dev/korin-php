@@ -53,9 +53,11 @@ final class Xrefs implements NodeRule
         if ($document->isInvalid($id)) {
             return true;
         }
-        $xref = $document->xrefOf($id);
-        if ($xref !== null && isset($this->renamed[$xref])) {
-            $document->setXref($id, $this->renamed[$xref]);
+        if ($this->renamed !== []) {
+            $xref = $document->xrefOf($id);
+            if ($xref !== null && isset($this->renamed[$xref])) {
+                $document->setXref($id, $this->renamed[$xref]);
+            }
         }
         if (!$document->mayContain($id, '@')) {
             return true;

@@ -21,7 +21,7 @@ Gedcom::convert($doc, Version::V5_5_1, (new ConvertOptions())->withPolicy(LossPo
 
 Every entry has a stable code, a severity, the path and line of the source document (path
 format as in the corpus: `@I1@/BIRT/DATE`, an index only when a tag repeats), how the data
-was kept (`storedAs`: `extension`, `note` or `dropped`) and a message that never quotes more
+was kept (`storedAs`: `extension`, `note`, `moved` to another standard structure, or `dropped`) and a message that never quotes more
 than a short fragment. A code never changes meaning within a major version.
 
 | Policy | What happens to data the target cannot hold |
@@ -68,14 +68,17 @@ reading it. `convertFile()` will convert large files in constant memory.
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
-| `KL2001` | warning | A structure the target version does not have where it stands: kept as an extension with its tag and substructures (7.0 → 5.5.1: `NO` → `_NO`, `HEAD.SCHMA` → `_SCHMA`, a `PHRASE` → `_PHRASE`, an `EXID` with a `TYPE` 5.5.1 has no tag for → `_EXID`), or dropped under `DropWithReport`. Converting up again gives the structure back |
+| `KL2001` | warning | A structure the target version does not have where it stands: kept as an extension with its tag and substructures (7.0 → 5.5.1: `NO` → `_NO`, `HEAD.SCHMA` → `_SCHMA`, a `PHRASE` → `_PHRASE`, an `EXID` with a `TYPE` 5.5.1 has no tag for → `_EXID`; 5.5.1 → 5.5: `EMAIL` → `_EMAIL`, the `FILE` of a media record → `_FILE`; 5.5 → 5.5.1: `BLOB` → `_BLOB`), or dropped under `DropWithReport`. Converting back gives the structure back |
+| `KL2002` | warning | More of a structure than the target version allows where it stands (5.5.1 → 5.5: a second `REPO` of a source; 5.5 → 5.5.1: a second `PEDI`): the extra ones are kept as extensions, or dropped under `DropWithReport`. Converting back gives them back |
 
 ## KL3 — values
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
-| `KL3001` | warning | A value the target version cannot write so that converting back gives it again (7.0 → 5.5.1: a date of an extension calendar, an age in weeks, a language without a 5.5.1 name such as `en-GB`): the structure is kept as an extension with its tag (`_DATE`, `_AGE`, `_LANG`), or dropped under `DropWithReport` |
+| `KL3001` | warning | A value the target version cannot write so that converting back gives it again (7.0 → 5.5.1: a date of an extension calendar, an age in weeks, a language without a 5.5.1 name such as `en-GB`; between 5.5 and 5.5.1: an enumeration value the target does not list, such as 5.5 `SEX U`, or a missing pointer the target requires): the structure is kept as an extension with its tag (`_DATE`, `_AGE`, `_SEX`), or dropped under `DropWithReport` |
 | `KL3002` | warning | 7.0 → 5.5.1: `SEX X`, which 5.5.1 does not have, is `SEX U` with `_SEX X` (converting up gives `SEX X` back), or `SEX U` alone under `DropWithReport` |
+| `KL3003` | warning | The value `Y` of an event the target writes without a value (5.5.1 `BURI`, `CREM`, `DIV`), on an event with substructures: dropped. An event without substructures means the same without it, and is not reported |
+| `KL3004` | warning | 5.5.1 → 5.5: the value of `EVEN`, which 5.5 does not have, is its `TYPE` (`moved`), or a `NOTE` when it has a `TYPE` already (`note`) |
 
 ## KL4 — references
 

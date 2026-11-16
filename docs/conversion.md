@@ -47,6 +47,7 @@ Implemented so far:
 | Enumerations (`PEDI birth`, `SEX f`, `STAT PRE-1970`, `DNS/CAN`) | 7.0 values (`BIRTH`, `F`, `PRE_1970`, `DNS_CAN`); a value 7.0 does not have becomes `OTHER` + `PHRASE` where 7.0 has both (`NAME.TYPE Screen`, `MEDI document`, `ROLE (midwife)`), and stays otherwise. `SOUR.DATA.EVEN birt,deat` → `BIRT, DEAT` |
 | `FONE`, `ROMN` (of a name or place) | `TRAN` with `LANG` from the `TYPE`: `hangul` → `ko-Hang`, `kana` → `ja-Kana`, `romaji` → `ja-Latn`, `pinyin` → `zh-Latn-pinyin`, `wadegiles` → `zh-Latn-wadegile`; a `FONE` type only for `FONE`, a `ROMN` type only for `ROMN`; another `TYPE` stays as `_TYPE`, with `LANG und` (`FONE`) or `und-Latn` (`ROMN`); an empty `TYPE` is dropped |
 | `RESI`, `EVEN` without a value | Unchanged: 7.0 requires the payload, but an empty `Text` is one (`1 EVEN` in section 1 of the specification) |
+| An event with neither a value nor substructures (`1 BURI`, `1 DEAT`) | `Y`: it says the event occurred, and 7.0 has no structure without both |
 | — | `HEAD.SCHMA` lists the extension tags the conversion writes with a standard meaning: `_PHRASE https://gedcom.io/terms/v7/PHRASE`, unless the input already has `_PHRASE`; added to an existing `SCHMA`. Known from the prepass, so `HEAD` is complete when it is converted |
 | `_NO`, `_SDATE`, `_CREA`, `_SCHMA`, `_PHRASE` and other extensions named after a 7.0 structure, where 7.0 has it and 5.5.1 does not; `_FAMC @VOID@` and the like; `SEX U` + `_SEX X` | The 7.0 structure (`NO`, `SDATE`, `SEX X`): how the conversion to 5.5.1 writes it. An extension 5.5.1 has the structure for (`_DATE` under `BIRT`) stays |
 | `ASSO.RELA` | `ROLE`: a 7.0 role (`friend` → `FRIEND`), a common word with `PHRASE` (`Godmother` → `GODP`, `neighbor` → `NGHBR`), otherwise `OTHER` + `PHRASE` |
@@ -100,6 +101,8 @@ back, except for what the loss report lists. Implemented so far:
 | `TRAN` of a name or place | `FONE`/`ROMN` with `TYPE` where 5.5.1 has the type: `ko-Hang` → `FONE hangul`, `ja-Kana` → `FONE kana`, `ja-Latn` → `ROMN romaji`, `zh-Latn-pinyin` → `ROMN pinyin`, `zh-Latn-wadegile` → `ROMN wadegiles`; `und`/`und-Latn` + `_TYPE x` → `FONE`/`ROMN` + `TYPE x`. Another language → `_TRAN`, `KL2001` |
 | `SEX X` | `SEX U` + `_SEX X`, `KL3002` |
 | A structure 5.5.1 does not have where it stands: `NO`, `SDATE`, `CREA`, `INIL`, `CROP`, `HEAD.SCHMA`, `MIME`/`LANG` of a note, `ASSO` of an event, a `PHRASE` no value could take | An extension with its tag and substructures (`_NO`, `_SDATE`, `_SCHMA`), `KL2001`; converting up gives the structure back |
+| More of a structure than 5.5.1 allows (a second `RFN` of a record) | The extra ones as extensions, `KL2002` (an `EXID` that would be a second `RFN` stays `_EXID`, `KL2001`) |
+| `Y` of an event 5.5.1 writes without a value (`BURI Y`, `CREM Y`) | No value: an event without substructures means the same, and converting up gives `Y` back; one with substructures is reported, `KL3003` |
 
 Every value is chosen so that converting it up gives the same 7.0 value and `PHRASE` again
 (so `ROLE GODP` without a phrase is `RELA Godp`: `Godparent` would come back with a
@@ -110,3 +113,45 @@ programs write although 5.5.1 does not list them stay as they are (`PEDI guardia
 
 Xrefs are kept: every 7.0 xref is a valid 5.5.1 one. Extensions (`_X`) and what is inside them
 only get the 5.5.1 line syntax.
+
+## 5.5.1 → 5.5
+
+5.5 is written in UTF-16 (big-endian, with a BOM, `HEAD.CHAR UNICODE`). Nothing is dropped
+by default; converting the result up again gives the 5.5.1 document back, except for what the
+loss report lists with a `KL3` code.
+
+| 5.5.1 | 5.5 |
+| --- | --- |
+| A structure 5.5 does not have where it stands: `EMAIL`, `FAX`, `WWW`, `ADR3`, `MAP`, `FONE`, `ROMN`, `NAME.TYPE`, `FACT`, `FAMC.STAT`, `RELI` and `RESN` of an event, `RESN` of a family, `MEDI` | An extension with its tag and substructures (`_EMAIL`, `_MAP`), `KL2001` |
+| More of a structure than 5.5 allows: a second `REPO` of a source, a second `FILE` of a media link | The extra ones as extensions (`_REPO`, `_FILE`), `KL2002` |
+| `REPO` of a source without a pointer (`1 REPO` + `CALN`) | `_REPO`, `KL3001`: 5.5 requires the pointer |
+| A value 5.5 does not list: `SEX U`, `RESN confidential`, `STAT EXCLUDED` | The structure as an extension with its value (`_SEX U`), `KL3001` |
+| Media `FORM jpg`, `tif` | `jpeg`, `tiff`, the 5.5 spelling |
+| `EVEN Served in the navy` | 5.5 `EVEN` has no value; it describes the event with `TYPE`, the element 5.5.1 writes in the value: `2 TYPE Served in the navy` (`KL3004`, `moved`). An `EVEN` with a `TYPE` already: `2 NOTE Served in the navy` (`KL3004`, `note`) |
+| Media link: `OBJE` + `FILE` + `FORM` | `FORM` belongs to the `OBJE`: the `FORM` of the first `FILE` moves up, before it |
+| Media record: `FILE a.jpg` + `FORM` + `TITL` | A 5.5 record has no `FILE`: it holds the object itself (`BLOB`). The `FORM` and `TITL` of the first `FILE` move up to the record, the file is `_FILE a.jpg` (`KL2001`). The 5.5 validator reports the missing `BLOB` (`KV2003`) |
+| `ASSO` | `TYPE INDI` added as its first substructure: 5.5 requires it |
+| `BIRT Y` and the other events | Unchanged: 5.5 allows `Y` on every event |
+
+## 5.5 → 5.5.1
+
+Upgrading keeps everything: what 5.5.1 has no structure for becomes an extension and a loss
+report entry.
+
+| 5.5 | 5.5.1 |
+| --- | --- |
+| Any encoding | UTF-8, `HEAD.CHAR UTF-8` |
+| A structure 5.5.1 does not have where it stands: `BLOB` and `OBJE` (continuation) of a media record, `NOTE` of a media link, `SOUR` of a note or a place, `AGE` of a family event | An extension with its tag and substructures (`_BLOB`, `_AGE`), `KL2001` |
+| A second `PEDI` of a `FAMC` | `_PEDI`, `KL2002` |
+| `STAT CLEARED`, `QUALIFIED`, `INFANT` where 5.5.1 does not list it | `_STAT`, `KL3001` |
+| `Y` of an event 5.5.1 writes without a value (`BURI Y`, `DIV Y`) | No value, as 7.0 → 5.5.1 (`KL3003` with substructures) |
+| Media `FORM jpeg`, `tiff` | `jpg`, `tif` |
+| Media link: `OBJE` + `FORM` + `FILE` | `FORM` moves into the `FILE` |
+| Media record with `_FILE` (as 5.5.1 → 5.5 writes it) or a `FILE` (as some 5.5 programs write) | A `FILE` with the record's `FORM` and `TITL`. A record without either keeps them as `_FORM`, `_TITL` (`KL2001`); the 5.5.1 validator reports the missing `FILE` |
+| `ASSO` + `TYPE INDI` | `TYPE` removed; an association with another record (`TYPE FAM`) → `_ASSO`, `KL2001` |
+| `_EMAIL`, `_MAP`, `_SEX U` and other extensions 5.5.1 could write as the structure it has there | The structure (`EMAIL`, `MAP`, `SEX U`): how 5.5.1 → 5.5 writes it |
+
+A conversion between 5.5 and 7.0 goes through 5.5.1: 7.0 → 5.5 is 7.0 → 5.5.1 and then
+5.5.1 → 5.5, with one loss report for both, located in the input. Converting a 7.0 file to 5.5
+and back gives the same fingerprint, except for `KL3` losses, as it does through 5.5.1 (tested
+on every 7.0 input of the corpus).

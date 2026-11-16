@@ -79,7 +79,7 @@ final readonly class Converter
             [$record, $first] = $pending[$i];
             for ($step = $first; $step < count($route) && $work->contains($record); ++$step) {
                 $work->setVersion($route[$step]->from());
-                $context->enter($route[$step]);
+                $context->enter($route[$step], $record, $step === 0);
                 foreach ($rules[$step] as $rule) {
                     if (!$work->contains($record)) {
                         break;

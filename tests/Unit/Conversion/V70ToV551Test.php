@@ -62,11 +62,11 @@ final class V70ToV551Test extends TestCase
             . "0 @F1@ FAM\n1 EXID 3\n2 TYPE https://gedcom.io/terms/v7/AFN\n0 TRLR\n"), Version::V5_5_1);
 
         self::assertSame("0 HEAD\n1 SOUR My App\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @I1@ INDI\n1 _UID 1234-abcd\n"
-            . "1 AFN 42\n1 RFN abc:Zeta DB\n1 RFN x\n1 RIN 9\n"
+            . "1 AFN 42\n1 RFN abc:Zeta DB\n1 _EXID x\n2 TYPE https://gedcom.io/terms/v7/RFN\n1 RIN 9\n"
             . "1 _EXID 8\n2 TYPE https://gedcom.io/terms/v7/RIN#Other\n1 _EXID a:b\n2 TYPE https://gedcom.io/terms/v7/RFN\n"
             . "1 _EXID 77\n2 TYPE https://www.familysearch.org/ark:/61903/4:1:\n"
             . "0 @F1@ FAM\n1 _EXID 3\n2 TYPE https://gedcom.io/terms/v7/AFN\n0 TRLR\n", Gedcom::serialize($result->document()));
-        self::assertSame(['KL2001 warning line 15 (@I1@/EXID[4])', 'KL2001 warning line 17 (@I1@/EXID[5])', 'KL2001 warning line 19 (@I1@/EXID[6])', 'KL2001 warning line 22 (@F1@/EXID)'], $this->where($result->losses()->entries()));
+        self::assertSame(['KL2001 warning line 11 (@I1@/EXID[2])', 'KL2001 warning line 15 (@I1@/EXID[4])', 'KL2001 warning line 17 (@I1@/EXID[5])', 'KL2001 warning line 19 (@I1@/EXID[6])', 'KL2001 warning line 22 (@F1@/EXID)'], $this->where($result->losses()->entries()));
     }
 
     #[Test]
@@ -84,6 +84,15 @@ final class V70ToV551Test extends TestCase
 
         $this->expectException(ConversionException::class);
         Gedcom::convert(Gedcom::parse($input), Version::V5_5_1, (new ConvertOptions())->withPolicy(LossPolicy::Fail));
+    }
+
+    #[Test]
+    public function eventsLoseTheYFiveFiveOneDoesNotHave(): void
+    {
+        $result = Gedcom::convert(Gedcom::parse(self::HEAD . "0 @I1@ INDI\n1 BURI Y\n1 CREM Y\n2 DATE 1950\n1 DEAT Y\n2 DATE 1949\n0 TRLR\n"), Version::V5_5_1);
+
+        self::assertSame(self::HEAD_551 . "0 @I1@ INDI\n1 BURI\n1 CREM\n2 DATE 1950\n1 DEAT Y\n2 DATE 1949\n0 TRLR\n", $result->output());
+        self::assertSame(['KL3003 warning line 8 (@I1@/CREM)'], $this->where($result->losses()->entries()));
     }
 
     #[Test]

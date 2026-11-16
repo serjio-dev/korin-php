@@ -68,7 +68,7 @@ final class Identifiers implements NodeRule
             $uri === $this->rin => ['RIN', $value],
             default => [null, null],
         };
-        if ($tag === null || $converted === null || !$this->has($document->tagOf($record), $tag)) {
+        if ($tag === null || $converted === null || !$this->has($document, $record, $tag)) {
             return $context->unsupported($id, 'KL2001', 'EXID has no 5.5.1 identifier for its TYPE');
         }
         $document->setTag($id, $tag);
@@ -95,11 +95,17 @@ final class Identifiers implements NodeRule
         return $text === '' ? '' : '#' . rawurlencode($text);
     }
 
-    private function has(string $record, string $tag): bool
+    /** Whether the record can have one more of the identifier in 5.5.1 (RFN once, AFN and RIN as 5.5.1 allows). */
+    private function has(Document $document, int $record, string $tag): bool
     {
         $profile = Profile::for(Version::V5_5_1);
-        $uri = $profile->record($record)?->uri;
+        $uri = $profile->record($document->tagOf($record))?->uri;
+        $substructure = $uri === null ? null : $profile->structure($uri)?->substructure($tag);
+        if ($substructure === null) {
+            return false;
+        }
+        $max = $substructure->cardinality->max;
 
-        return $uri !== null && $profile->structure($uri)?->substructure($tag) !== null;
+        return $max === null || count(array_filter($document->childIds($record), static fn(int $child): bool => $document->tagOf($child) === $tag)) < $max;
     }
 }
