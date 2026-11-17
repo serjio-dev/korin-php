@@ -49,6 +49,8 @@ composer require korin/gedcom
 ## Diagnostics
 
 Reading reports syntax problems, validation checks the document against its version's rules.
+Documented mistakes of the program that wrote a file (PAF 5 declaring 5.5 for 5.5.1, a wrong
+`CHAR`) are corrected as it is read, and reported ([docs/dialects.md](docs/dialects.md)).
 Problems are reported, not thrown, unless you ask for strict mode:
 
 ```php

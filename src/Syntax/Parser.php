@@ -6,6 +6,7 @@ namespace Korin\Gedcom\Syntax;
 
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Exception\ParseException;
+use Korin\Gedcom\Extension\Dialects;
 use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\Io\EncodingDetector;
@@ -28,7 +29,7 @@ final readonly class Parser
 
     public function parse(string $bytes, ReadOptions $options = new ReadOptions()): Document
     {
-        $detection = $this->detector->detect($bytes, $options->encoding);
+        $detection = $this->detector->detect($bytes, $options->encoding, $options->dialects);
         $encoding = $detection->encoding;
         $codec = Codecs::for($encoding);
         $start = $detection->hasBom ? strlen($encoding->bom()) : 0;
@@ -191,6 +192,12 @@ final readonly class Parser
             return null;
         }
         $version = Version::fromDeclared($declared);
+        $dialect = $version === null || !$options->dialects ? null : Dialects::version($head, $version);
+        if ($dialect !== null) {
+            $report(new Diagnostic('KV1010', Severity::Info, $dialect[1], $vers->line(), 'HEAD/GEDC/VERS'));
+
+            return $dialect[0];
+        }
         if ($version === null) {
             $report(new Diagnostic('KV1008', Severity::Warning, 'Unknown GEDCOM version; read as 5.5.1', $vers->line(), 'HEAD/GEDC/VERS'));
         } elseif ($version->readAs() === Version::V5_5 && trim($declared) !== '5.5') {
@@ -201,11 +208,12 @@ final readonly class Parser
     }
 
     /** @internal the version HEAD.GEDC.VERS names; null when it is missing or unknown */
-    public static function declaredVersion(Node $head): ?Version
+    public static function declaredVersion(Node $head, bool $dialects = true): ?Version
     {
         $declared = $head->first('GEDC')?->first('VERS')?->value();
+        $version = $declared === null ? null : Version::fromDeclared($declared);
 
-        return $declared === null ? null : Version::fromDeclared($declared);
+        return $version !== null && $dialects ? Dialects::version($head, $version)[0] ?? $version : $version;
     }
 
     private function report(Document $document, ReadOptions $options, Diagnostic $diagnostic): void

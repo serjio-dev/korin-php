@@ -53,7 +53,7 @@ final class RecordReader
             while (strlen($this->buffer) <= EncodingDetector::SAMPLE_SIZE && !$this->eof) {
                 $this->read();
             }
-            $this->detection = $this->detector->detect($this->buffer, $this->options->encoding);
+            $this->detection = $this->detector->detect($this->buffer, $this->options->encoding, $this->options->dialects);
         }
 
         return $this->detection;

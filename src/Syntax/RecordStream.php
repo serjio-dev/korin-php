@@ -105,7 +105,7 @@ final class RecordStream implements \IteratorAggregate
             $first ??= $node;
             if ($tag === 'HEAD' && $head === null) {
                 $head = $node;
-                $version = $this->options->version === null ? Parser::declaredVersion($node) : null;
+                $version = $this->options->version === null ? Parser::declaredVersion($node, $this->options->dialects) : null;
                 if ($version !== null) {
                     $this->version = $version;
                     $document->setVersion($version);

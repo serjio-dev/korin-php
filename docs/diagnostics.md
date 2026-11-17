@@ -25,6 +25,7 @@ new codes may be added in minor releases. Messages are informative and may chang
 | `KV1007` | warning | `HEAD.GEDC.VERS` is missing; the file is read as 5.5.1 |
 | `KV1008` | warning | `HEAD.GEDC.VERS` names an unknown version; the file is read as 5.5.1 |
 | `KV1009` | info | `HEAD.GEDC.VERS` names GEDCOM 4.0 (`4.0`, `4.0.4.18`, `4+`), read as `Version::V4_0`, or a 5.0–5.4 draft (`5.3`, `5.01`), read as 5.5: both with the 5.5 profile ([conversion.md](conversion.md#40--55)) |
+| `KV1010` | info | A documented mistake of the program that wrote the file is corrected: the file is read in another encoding or version than it declares ([dialects.md](dialects.md)); `ReadOptions::withDialects(false)` turns it off |
 | `KV1101` | warning | `HEAD.CHAR` is not a standard value (e.g. `ANSI`, `LATIN1`); the encoding is detected from content |
 | `KV1102` | warning | `HEAD.CHAR` contradicts the content; the content wins |
 | `KV1103` | info | No usable `HEAD.CHAR`; the encoding is guessed from content |

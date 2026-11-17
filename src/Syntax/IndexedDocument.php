@@ -6,6 +6,7 @@ namespace Korin\Gedcom\Syntax;
 
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Exception\IoException;
+use Korin\Gedcom\Extension\SourceSystem;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\Model\Family;
 use Korin\Gedcom\Model\Individual;
@@ -138,7 +139,7 @@ final class IndexedDocument implements \Countable
         $this->version = $options->version ?? Version::V5_5_1;
         $headNode = $head === null ? null : $this->parse($head[0], $head[1], $this->headIndex === 0);
         if ($headNode !== null) {
-            $this->version = $options->version ?? Parser::declaredVersion($headNode) ?? $this->version;
+            $this->version = $options->version ?? Parser::declaredVersion($headNode, $options->dialects) ?? $this->version;
             // The lines do not depend on the version, only their values.
             $headNode->document()->setVersion($this->version);
             $this->cache[(int) $this->headIndex] = $headNode->document();
@@ -281,6 +282,14 @@ final class IndexedDocument implements \Countable
     public function submitters(): \Generator
     {
         return $this->views(Submitter::class);
+    }
+
+    /** The program that wrote the file, from HEAD.SOUR; null without one. */
+    public function sourceSystem(): ?SourceSystem
+    {
+        $head = $this->head();
+
+        return $head === null ? null : SourceSystem::of($head);
     }
 
     public function head(): ?Node

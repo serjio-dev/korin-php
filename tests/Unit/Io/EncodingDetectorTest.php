@@ -34,6 +34,10 @@ final class EncodingDetectorTest extends TestCase
         yield 'no CHAR, 8-bit content is guessed' => [str_replace("1 CHAR X\n", '', $file('X', 'Анна Іванівна', Encoding::Windows1251)), Encoding::Windows1251, ['KV1103']];
         yield 'UTF-16LE without BOM' => [$file('UNICODE', 'Анна', Encoding::Utf16Le), Encoding::Utf16Le, []];
         yield 'UTF-16BE without BOM' => [$file('UNICODE', 'Анна', Encoding::Utf16Be), Encoding::Utf16Be, []];
+        yield 'CHAR MS-DOS' => [$file('MS-DOS', 'Françoise', Encoding::Cp850), Encoding::Cp850, ['KV1101']];
+        yield 'CHAR IBM WINDOWS' => [$file('IBM WINDOWS', 'Françoise', Encoding::Windows1252), Encoding::Windows1252, ['KV1101']];
+        yield 'CHAR OEM' => [$file('OEM', 'Françoise', Encoding::Cp437), Encoding::Cp437, ['KV1101']];
+        yield 'Mac line endings' => [str_replace("\n", "\r", $file('ANSEL', 'Wałęsa', Encoding::Ansel)), Encoding::Ansel, []];
     }
 
     /** @param list<string> $codes */

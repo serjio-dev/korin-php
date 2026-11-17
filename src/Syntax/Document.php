@@ -8,6 +8,7 @@ use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Exception\DetachedNodeException;
 use Korin\Gedcom\Exception\InvalidPathException;
 use Korin\Gedcom\Exception\ReadOnlyException;
+use Korin\Gedcom\Extension\SourceSystem;
 use Korin\Gedcom\Io\Codec\Codec;
 use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Encoding;
@@ -167,6 +168,14 @@ final class Document
         $id = $this->index()[$xref] ?? null;
 
         return $id !== null ? $this->node($id) : null;
+    }
+
+    /** The program that wrote the file, from HEAD.SOUR; null without one. */
+    public function sourceSystem(): ?SourceSystem
+    {
+        $head = $this->head();
+
+        return $head === null ? null : SourceSystem::of($head);
     }
 
     public function head(): ?Node
