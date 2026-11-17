@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Korin\Gedcom\Tests\Unit\Gedzip;
 
 use Korin\Gedcom\Exception\GedzipException;
+use Korin\Gedcom\Exception\IoException;
 use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Gedzip\EntryName;
 use Korin\Gedcom\ReadOptions;
+use Korin\Gedcom\Syntax\IndexedDocument;
 use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
@@ -145,6 +147,62 @@ final class GedzipTest extends TestCase
 
         Gedcom::convertFile($entry, $this->dir . '/out.ged', Version::V5_5_1);
         self::assertSame(Gedcom::serialize(Gedcom::convert(Gedcom::parse($ged), Version::V5_5_1)->document()), file_get_contents($this->dir . '/out.ged'));
+    }
+
+    #[Test]
+    public function entryOpenedByRelativePathSurvivesChdir(): void
+    {
+        $this->zip(['gedcom.ged' => "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n0 @I2@ INDI\n0 TRLR\n"]);
+        $cwd = (string) getcwd();
+        chdir($this->dir);
+        try {
+            $document = Gedcom::open('zip://in.gdz#gedcom.ged');
+            chdir(sys_get_temp_dir());
+            $document->record('@I2@');
+
+            self::assertSame('@I1@', $document->record('@I1@')?->xref());
+        } finally {
+            chdir($cwd);
+        }
+    }
+
+    #[Test]
+    public function entryReplacedAfterOpenIsReported(): void
+    {
+        $this->zip(['gedcom.ged' => "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NAME Анна\n0 @I2@ INDI\n0 TRLR\n"]);
+        $document = Gedcom::open('zip://' . $this->dir . '/in.gdz#gedcom.ged');
+        $document->record('@I2@');
+        unlink($this->dir . '/in.gdz');
+        $this->zip(['gedcom.ged' => "0 HEAD\n"]);
+
+        $this->expectExceptionObject(new IoException('The file changed after it was opened'));
+        $document->record('@I1@');
+    }
+
+    #[Test]
+    public function otherPathThatCannotSeekIsCopied(): void
+    {
+        stream_wrapper_register('korin-noseek', NoSeekStream::class);
+        try {
+            NoSeekStream::$bytes = "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n0 @I2@ INDI\n0 TRLR\n";
+            $document = Gedcom::open('korin-noseek://tree.ged');
+            NoSeekStream::$bytes = '';
+
+            self::assertSame('@I1@', $document->record('@I1@')?->xref());
+            self::assertSame(1, NoSeekStream::$opened);
+        } finally {
+            stream_wrapper_unregister('korin-noseek');
+        }
+    }
+
+    #[Test]
+    public function reopenedHandleIsOwned(): void
+    {
+        $handle = fopen('php://memory', 'w+b');
+        self::assertNotFalse($handle);
+
+        $this->expectException(\InvalidArgumentException::class);
+        new IndexedDocument($handle, path: 'zip://x.gdz#gedcom.ged');
     }
 
     /** @return iterable<string, array{string, bool}> */

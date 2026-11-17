@@ -51,36 +51,35 @@ final class Gedcom
 
     /**
      * Opens a file for reading without its tree in memory: an index of the records, which are
-     * read from the file when asked for. A stream that cannot seek is copied to php://temp first.
+     * read from the file when asked for. A resource that cannot seek is copied to php://temp
+     * first (in memory up to 2 MB, then in a temporary file). A zip:// path is not copied: the
+     * entry is read forward and opened again to go back, which decompresses it from the start;
+     * read its records in order (as {@see self::convertFile()} does), not at random.
      *
      * @param string|resource $source a path, or an open handle read from its current position (not closed)
      */
     public static function open(mixed $source, ReadOptions $options = new ReadOptions()): IndexedDocument
     {
         if (is_resource($source)) {
-            // A stream wrapper may claim to seek and not do it.
-            $position = ftell($source);
-            if (stream_get_meta_data($source)['seekable'] && $position !== false && @fseek($source, $position) === 0) {
-                return new IndexedDocument($source, $options);
-            }
-            $copy = fopen('php://temp', 'w+b');
-            if ($copy === false) {
-                throw new IoException('Cannot create a temporary stream');
-            }
-            if (stream_copy_to_stream($source, $copy) === false) {
-                fclose($copy);
-
-                throw new IoException('Cannot copy the stream to a temporary stream');
-            }
-            rewind($copy);
-
-            return new IndexedDocument($copy, $options, close: true);
+            return self::seeks($source) ? new IndexedDocument($source, $options) : self::openCopy($source, $options);
         }
 
         $handle = self::handle($source);
+        if (self::seeks($handle)) {
+            return new IndexedDocument($handle, $options, close: true);
+        }
+        // An entry of a ZIP cannot seek: it is opened again to go back, rather than copied. Other
+        // wrappers (http://, php://stdin) could give other bytes, or none, when opened again: copied.
+        $entry = is_string($source) ? self::zipEntry($source) : null;
+        if ($entry === null) {
+            try {
+                return self::openCopy($handle, $options);
+            } finally {
+                fclose($handle);
+            }
+        }
 
-        // An entry of a ZIP (zip://) cannot seek: it is opened again rather than copied.
-        return new IndexedDocument($handle, $options, close: true, path: stream_get_meta_data($handle)['seekable'] || !is_string($source) ? null : $source);
+        return new IndexedDocument($handle, $options, close: true, path: $entry);
     }
 
     public static function parse(string $bytes, ReadOptions $options = new ReadOptions()): Document
@@ -185,5 +184,49 @@ final class Gedcom
         }
 
         return $handle;
+    }
+
+    /**
+     * A stream that cannot seek, copied to php://temp and indexed there.
+     *
+     * @param resource $source
+     */
+    private static function openCopy(mixed $source, ReadOptions $options): IndexedDocument
+    {
+        $copy = fopen('php://temp', 'w+b');
+        if ($copy === false) {
+            throw new IoException('Cannot create a temporary stream');
+        }
+        if (stream_copy_to_stream($source, $copy) === false) {
+            fclose($copy);
+
+            throw new IoException('Cannot copy the stream to a temporary stream');
+        }
+        rewind($copy);
+
+        return new IndexedDocument($copy, $options, close: true);
+    }
+
+    /**
+     * Whether a stream seeks: a wrapper may claim to and not do it.
+     *
+     * @param resource $handle
+     */
+    private static function seeks(mixed $handle): bool
+    {
+        $position = ftell($handle);
+
+        return stream_get_meta_data($handle)['seekable'] && $position !== false && @fseek($handle, $position) === 0;
+    }
+
+    /** A zip:// path with the archive made absolute, so that a later chdir() does not change it; null for any other. */
+    private static function zipEntry(string $path): ?string
+    {
+        if (preg_match('/^zip:\/\/(.+)#(.+)$/s', $path, $m) !== 1) {
+            return null;
+        }
+        $archive = realpath($m[1]);
+
+        return $archive === false ? null : "zip://{$archive}#{$m[2]}";
     }
 }
