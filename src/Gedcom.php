@@ -10,6 +10,7 @@ use Korin\Gedcom\Exception\ConversionException;
 use Korin\Gedcom\Exception\IoException;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Syntax\Parser;
+use Korin\Gedcom\Syntax\RecordStream;
 use Korin\Gedcom\Validation\ValidationOptions;
 use Korin\Gedcom\Validation\ValidationReport;
 use Korin\Gedcom\Validation\Validator;
@@ -26,6 +27,27 @@ final class Gedcom
         }
 
         return self::parse($bytes, $options);
+    }
+
+    /**
+     * Reads a file one record at a time, in memory that does not grow with the file.
+     *
+     * @param string|resource $source a path, or an open handle read from its current position (not closed)
+     */
+    public static function stream(mixed $source, ReadOptions $options = new ReadOptions()): RecordStream
+    {
+        if (is_resource($source)) {
+            return new RecordStream($source, $options);
+        }
+        if (!is_string($source)) {
+            throw new \InvalidArgumentException('A path or a stream resource is expected');
+        }
+        $handle = @fopen($source, 'rb');
+        if ($handle === false) {
+            throw new IoException("Cannot read {$source}");
+        }
+
+        return new RecordStream($handle, $options, close: true);
     }
 
     public static function parse(string $bytes, ReadOptions $options = new ReadOptions()): Document
