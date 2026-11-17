@@ -8,6 +8,7 @@ use Korin\Gedcom\Exception\GedzipException;
 use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Gedzip\EntryName;
 use Korin\Gedcom\ReadOptions;
+use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\Attributes\Test;
@@ -128,6 +129,22 @@ final class GedzipTest extends TestCase
         self::assertSame(['photos/a%20b.jpg'], $archive->missing());
         $this->expectException(GedzipException::class);
         $archive->media('photos/a%20b.jpg');
+    }
+
+    #[Test]
+    public function entryIsOpenedAndConvertedThroughZipWrapper(): void
+    {
+        $ged = "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NAME Анна\n0 @I2@ INDI\n1 NAME Петро\n0 TRLR\n";
+        $this->zip(['gedcom.ged' => $ged]);
+        $entry = 'zip://' . $this->dir . '/in.gdz#gedcom.ged';
+
+        $document = Gedcom::open($entry);
+        // Back and forth on an entry that cannot seek.
+        $name = static fn(string $xref): ?string => $document->individual($xref)?->name()?->full();
+        self::assertSame(['Петро', 'Анна', 'Петро'], [$name('@I2@'), $name('@I1@'), $name('@I2@')]);
+
+        Gedcom::convertFile($entry, $this->dir . '/out.ged', Version::V5_5_1);
+        self::assertSame(Gedcom::serialize(Gedcom::convert(Gedcom::parse($ged), Version::V5_5_1)->document()), file_get_contents($this->dir . '/out.ged'));
     }
 
     /** @return iterable<string, array{string, bool}> */

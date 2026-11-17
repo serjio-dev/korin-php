@@ -152,6 +152,14 @@ or one of more than 1 MiB is compressed more than `$maxCompressionRatio` times
 (`withArchiveLimits()`). A media stream is the entry as the archive gives it: limit how much
 you read when the archive is not yours.
 
+Large archives need not be read whole: `gedcom.ged` can be opened, streamed or converted
+through PHP's `zip://` wrapper, decompressed as it is read and never copied to disk.
+
+```php
+Gedcom::convertFile('zip://family.gdz#gedcom.ged', 'family.ged', Version::V5_5_1);
+Gedcom::open('zip://family.gdz#gedcom.ged');  // the entry cannot seek: it is opened again to go back
+```
+
 ## Large files
 
 `Gedcom::stream()` reads one record at a time; memory does not grow with the file. Each record

@@ -16,6 +16,9 @@ break the API; such changes are described in `UPGRADE.md`.
   document that is not 7.0 is reported (KV1203), so is a missing medium (KV1204); limits on
   total size and compression ratio (`ReadOptions::withArchiveLimits()`) reject zip bombs
   before decompression. Needs `ext-zip`. The `gedzip` corpus check.
+- `open()`, and so `convertFile()`, read a file that cannot seek, such as
+  `zip://family.gdz#gedcom.ged`, forward and open it again to go back, instead of failing:
+  converting a 50 MB entry takes the memory of a plain file (41 MB), nothing goes to disk.
 - `Gedcom::stream()` / `Syntax\RecordStream`: a file (a path or a stream resource) read one
   `Syntax\Record` at a time, in about 2.3 MB whatever its size (50 MB in 2.9 s). Each record
   is a document of its own with the nodes, line numbers and diagnostics `read()` gives it;
