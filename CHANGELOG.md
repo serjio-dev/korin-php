@@ -7,6 +7,14 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-17
+
+Model and media: files of any size (streaming, indexed reading, streaming conversion and
+validation), value objects for dates with calendars, ages, names and places, live views of
+every record type, and GEDZIP archives. No breaking changes: the validator's rules, rewritten
+as visitors, are internal; `Document::walk()` and `Writer::serialize()` only gained optional
+parameters. 4.0 and 5.0–5.4 input, vendor dialects and the CLI follow in 0.5.
+
 ### Added
 
 - GEDZIP: `Gedcom::readGedzip()` gives a `Gedzip\Archive` with the document, the media
@@ -22,7 +30,7 @@ break the API; such changes are described in `UPGRADE.md`.
   random access on a large entry is slow. Another path that cannot seek (`php://stdin`) is
   copied to `php://temp`, like a resource.
 - `Gedcom::stream()` / `Syntax\RecordStream`: a file (a path or a stream resource) read one
-  `Syntax\Record` at a time, in about 2.3 MB whatever its size (50 MB in 2.9 s). Each record
+  `Syntax\Record` at a time, in about 2.4 MB whatever its size (50 MB in 2.9 s). Each record
   is a document of its own with the nodes, line numbers and diagnostics `read()` gives it;
   written in preserve mode, the records are the file byte for byte (the `roundtrip-stream`
   corpus check). The encoding is detected on the first 64 KB; the stream's `diagnostics()`
@@ -30,7 +38,7 @@ break the API; such changes are described in `UPGRADE.md`.
   first `HEAD`.
 - `Gedcom::open()` / `Syntax\IndexedDocument`: a file indexed without its tree (about 100
   bytes per record: 16 packed for offset, line and tag, the rest for the xref map; 27 MB and
-  0.72 s for 50 MB), records parsed from the file by xref, path or in order (11 µs for an
+  0.71 s for 50 MB), records parsed from the file by xref, path or in order (10 µs for an
   uncached one), the last 1000 cached. Records are read only (`ReadOnlyException`,
   `Document::isReadOnly()`), a `copy()` of one can be edited; `load()` reads the whole file
   into a `Document`. In strict mode every record is parsed while indexing, so `open()` rejects
@@ -39,13 +47,13 @@ break the API; such changes are described in `UPGRADE.md`.
 - `Gedcom::convertFile($in, $out, $to)` / `Converter::convertFile()`: conversion of a file
   record by record, written as it goes, with the output and `LossReport` of `convert()` byte
   for byte (the `convert-stream` corpus check and every cell of the conversion matrix): 43 MB
-  for 50 MB to 7.0 (`read()` and `convert()` peak at 674 MB), in 9 s (5.6 s for `read()`
+  for 50 MB to 7.0 (`read()` and `convert()` peak at 674 MB), in 8.2 s (5.4 s for `read()`
   and `convert()`). HEAD takes along the records its rules move (SUBN into `HEAD._SUBN`, the
   5.5.5 submitter after HEAD); the records a conversion adds wait in `php://temp` for `TRLR`. A
   file whose first record is not HEAD is converted whole.
 - `Gedcom::validate()` takes an `open()` document: the file is checked record by record, read
   once, with the report of the whole document (the `validate-indexed` corpus
-  check): 64 MB and 10.7 s for 50 MB, plausibility checks included. The rules visit the
+  check): 64 MB and 10.4 s for 50 MB, plausibility checks included. The rules visit the
   records in order and keep what the checks between records need packed; the validation of a
   `Document` is as fast as before.
 
@@ -238,7 +246,8 @@ streaming and indexed reading follow in 0.2–0.4.
   gedcom7code test files; PHPBench benchmarks; a baseline comparison with
   liberu-genealogy/php-gedcom ([docs/comparison](docs/comparison/liberu-php-gedcom.md)).
 
-[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.4.0
 [0.3.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.3.0
 [0.2.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.2.0
 [0.1.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.1.0

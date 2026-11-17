@@ -3,10 +3,11 @@
 Read, validate, convert and write GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0 —
 without losing a single tag. Every unavoidable loss is reported.
 
-> **Status: 0.3 — early development.** Reading, lossless writing, editing, validation and
+> **Status: 0.4 — early development.** Reading, lossless writing, editing, validation and
 > conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, also for files of any size (streaming
 > and indexed reading, streaming conversion), and the model: views of every record type with
-> dates, ages, names and places, and GEDZIP archives — see
+> dates, ages, names and places, and GEDZIP archives. Older versions (4.0, 5.0–5.4), vendor
+> dialects and a CLI come in 0.5 — see
 > [the specification](docs/SPEC.md) for the roadmap and [CHANGELOG.md](CHANGELOG.md) for releases.
 > Until 1.0 a minor release may break the API.
 
@@ -162,7 +163,7 @@ Gedcom::stream('zip://family.gdz#gedcom.ged');
 
 `Gedcom::open()` takes a `zip://` path too, but an entry cannot seek: going back to a record
 decompresses the entry again from its start. `convertFile()` reads the file in order, in two
-to five passes depending on the rules (50 MB 5.5.1 → 7.0: two passes, 9.6 s, 41 MB). For
+to five passes depending on the rules (50 MB 5.5.1 → 7.0: two passes, about 7% slower than a plain file, the same memory). For
 random access (`individual()`, `validate()` with plausibility checks) on a large entry, extract
 `gedcom.ged` first.
 
@@ -205,15 +206,16 @@ Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-ser
 
 | Scenario | Peak memory | Time |
 | --- | --- | --- |
-| Full read, 10 MB UTF-8 | 70 MB | 0.32 s |
-| Full read, 10 MB Windows-1251 | 105 MB | 0.49 s |
-| Full read, 50 MB UTF-8 (2.4 million lines) | 426 MB | 1.6 s |
-| Preserve-mode write of 10 MB, unchanged / 10% of surnames edited | 76 MB | 104 ms / 121 ms |
-| Streaming read, 10 MB / 50 MB UTF-8 | 2.3 MB | 0.58 s / 2.9 s |
-| `open()` index, 10 MB / 50 MB UTF-8; then an uncached record | 7.8 MB / 27 MB | 0.14 s / 0.72 s; 11 µs |
-| `convertFile()` to 7.0, 10 MB / 50 MB | 14 MB / 43 MB | 1.8 s / 9.0 s |
+| Full read, 10 MB UTF-8 | 70 MB | 0.35 s |
+| Full read, 10 MB Windows-1251 | 105 MB | 0.52 s |
+| Full read, 50 MB UTF-8 (2.4 million lines) | 426 MB | 1.8 s |
+| Preserve-mode write of 10 MB, unchanged / 10% of surnames edited | 76 MB | 109 ms / 129 ms |
+| Streaming read, 10 MB / 50 MB UTF-8 | 2.4 MB | 0.58 s / 2.9 s |
+| `open()` index, 10 MB / 50 MB UTF-8; then an uncached record | 7.8 MB / 27 MB | 0.14 s / 0.71 s; 10 µs |
+| `convert()` to 7.0 of a document read, 10 MB / 50 MB (memory with the document, time without the read) | 112 MB / 674 MB | 0.70 s / 3.6 s |
+| `convertFile()` to 7.0, 10 MB / 50 MB | 14 MB / 43 MB | 1.6 s / 8.2 s |
 | Validation of a document read, 10 MB, plausibility included (document included) | 76 MB | 1.3 s |
-| `open()` and validation, 10 MB / 50 MB, plausibility included | 15 MB / 64 MB | 2.2 s / 10.7 s |
+| `open()` and validation, 10 MB / 50 MB, plausibility included | 15 MB / 64 MB | 2.1 s / 10.4 s |
 
 The 1.0 target for a full read of 50 MB is ≤ 512 MB and ≤ 20 s.
 Run the benchmarks with `composer bench`.
