@@ -9,6 +9,7 @@ use Korin\Gedcom\Conversion\Converter;
 use Korin\Gedcom\Exception\ConversionException;
 use Korin\Gedcom\Exception\IoException;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Syntax\IndexedDocument;
 use Korin\Gedcom\Syntax\Parser;
 use Korin\Gedcom\Syntax\RecordStream;
 use Korin\Gedcom\Validation\ValidationOptions;
@@ -39,15 +40,34 @@ final class Gedcom
         if (is_resource($source)) {
             return new RecordStream($source, $options);
         }
-        if (!is_string($source)) {
-            throw new \InvalidArgumentException('A path or a stream resource is expected');
-        }
-        $handle = @fopen($source, 'rb');
-        if ($handle === false) {
-            throw new IoException("Cannot read {$source}");
+
+        return new RecordStream(self::handle($source), $options, close: true);
+    }
+
+    /**
+     * Opens a file for reading without its tree in memory: an index of the records, which are
+     * read from the file when asked for. A stream that cannot seek is copied to php://temp first.
+     *
+     * @param string|resource $source a path, or an open handle read from its current position (not closed)
+     */
+    public static function open(mixed $source, ReadOptions $options = new ReadOptions()): IndexedDocument
+    {
+        if (is_resource($source)) {
+            // A stream wrapper may claim to seek and not do it.
+            $position = ftell($source);
+            if (stream_get_meta_data($source)['seekable'] && $position !== false && @fseek($source, $position) === 0) {
+                return new IndexedDocument($source, $options);
+            }
+            $copy = fopen('php://temp', 'w+b');
+            if ($copy === false || stream_copy_to_stream($source, $copy) === false) {
+                throw new IoException('Cannot copy the stream');
+            }
+            rewind($copy);
+
+            return new IndexedDocument($copy, $options, close: true);
         }
 
-        return new RecordStream($handle, $options, close: true);
+        return new IndexedDocument(self::handle($source), $options, close: true);
     }
 
     public static function parse(string $bytes, ReadOptions $options = new ReadOptions()): Document
@@ -81,5 +101,19 @@ final class Gedcom
     public static function serialize(Document $document, WriteOptions $options = new WriteOptions()): string
     {
         return (new Writer())->serialize($document, $options);
+    }
+
+    /** @return resource */
+    private static function handle(mixed $path): mixed
+    {
+        if (!is_string($path)) {
+            throw new \InvalidArgumentException('A path or a stream resource is expected');
+        }
+        $handle = @fopen($path, 'rb');
+        if ($handle === false) {
+            throw new IoException("Cannot read {$path}");
+        }
+
+        return $handle;
     }
 }

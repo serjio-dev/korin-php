@@ -5,12 +5,7 @@ declare(strict_types=1);
 namespace Korin\Gedcom\Syntax;
 
 use Korin\Gedcom\Diagnostic;
-use Korin\Gedcom\Exception\ParseException;
-use Korin\Gedcom\Io\Codec\Codec;
-use Korin\Gedcom\Io\Codec\Codecs;
-use Korin\Gedcom\Io\Detection;
-use Korin\Gedcom\Io\EncodingDetector;
-use Korin\Gedcom\Io\LineSplitter;
+use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\Version;
 
@@ -29,16 +24,7 @@ use Korin\Gedcom\Version;
  */
 final class RecordStream implements \IteratorAggregate
 {
-    private const CHUNK_SIZE = 65536;
-
-    /** A level-0 line, the only kind that ends a record; {@see Parser::LINE} confirms it. */
-    private const LEVEL_ZERO = '/^[ \t]*0{1,3}[ \t]/';
-
-    private ?Detection $detection = null;
-
-    private string $buffer = '';
-
-    private bool $eof = false;
+    private readonly RecordReader $reader;
 
     private bool $started = false;
 
@@ -57,21 +43,21 @@ final class RecordStream implements \IteratorAggregate
         private readonly mixed $handle,
         private readonly ReadOptions $options = new ReadOptions(),
         private readonly bool $close = false,
-        private readonly int $chunkSize = self::CHUNK_SIZE,
+        int $chunkSize = 65536,
         private readonly Parser $parser = new Parser(),
-        private readonly EncodingDetector $detector = new EncodingDetector(),
     ) {
+        $this->reader = new RecordReader($handle, $options, $chunkSize);
         $this->version = $options->version ?? Version::V5_5_1;
     }
 
-    public function encoding(): \Korin\Gedcom\Io\Encoding
+    public function encoding(): Encoding
     {
-        return $this->detect()->encoding;
+        return $this->reader->detection()->encoding;
     }
 
     public function hasBom(): bool
     {
-        return $this->detect()->hasBom;
+        return $this->reader->detection()->hasBom;
     }
 
     /** The version of the records read so far: 5.5.1 (or the one in the options) until HEAD is read. */
@@ -86,7 +72,7 @@ final class RecordStream implements \IteratorAggregate
      */
     public function diagnostics(): array
     {
-        return [...$this->detect()->diagnostics, ...$this->diagnostics];
+        return [...$this->reader->detection()->diagnostics, ...$this->diagnostics];
     }
 
     /** @return \Generator<int, Record> */
@@ -108,34 +94,18 @@ final class RecordStream implements \IteratorAggregate
     /** @return \Generator<int, Record> */
     private function records(): \Generator
     {
-        $detection = $this->detect();
-        $encoding = $detection->encoding;
-        $codec = Codecs::for($encoding);
-        $cr = $encoding->ascii("\r");
-        $pos = $detection->hasBom ? strlen($encoding->bom()) : 0;
-        /** @var array<string, int> $eolCounts */
-        $eolCounts = [];
-        $pending = '';
-        $pendingLine = 0;
-        $line = 0;
-        // Whether a record is open: lines before the first GEDCOM line are records of their own, as in Parser.
-        $open = false;
+        $detection = $this->reader->detection();
         $first = $head = null;
         $hasTrailer = false;
         $afterTrailer = null;
-
-        $emit = function (string $bytes, int $firstLine) use ($encoding, $codec, $detection, &$eolCounts, &$first, &$head, &$hasTrailer, &$afterTrailer): Record {
-            $document = $this->parser->parseRecord($bytes, $encoding, $this->version, $detection->hasBom && $first === null, "\n", $firstLine, $this->options, $eolCounts);
-            arsort($eolCounts);
-            $document->setLineEnding($eolCounts === [] ? "\n" : ($codec->decode(array_key_first($eolCounts)) ?? "\n"));
+        foreach ($this->reader->records() as [$bytes, , $line, , $tag]) {
+            $document = $this->parser->parseRecord($bytes, $detection->encoding, $this->version, $detection->hasBom && $first === null, $this->reader->lineEnding(), $line, $this->options);
             $record = new Record($document);
             $node = $record->node();
             $first ??= $node;
-            $tag = $node->tag();
             if ($tag === 'HEAD' && $head === null) {
                 $head = $node;
-                $declared = $this->options->version === null ? $node->first('GEDC')?->first('VERS')?->value() : null;
-                $version = $declared === null ? null : Version::fromDeclared($declared);
+                $version = $this->options->version === null ? Parser::declaredVersion($node) : null;
                 if ($version !== null) {
                     $this->version = $version;
                     $document->setVersion($version);
@@ -145,91 +115,14 @@ final class RecordStream implements \IteratorAggregate
                 $hasTrailer = true;
                 $afterTrailer = null;
             } elseif ($hasTrailer) {
-                $afterTrailer ??= $firstLine;
+                $afterTrailer ??= $line;
             }
 
-            return $record;
-        };
-
-        while (true) {
-            $kept = null;
-            foreach (LineSplitter::split($this->buffer, $encoding, $pos) as [$offset, $length, $eol]) {
-                $end = $offset + $length + $eol;
-                // A line is complete at its terminator; a CR at the end of the buffer may be the start of CRLF.
-                if (!$this->eof && ($eol === 0 || ($end === strlen($this->buffer) && substr($this->buffer, $offset + $length, $eol) === $cr))) {
-                    $kept = $offset;
-                    break;
-                }
-                ++$line;
-                $raw = substr($this->buffer, $offset, $length);
-                if (!$open || $this->startsRecord($raw, $encoding->codeUnitSize() === 2 ? $codec : null)) {
-                    if ($pending !== '') {
-                        yield $emit($pending, $pendingLine);
-                    }
-                    $pending = '';
-                    $pendingLine = $line;
-                    $open = $open || $this->isLine($raw, $encoding->codeUnitSize() === 2 ? $codec : null);
-                }
-                $pending .= substr($this->buffer, $offset, $end - $offset);
-            }
-            if ($this->eof) {
-                break;
-            }
-            $this->buffer = $kept === null ? '' : substr($this->buffer, $kept);
-            $pos = 0;
-            if (strlen($this->buffer) > $this->options->maxLineLength + 4) {
-                throw new ParseException('Line ' . ($line + 1) . " exceeds the limit of {$this->options->maxLineLength} bytes");
-            }
-            $this->read();
-        }
-        $this->buffer = '';
-        if ($pending !== '') {
-            yield $emit($pending, $pendingLine);
+            yield $record;
         }
 
         $this->parser->checkFile($first, $hasTrailer, $afterTrailer, $head, $this->options, function (Diagnostic $diagnostic): void {
             $this->diagnostics[] = $diagnostic;
         });
-    }
-
-    /** Whether a line inside a record starts the next one: a GEDCOM line of level 0. */
-    private function startsRecord(string $raw, ?Codec $utf16): bool
-    {
-        $text = $utf16?->decodeLossy($raw) ?? $raw;
-
-        return preg_match(self::LEVEL_ZERO, $text) === 1 && preg_match(Parser::LINE, $text) === 1;
-    }
-
-    /**
-     * Whether the line is a GEDCOM line. ASCII-compatible encodings are matched on their bytes:
-     * delimiters, digits and "@" are the same bytes decoded or not.
-     */
-    private function isLine(string $raw, ?Codec $utf16): bool
-    {
-        return preg_match(Parser::LINE, $utf16?->decodeLossy($raw) ?? $raw) === 1;
-    }
-
-    /** Detects the encoding on the first bytes, as {@see EncodingDetector} does on a whole file. */
-    private function detect(): Detection
-    {
-        if ($this->detection === null) {
-            while (strlen($this->buffer) <= EncodingDetector::SAMPLE_SIZE && !$this->eof) {
-                $this->read();
-            }
-            $this->detection = $this->detector->detect($this->buffer, $this->options->encoding);
-        }
-
-        return $this->detection;
-    }
-
-    private function read(): void
-    {
-        $chunk = fread($this->handle, max(1, $this->chunkSize));
-        if ($chunk === false || $chunk === '') {
-            $this->eof = feof($this->handle) || $chunk === false;
-
-            return;
-        }
-        $this->buffer .= $chunk;
     }
 }

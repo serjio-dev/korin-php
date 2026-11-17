@@ -16,6 +16,12 @@ break the API; such changes are described in `UPGRADE.md`.
   corpus check). The encoding is detected on the first 64 KB; the stream's `diagnostics()`
   are those of the whole file (encoding, `HEAD`, `TRLR`, version). The version comes from the
   first `HEAD`.
+- `Gedcom::open()` / `Syntax\IndexedDocument`: a file indexed without its tree (16 bytes per
+  record and the xrefs: 27 MB and 0.72 s for 50 MB), records parsed from the file by xref,
+  path or in order (11 µs for an uncached one), the last 1000 cached. Records are read only
+  (`ReadOnlyException`, `Document::isReadOnly()`), a `copy()` of one can be edited; `load()`
+  reads the whole file into a `Document`. A stream that cannot seek is copied to
+  `php://temp`. Every corpus input gives the records, lines and diagnostics of `read()`.
 
 ## [0.3.0] - 2026-11-17
 

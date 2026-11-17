@@ -45,18 +45,14 @@ final readonly class Parser
     }
 
     /**
-     * @internal one record of a stream ({@see RecordStream}): a document whose only record is
+     * @internal one record of a stream or an indexed file: a document whose only record is
      * these lines, numbered from $firstLine. File-level checks (HEAD, TRLR, version) are the
-     * stream's.
-     *
-     * @param array<string, int> $eolCounts line terminators seen so far, updated
+     * caller's.
      */
-    public function parseRecord(string $bytes, Encoding $encoding, Version $version, bool $bom, string $lineEnding, int $firstLine, ReadOptions $options, array &$eolCounts = []): Document
+    public function parseRecord(string $bytes, Encoding $encoding, Version $version, bool $bom, string $lineEnding, int $firstLine, ReadOptions $options): Document
     {
         $document = new Document($version, $encoding, $bom, $lineEnding, $bytes, lineBase: $firstLine - 1);
-        foreach ($this->parseLines($document, $bytes, 0, $options) as $terminator => $count) {
-            $eolCounts[$terminator] = ($eolCounts[$terminator] ?? 0) + $count;
-        }
+        $this->parseLines($document, $bytes, 0, $options);
 
         return $document;
     }
@@ -170,6 +166,14 @@ final readonly class Parser
         }
 
         return $version;
+    }
+
+    /** @internal the version HEAD.GEDC.VERS names; null when it is missing or unknown */
+    public static function declaredVersion(Node $head): ?Version
+    {
+        $declared = $head->first('GEDC')?->first('VERS')?->value();
+
+        return $declared === null ? null : Version::fromDeclared($declared);
     }
 
     private function report(Document $document, ReadOptions $options, Diagnostic $diagnostic): void

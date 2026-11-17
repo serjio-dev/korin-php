@@ -7,6 +7,7 @@ namespace Korin\Gedcom\Syntax;
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Exception\DetachedNodeException;
 use Korin\Gedcom\Exception\InvalidPathException;
+use Korin\Gedcom\Exception\ReadOnlyException;
 use Korin\Gedcom\Io\Codec\Codec;
 use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Encoding;
@@ -73,6 +74,8 @@ final class Document
 
     /** @var array<string, int> xref => first record with it; see {@see self::index()} */
     private array $xrefIndex = [];
+
+    private bool $readOnly = false;
 
     /** Whether {@see $xrefIndex} must be rebuilt: setXref() can leave duplicates it cannot track. */
     private bool $indexStale = false;
@@ -175,6 +178,7 @@ final class Document
     /** Adds a record before TRLR (or at the end when there is none). */
     public function addRecord(string $tag, ?string $xref = null, ?string $value = null): Node
     {
+        $this->assertWritable();
         if ($xref !== null && isset($this->index()[$xref])) {
             throw new \InvalidArgumentException("Xref {$xref} is already used");
         }
@@ -190,12 +194,14 @@ final class Document
 
     public function removeRecord(string $xref): void
     {
+        $this->assertWritable();
         $this->record($xref)?->remove();
     }
 
     /** Renames a record's xref and every pointer to it. */
     public function renameXref(string $from, string $to): void
     {
+        $this->assertWritable();
         if (!isset($this->index()[$from])) {
             throw new \InvalidArgumentException("No record with xref {$from}");
         }
@@ -216,10 +222,24 @@ final class Document
         }
     }
 
-    /** Cheap independent snapshot: arrays are copied on write. */
+    /** Cheap independent snapshot: arrays are copied on write. A copy of a read-only document can be edited. */
     public function copy(): self
     {
-        return clone $this;
+        $copy = clone $this;
+        $copy->readOnly = false;
+
+        return $copy;
+    }
+
+    public function isReadOnly(): bool
+    {
+        return $this->readOnly;
+    }
+
+    /** @internal from now on every change throws {@see ReadOnlyException} */
+    public function freeze(): void
+    {
+        $this->readOnly = true;
     }
 
 
@@ -244,6 +264,7 @@ final class Document
 
     public function createNode(int $parent, ?string $xref, string $tag, ?string $payload, ?int $before = null): int
     {
+        $this->assertWritable();
         $id = $this->append($parent, $xref, $tag, -1, $before);
         $this->payload[$id] = $payload;
         $this->dirty[$id] = true;
@@ -274,6 +295,7 @@ final class Document
     /** @internal */
     public function removeNode(int $id): void
     {
+        $this->assertWritable();
         $this->assertAttached($id);
         $parent = $this->parent[$id];
         $this->unlink($id);
@@ -302,6 +324,7 @@ final class Document
     /** @internal */
     public function setPayload(int $id, ?string $payload): void
     {
+        $this->assertWritable();
         $this->assertAttached($id);
         $this->payload[$id] = $payload;
         $this->dirty[$id] = true;
@@ -314,6 +337,7 @@ final class Document
      */
     public function moveNode(int $id, int $parent, ?int $before = null): void
     {
+        $this->assertWritable();
         $this->assertAttached($id);
         $this->assertAttached($parent);
         if (($this->parent[$id] === self::ROOT) !== ($parent === self::ROOT)) {
@@ -338,6 +362,7 @@ final class Document
     /** @internal a new tag for a node, its value and substructures kept (conversion) */
     public function setTag(int $id, string $tag): void
     {
+        $this->assertWritable();
         $this->assertAttached($id);
         $this->markDirty($id);
         $this->tag[$id] = $tag;
@@ -349,6 +374,7 @@ final class Document
      */
     public function setXref(int $id, ?string $xref): void
     {
+        $this->assertWritable();
         $this->assertAttached($id);
         $this->markDirty($id);
         if ($xref === null) {
@@ -375,6 +401,14 @@ final class Document
     public function addDiagnostic(Diagnostic $diagnostic): void
     {
         $this->diagnostics[] = $diagnostic;
+    }
+
+    /** @internal */
+    public function assertWritable(): void
+    {
+        if ($this->readOnly) {
+            throw new ReadOnlyException('The document is read only; edit a copy');
+        }
     }
 
     /** @internal */
