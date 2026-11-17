@@ -189,24 +189,27 @@ $result->losses();  // LossReport (empty when upgrading)
 
 // Large files: one record at a time, memory independent of file size
 foreach (Gedcom::stream('huge.ged') as $record) {   // Syntax\Record, lossless
-    $person = $record->view();                      // model limited to this record
-    $person->familyXrefs();                         // ['@F1@'], while families() throws RequiresDocumentException
+    $person = $record->view();                      // model limited to this record, null for other records
+    if ($person instanceof Individual) {
+        $person->familyXrefs();                     // ['@F1@'], while parents() throws RequiresDocumentException
+    }
 }
 
 // Large files with the full model: xref → offset index, records read from disk on demand
 $doc = Gedcom::open('huge.ged');                    // read only
-$doc->individual('@I1@')?->families();              // works: related records are loaded from the file
+$doc->individual('@I1@')?->familiesAsSpouse();      // works: related records are loaded from the file
 
 // Creating from scratch: xrefs are generated deterministically
 $doc  = Document::create(Version::V7_0);
 $anna = $doc->addIndividual()
     ->setName(PersonalName::of('Анна', 'Коваль'))
-    ->setSex(Sex::Female)
-    ->addBirth(GedcomDate::parse('12 MAR 1921'), Place::of('Полтава, Україна'));
+    ->setSex(Sex::Female);
+$anna->addBirth(GedcomDate::parse('12 MAR 1921'), Place::of('Полтава, Україна'));
+$ivan = $doc->addIndividual()->setName(PersonalName::of('Іван', 'Коваль'));
 $doc->addFamily()->setWife($anna)->addChild($ivan);  // FAMS/FAMC are set automatically
 
 // Editing an existing document: views are live, changes go straight into the tree
-$doc->individual('@I1@')->editName(fn (PersonalName $n) => $n->withSurname('Ковальова'));
+$doc->individual('@I1@')?->editName(fn (PersonalName $n) => $n->withSurname('Ковальова'));  // GIVN/SURN follow
 $doc->removeRecord('@S12@');  // diagnostic if the record is still referenced
 
 Gedcom::write($doc, 'out.ged', WriteOptions::preserve());  // changed lines by the version's rules, the rest byte for byte

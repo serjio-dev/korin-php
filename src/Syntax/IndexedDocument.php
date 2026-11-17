@@ -9,6 +9,7 @@ use Korin\Gedcom\Exception\IoException;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\Model\Family;
 use Korin\Gedcom\Model\Individual;
+use Korin\Gedcom\Model\RecordView;
 use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\Version;
 
@@ -194,16 +195,12 @@ final class IndexedDocument implements \Countable
 
     public function individual(string $xref): ?Individual
     {
-        $record = $this->record($xref);
-
-        return $record?->tag() === 'INDI' ? new Individual($record, $this) : null;
+        return RecordView::individual($this->record($xref), $this);
     }
 
     public function family(string $xref): ?Family
     {
-        $record = $this->record($xref);
-
-        return $record?->tag() === 'FAM' ? new Family($record, $this) : null;
+        return RecordView::family($this->record($xref), $this);
     }
 
     /** @return \Generator<int, Individual> the INDI records in order, read one after another */
