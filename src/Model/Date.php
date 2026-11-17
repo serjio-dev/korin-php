@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Korin\Gedcom\Model;
 
 use Korin\Gedcom\Exception\InvalidValueException;
+use Korin\Gedcom\Spec\JulianDays;
 
 /**
  * One calendar date of a {@see GedcomDate}: a year, optionally a month and a day, in a
@@ -25,8 +26,6 @@ final readonly class Date
     public const UNKNOWN = 'UNKNOWN';
 
     public const BCE = 'BCE';
-
-    private const MONTHS = ['JAN' => 1, 'FEB' => 2, 'MAR' => 3, 'APR' => 4, 'MAY' => 5, 'JUN' => 6, 'JUL' => 7, 'AUG' => 8, 'SEP' => 9, 'OCT' => 10, 'NOV' => 11, 'DEC' => 12];
 
     /**
      * @param ?int $dualYear the year by a 1 January new year: 1649 for "1648/49"
@@ -58,41 +57,21 @@ final readonly class Date
 
     /**
      * The days the date can mean, as Julian Day Numbers: "1907" is 1 JAN to 31 DEC 1907. Only
-     * for Gregorian and Julian dates with a year and a standard month; a dual year counts as its second year.
+     * for Gregorian and Julian dates with a year from 4001 BCE to 9999 and a standard month; a
+     * dual year counts as its second year.
      *
      * @return ?array{int, int}
      */
     public function days(): ?array
     {
         $julian = $this->calendar === self::JULIAN;
-        if ((!$julian && $this->calendar !== self::GREGORIAN) || ($this->epoch !== null && !$this->isBce())
-            || ($this->month !== null && !isset(self::MONTHS[$this->month])) || $this->year === null) {
+        $month = $this->month === null ? null : JulianDays::MONTHS[$this->month] ?? false;
+        if ((!$julian && $this->calendar !== self::GREGORIAN) || ($this->epoch !== null && !$this->isBce()) || $month === false || $this->year === null) {
             return null;
         }
         $year = $this->dualYear ?? $this->year;
+
         // There is no year 0: 1 BCE is the astronomical year 0.
-        $year = $this->isBce() ? 1 - $year : $year;
-        if ($this->month === null) {
-            return [self::julianDay($year, 1, 1, $julian), self::julianDay($year + 1, 1, 1, $julian) - 1];
-        }
-        $month = self::MONTHS[$this->month];
-        $last = ($month === 12 ? self::julianDay($year + 1, 1, 1, $julian) : self::julianDay($year, $month + 1, 1, $julian)) - 1;
-        if ($this->day === null) {
-            return [self::julianDay($year, $month, 1, $julian), $last];
-        }
-        $day = min(self::julianDay($year, $month, $this->day, $julian), $last);
-
-        return [$day, $day];
-    }
-
-    /** @internal Julian Day Number of a date with an astronomical year (1 BCE is 0) */
-    public static function julianDay(int $year, int $month, int $day, bool $julian): int
-    {
-        $a = intdiv(14 - $month, 12);
-        $y = $year + 4800 - $a;
-        $m = $month + 12 * $a - 3;
-        $days = $day + intdiv(153 * $m + 2, 5) + 365 * $y + intdiv($y, 4);
-
-        return $julian ? $days - 32083 : $days - intdiv($y, 100) + intdiv($y, 400) - 32045;
+        return JulianDays::range($this->isBce() ? 1 - $year : $year, $month, $this->day, $julian);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Korin\Gedcom\Model;
 
 use Korin\Gedcom\Exception\InvalidValueException;
+use Korin\Gedcom\Validation\Rule\DateGrammar;
 use Korin\Gedcom\Version;
 
 /**
@@ -19,8 +20,6 @@ use Korin\Gedcom\Version;
 final readonly class GedcomDate implements \Stringable
 {
     private const CALENDARS_5 = ['GREGORIAN' => Date::GREGORIAN, 'JULIAN' => Date::JULIAN, 'HEBREW' => Date::HEBREW, 'FRENCH R' => Date::FRENCH_R, 'ROMAN' => Date::ROMAN, 'UNKNOWN' => Date::UNKNOWN];
-
-    private const DATE_7 = '/^(?:(GREGORIAN|JULIAN|FRENCH_R|HEBREW|_[A-Z0-9_]+) )?(?:(?:([0-9]+) )?([A-Z][A-Z0-9_]*|_[A-Z0-9_]+) )?([0-9]+)(?: (BCE|_[A-Z0-9_]+))?$/';
 
     private const DATE_5 = '/^(?:@#D([A-Z ]+)@ )?(?:([0-9]{1,2}) (?!BCE?$)([A-Z]+)$|(?:(?:([0-9]+) )?([A-Z][A-Z0-9_]*) )?([0-9]+)(?:\/([0-9]{2}))?( ?(?:BCE|BC|B\.C\.))?$)/';
 
@@ -47,8 +46,12 @@ final readonly class GedcomDate implements \Stringable
         if (!Grammars::isDate($version, $value)) {
             return null;
         }
-
-        return $version === Version::V7_0 ? self::parse7($value) : self::parse5($value);
+        try {
+            return $version === Version::V7_0 ? self::parse7($value) : self::parse5($value);
+        } catch (InvalidValueException) {
+            // The 5.x calendars ROMAN and UNKNOWN take any day and dual year ("@#DROMAN@ 0 IUL 753").
+            return null;
+        }
     }
 
     /** "6 DEC 1907", "JULIAN 1650": one date. */
@@ -139,7 +142,7 @@ final readonly class GedcomDate implements \Stringable
 
     private static function date7FromString(string $date): Date
     {
-        if (preg_match(self::DATE_7, $date, $m) !== 1) {
+        if (preg_match(DateGrammar::DATE, $date, $m) !== 1) {
             throw new InvalidValueException('Not a 7.0 date');
         }
 
