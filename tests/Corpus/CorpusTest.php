@@ -71,6 +71,9 @@ final class CorpusTest extends TestCase
     {
         /** @var array{file: string, version: string, encoding: string, bom?: bool} $input */
         $input = $case['input'];
+        if (str_ends_with($input['file'], '.gdz') && !class_exists(\ZipArchive::class)) {
+            self::markTestSkipped('GEDZIP cases need ext-zip');
+        }
         $bytes = str_ends_with($input['file'], '.gdz') ? $this->gedcomOfArchive($dir . '/' . $input['file']) : (string) file_get_contents($dir . '/' . $input['file']);
         $document = Gedcom::parse($bytes);
 

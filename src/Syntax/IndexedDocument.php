@@ -32,8 +32,9 @@ use Korin\Gedcom\Version;
  *
  * The document reads from the handle it was given whenever a record is asked for, seeking it:
  * the handle must stay open and is not for other reads meanwhile. A file that cannot seek
- * (an entry of a ZIP through zip://) is read on forward and opened again to go back, so
- * records read in order cost one pass.
+ * (an entry of a ZIP through zip://) is read on forward and opened again to go back, which
+ * reads it from the start: records read in order cost one pass, a record behind the last one
+ * read costs a pass up to it.
  */
 final class IndexedDocument implements \Countable
 {
@@ -91,6 +92,9 @@ final class IndexedDocument implements \Countable
         private readonly Parser $parser = new Parser(),
         private readonly ?string $path = null,
     ) {
+        if ($path !== null && (!$close || ftell($handle) !== 0)) {
+            throw new \InvalidArgumentException('A handle opened again from its path is owned by the document and read from the start');
+        }
         $this->start = (int) ftell($handle);
         $reader = new RecordReader($handle, $options);
         $detection = $reader->detection();

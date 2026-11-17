@@ -37,7 +37,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: intl, mbstring
+          extensions: intl, mbstring, zip
           coverage: none
           ini-values: error_reporting=E_ALL, zend.assertions=1
       - uses: ramsey/composer-install@v3
@@ -46,15 +46,16 @@ jobs:
       - run: vendor/bin/phpunit
 
   without-intl:
-    name: PHP 8.2 without intl
+    name: PHP 8.2 without intl and zip
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: :intl
+          extensions: :intl, :zip
           coverage: none
       - uses: ramsey/composer-install@v3
       # ANSEL falls back to bundled composition tables; the corpus fingerprint helper needs intl.
+      # Without zip, GEDZIP throws GedzipException and its tests are skipped.
       - run: vendor/bin/phpunit --testsuite unit,conformance
