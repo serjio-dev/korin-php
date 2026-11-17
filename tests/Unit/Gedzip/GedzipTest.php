@@ -12,11 +12,9 @@ use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\Syntax\IndexedDocument;
 use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-#[RequiresPhpExtension('zip')]
 final class GedzipTest extends TestCase
 {
     private const GED = "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @M1@ OBJE\n1 FILE photos/a%20b.jpg\n2 FORM image/jpeg\n0 TRLR\n";
@@ -25,8 +23,12 @@ final class GedzipTest extends TestCase
 
     protected function setUp(): void
     {
+        // Made first: tearDown() runs for a test skipped here too.
         $this->dir = sys_get_temp_dir() . '/korin-gedzip-' . bin2hex(random_bytes(4));
         mkdir($this->dir);
+        if (!class_exists(\ZipArchive::class) && $this->name() !== 'withoutZipExtensionGedzipIsRefused') {
+            self::markTestSkipped('GEDZIP needs ext-zip');
+        }
     }
 
     protected function tearDown(): void
@@ -58,6 +60,17 @@ final class GedzipTest extends TestCase
         self::assertFalse($archive->has('https://example.com/notes.txt'));
         self::assertSame("\xFF\xD8jpeg", stream_get_contents($archive->media('photos/a%20b.jpg')));
         self::assertSame(['out.gdz', 'photo.jpg'], array_map(basename(...), $this->files()), 'No temporary file is left');
+    }
+
+    #[Test]
+    public function withoutZipExtensionGedzipIsRefused(): void
+    {
+        if (class_exists(\ZipArchive::class)) {
+            self::markTestSkipped('ext-zip is loaded');
+        }
+
+        $this->expectExceptionObject(new GedzipException('GEDZIP needs the zip extension (ext-zip)'));
+        Gedcom::readGedzip($this->dir . '/in.gdz');
     }
 
     #[Test]
