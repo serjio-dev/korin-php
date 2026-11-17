@@ -42,7 +42,9 @@ reads it back, on first use only: an ordinary document whose preserve-mode outpu
 - Encoding: UTF-8 for 7.0, 5.5.5 and 5.5.1; UTF-16 big-endian (`CHAR UNICODE`) for 5.5.
 - BOM by the target version (SPEC section 3): 7.0, 5.5.5 and UTF-16 have one.
 - Every line ends with the source's dominant line terminator, the last one too.
-- `HEAD.SOUR` and `HEAD.DATE` are kept; Korin does not add itself to the header.
+- `HEAD.SOUR` and `HEAD.DATE` are kept; Korin adds itself to the header only as the `HEAD.SOUR`
+  5.x requires when the input has none (`1 SOUR Korin`). A missing `GEDC.FORM` of 5.x is
+  `LINEAGE-LINKED`.
 - Converting to the version a document already has converts nothing: the result is a copy,
   written as the input was, with an empty report.
 

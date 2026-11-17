@@ -104,14 +104,25 @@ final readonly class Converter
     /**
      * HEAD.GEDC.VERS of the target and, in 5.x, HEAD.CHAR of the output encoding; created when
      * missing. A CHAR that changes loses its substructures (the VERS of the old character set).
+     * 5.x requires GEDC.FORM and HEAD.SOUR, the system that wrote the file: a missing FORM is
+     * LINEAGE-LINKED, after GEDC.VERS, and a missing SOUR is Korin, the system writing it.
      */
     private function stamp(Document $document, Version $to, Encoding $encoding): void
     {
         $head = $document->head() ?? $document->node($document->createNode(0, null, 'HEAD', null, $document->childIds(0)[0] ?? null));
         $gedc = $head->first('GEDC') ?? $head->addChild('GEDC');
         $this->set($gedc, 'VERS', $to->value);
-        if ($to !== Version::V7_0) {
-            $this->set($head, 'CHAR', $encoding === Encoding::Utf8 ? 'UTF-8' : 'UNICODE');
+        if ($to === Version::V7_0) {
+            return;
+        }
+        $this->set($head, 'CHAR', $encoding === Encoding::Utf8 ? 'UTF-8' : 'UNICODE');
+        if ($gedc->first('FORM') === null) {
+            $children = $gedc->children();
+            $vers = array_search('VERS', array_map(static fn(Node $child): string => $child->tag(), $children), true);
+            $gedc->addChild('FORM', 'LINEAGE-LINKED', $vers === false ? null : $vers + 1);
+        }
+        if ($head->first('SOUR') === null) {
+            $head->addChild('SOUR', 'Korin', 0);
         }
     }
 

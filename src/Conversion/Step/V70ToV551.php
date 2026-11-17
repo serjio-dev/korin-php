@@ -37,6 +37,7 @@ final class V70ToV551 implements Step
             new Rules\Submissions(),
             new Nodes(
                 new Rules\TextValues(),
+                new Rules\Events(),
                 new Rules\Voids(),
                 new Rules\NoteRecords(),
                 new Rules\Uids(),

@@ -71,11 +71,11 @@ final class ConverterTest extends TestCase
     public function downToFiveFiveIsWrittenInUtf16WithCharUnicode(): void
     {
         $converter = new Converter([$this->step(Version::V5_5_1, Version::V5_5)]);
-        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Анна /Коваль/\n0 TRLR\n");
+        $doc = Gedcom::parse("0 HEAD\n1 SOUR Korin\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Анна /Коваль/\n0 TRLR\n");
 
         $bytes = Gedcom::serialize($converter->convert($doc, Version::V5_5)->document());
 
-        self::assertSame("\xFE\xFF" . mb_convert_encoding("0 HEAD\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n1 CHAR UNICODE\n0 @I1@ INDI\n1 NAME Анна /Коваль/\n0 TRLR\n", 'UTF-16BE', 'UTF-8'), $bytes);
+        self::assertSame("\xFE\xFF" . mb_convert_encoding("0 HEAD\n1 SOUR Korin\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n1 CHAR UNICODE\n0 @I1@ INDI\n1 NAME Анна /Коваль/\n0 TRLR\n", 'UTF-16BE', 'UTF-8'), $bytes);
     }
 
     #[Test]
@@ -106,17 +106,17 @@ final class ConverterTest extends TestCase
     public function linesThatAreNotGedcomAreDroppedAndReported(): void
     {
         $converter = new Converter([$this->step(Version::V5_5, Version::V5_5_1)]);
-        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5\n1 CHAR ASCII\n0 @I1@ INDI\n1 NAME Anna\nnot a line\n\n0 TRLR\n");
+        $doc = Gedcom::parse("0 HEAD\n1 SOUR Korin\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n1 CHAR ASCII\n0 @I1@ INDI\n1 NAME Anna\nnot a line\n\n0 TRLR\n");
 
         $result = $converter->convert($doc, Version::V5_5_1);
 
-        self::assertSame("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Anna\n0 TRLR\n", Gedcom::serialize($result->document()));
+        self::assertSame("0 HEAD\n1 SOUR Korin\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Anna\n0 TRLR\n", Gedcom::serialize($result->document()));
         self::assertSame(
-            ['KL1001 warning line 7 (@I1@/NAME), dropped: A line that is not a GEDCOM line is dropped'],
+            ['KL1001 warning line 9 (@I1@/NAME), dropped: A line that is not a GEDCOM line is dropped'],
             array_map(strval(...), $result->losses()->entries()),
         );
         self::assertSame(
-            '{"from":"5.5","to":"5.5.1","entries":[{"code":"KL1001","severity":"warning","path":"@I1@/NAME","line":7,"storedAs":"dropped","message":"A line that is not a GEDCOM line is dropped"}]}',
+            '{"from":"5.5","to":"5.5.1","entries":[{"code":"KL1001","severity":"warning","path":"@I1@/NAME","line":9,"storedAs":"dropped","message":"A line that is not a GEDCOM line is dropped"}]}',
             json_encode($result->losses(), JSON_UNESCAPED_SLASHES),
         );
     }
@@ -212,13 +212,13 @@ final class ConverterTest extends TestCase
                 }
             })),
         ]);
-        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5\n1 CHAR ASCII\n2 VERS 1.0\n0 @I1@ INDI\n0 @I2@ INDI\n0 TRLR\n");
+        $doc = Gedcom::parse("0 HEAD\n1 SOUR Korin\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n1 CHAR ASCII\n2 VERS 1.0\n0 @I1@ INDI\n0 @I2@ INDI\n0 TRLR\n");
 
         $out = Gedcom::serialize($converter->convert($doc, Version::V5_5_5)->document());
 
         // The value is escaped for the step's target; the old CHAR loses its VERS.
         self::assertSame(
-            "\u{FEFF}0 HEAD\n1 GEDC\n2 VERS 5.5.5\n1 CHAR UTF-8\n0 @NI1@ NOTE @@first\n1 CONT second\n1 _SEEN 5.5.1\n0 @NI2@ NOTE @@first\n1 CONT second\n1 _SEEN 5.5.1\n0 TRLR\n",
+            "\u{FEFF}0 HEAD\n1 SOUR Korin\n1 GEDC\n2 VERS 5.5.5\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @NI1@ NOTE @@first\n1 CONT second\n1 _SEEN 5.5.1\n0 @NI2@ NOTE @@first\n1 CONT second\n1 _SEEN 5.5.1\n0 TRLR\n",
             $out,
         );
     }

@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 
 final class V70ToV551ValuesTest extends TestCase
 {
-    private const HEAD = "\u{FEFF}0 HEAD\n1 GEDC\n2 VERS 7.0\n";
+    private const HEAD = "\u{FEFF}0 HEAD\n1 SOUR Korin\n1 GEDC\n2 VERS 7.0\n";
 
     /**
      * 7.0 lines inside an INDI, the same lines in 5.5.1, and the losses.
@@ -56,7 +56,7 @@ final class V70ToV551ValuesTest extends TestCase
         $input = self::HEAD . "0 @I1@ INDI\n{$seven}{$tail}";
         $down = Gedcom::convert(Gedcom::parse($input), Version::V5_5_1);
 
-        self::assertSame("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @I1@ INDI\n{$five}{$tail}", $down->output());
+        self::assertSame("0 HEAD\n1 SOUR Korin\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @I1@ INDI\n{$five}{$tail}", $down->output());
         self::assertSame($losses, array_map(static fn(\Korin\Gedcom\Conversion\Loss $loss): string => "{$loss->code} {$loss->path} {$loss->storedAs->value}", $down->losses()->entries()));
         if (!str_starts_with($losses[0] ?? '', 'KL3')) {
             self::assertSame($input, Gedcom::convert($down->document(), Version::V7_0)->output(), 'up again');

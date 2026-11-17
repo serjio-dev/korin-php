@@ -279,6 +279,18 @@ final class V551ToV70Test extends TestCase
         self::assertStringNotContainsString('Later', $result->output(), 'the output is fixed when the conversion ends');
     }
 
+    #[Test]
+    public function eventsGetTheTypeAndRepositoriesThePointerSevenRequires(): void
+    {
+        $input = self::HEAD . "1 SUBM @U1@\n0 @U1@ SUBM\n1 NAME Me\n0 @I1@ INDI\n1 EVEN Moved to Osaka\n2 DATE 1950\n1 EVEN Served\n2 TYPE Military\n"
+            . "0 @S1@ SOUR\n1 REPO\n2 CALN 12\n0 TRLR\n";
+        $output = $this->convert($input);
+
+        self::assertSame(self::HEAD_70 . "1 SUBM @U1@\n0 @U1@ SUBM\n1 NAME Me\n0 @I1@ INDI\n1 EVEN Moved to Osaka\n2 TYPE Moved to Osaka\n2 DATE 1950\n"
+            . "1 EVEN Served\n2 TYPE Military\n0 @S1@ SOUR\n1 REPO @VOID@\n2 CALN 12\n0 TRLR\n", $output);
+        self::assertSame(str_replace("1 CHAR ANSEL\n2 VERS 1985\n", '', $input), str_replace("1 CHAR UTF-8\n", '', Gedcom::convert(Gedcom::parse($output), Version::V5_5_1)->output()));
+    }
+
     private function convert(string $gedcom): string
     {
         return Gedcom::serialize(Gedcom::convert(Gedcom::parse($gedcom), Version::V7_0)->document());

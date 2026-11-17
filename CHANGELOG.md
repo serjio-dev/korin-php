@@ -56,6 +56,12 @@ break the API; such changes are described in `UPGRADE.md`.
   (`05 JAN 50` → `5 JAN 050`, `<1y` → `< 1y`) and back, `SEX X`/`N` become `SEX U` + `_SEX`
   in 5.5.1 (`KL3002`). A 7.0 file converted to 5.5.5 and back has the same fingerprint,
   except for `KL3` losses.
+- The conversion matrix (`tests/Corpus/MatrixTest.php`): every corpus input to every version,
+  valid output but for the documented limits of the target, deterministic and stable. For it:
+  conversions to 5.x add the `HEAD.SOUR` (`Korin`) and `GEDC.FORM` 5.x requires when the
+  input has none; 5.5.1 `EVEN` without `TYPE` gets its value as `TYPE` in 7.0 (removed again
+  on the way back), and `REPO` of a source without a pointer is `REPO @VOID@`.
+- Benchmarks of 5.5.1 → 5.5 and → 5.5.5.
 - Every conversion step writes the `Y` of an event the target has no value for as no value
   (`KL3003` when the event has substructures), and 5.5.1 → 7.0 writes an event with neither
   a value nor substructures as `Y`.
@@ -66,6 +72,9 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ### Fixed
 
+- 5.5.5 validation: a value the specification lists for `NAME_TYPE`, `PHONETISATION_METHOD`
+  or `ROMANISATION_METHOD` (`aka`, `kana`) is valid, although it is shorter than the printed
+  `{Size=5:30}` (`KV3010`).
 - 7.0 validation: an empty `Text` or `List:Text` payload is valid (section 1 of the
   specification: `1 EVEN` is an `EVEN` with an empty payload), so `1 RESI` with a `PLAC` no
   longer gets `KV3001`. A structure with neither a payload nor substructures is still `KV3007`.

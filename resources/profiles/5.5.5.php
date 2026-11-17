@@ -2320,5 +2320,10 @@ return [
         '<USER_TEXT>' => [1, 32767],
         '<WHERE_WITHIN_SOURCE>' => [1, 248],
     ],
+    'listed' => [
+        '<NAME_TYPE>' => ['aka', 'birth', 'immigrant', 'maiden', 'married'],
+        '<PHONETISATION_METHOD>' => ['hangul', 'kana'],
+        '<ROMANISATION_METHOD>' => ['pinyin', 'romaji', 'wadegiles'],
+    ],
     'calendars' => [],
 ];

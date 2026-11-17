@@ -90,7 +90,7 @@ quote a value, except an enumeration value shortened to 20 characters.
 | `KV3007` | error | 7.0 and 5.5.5: a structure with neither a value nor substructures (`TRLR` excepted; a missing required substructure is `KV2003`). 5.5.5: "every GEDCOM record without subrecords must have a line value" |
 | `KV3008` | warning | A date whose day is beyond the length of its month: `31 NOV`, `29 FEB 1900`, `FRENCH_R 7 COMP`. February follows the leap years of its calendar; Hebrew months use their longest length |
 | `KV3009` | warning | 5.x: a dual year whose second year does not follow the first, such as `1701/99` (`1701/02` is meant) |
-| `KV3010` | error | 5.5.5: a text value shorter or longer than its `{Size=min:max}`, counted in characters of the value with its `CONC`/`CONT` lines |
+| `KV3010` | error | 5.5.5: a text value shorter or longer than its `{Size=min:max}`, counted in characters of the value with its `CONC`/`CONT` lines. A value the specification lists for the element is valid whatever its length (`NAME.TYPE aka`, `FONE.TYPE kana`: `{Size=5:30}`) |
 
 ## KV4 — references
 

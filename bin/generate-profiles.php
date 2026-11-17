@@ -127,7 +127,7 @@ function compile(string $dir): array
     ksort($root);
     ksort($calendars);
 
-    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'types' => [], 'sizes' => [], 'calendars' => $calendars];
+    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'types' => [], 'sizes' => [], 'listed' => [], 'calendars' => $calendars];
 }
 
 /** The fields of a term file (https://gedcom.io/terms/format) that profiles use. */
@@ -448,9 +448,11 @@ final class GrammarLine
 /**
  * The restricted primitive elements of a 5.x grammar (spec/5.5.1/primitives.yaml): "types" maps
  * a payload such as "<SEX_VALUE>" to ENUM or a grammar, "enumsets" lists the values of an ENUM,
- * "sizes" the minimum and maximum length of a value (5.5.5, {size: 'min:max'}).
+ * "sizes" the minimum and maximum length of a value (5.5.5, {size: 'min:max'}), "listed" the
+ * values the specification lists for a sized text, valid whatever their length (5.5.5
+ * NAME_TYPE aka, {Size=5:30}).
  *
- * @return array{enumsets: array<string, list<string>>, types: array<string, string>, sizes: array<string, array{int, int}>, calendars: array{}}
+ * @return array{enumsets: array<string, list<string>>, types: array<string, string>, sizes: array<string, array{int, int}>, listed: array<string, list<string>>, calendars: array{}}
  */
 function primitives(string $file): array
 {
@@ -459,7 +461,11 @@ function primitives(string $file): array
     $types = [];
     $enumsets = [];
     $sizes = [];
+    $listed = [];
     foreach ($elements as $name => $value) {
+        if (is_array($value) && isset($value['listed'])) {
+            $listed["<{$name}>"] = is_array($value['listed']) ? array_map(static fn(mixed $v): string => is_scalar($v) ? (string) $v : throw new RuntimeException("{$name}: bad listed value"), array_values($value['listed'])) : throw new RuntimeException("{$name}: bad listed values");
+        }
         if (is_array($value) && isset($value['size'])) {
             $sizes["<{$name}>"] = is_string($value['size']) && preg_match('/^(\d+):(\d+)$/', $value['size'], $m) === 1 ? [(int) $m[1], (int) $m[2]] : throw new RuntimeException("{$name}: bad size");
         }
@@ -475,8 +481,9 @@ function primitives(string $file): array
     ksort($types);
     ksort($enumsets);
     ksort($sizes);
+    ksort($listed);
 
-    return ['enumsets' => $enumsets, 'types' => $types, 'sizes' => $sizes, 'calendars' => []];
+    return ['enumsets' => $enumsets, 'types' => $types, 'sizes' => $sizes, 'listed' => $listed, 'calendars' => []];
 }
 
 /**
@@ -489,8 +496,8 @@ function primitive(array $elements, string $name, array $seen = []): array
 {
     $value = $elements[$name] ?? throw new RuntimeException("Unknown primitive <{$name}>");
     if (is_array($value) && !array_is_list($value)) {
-        if (array_diff(array_keys($value), ['is', 'size']) !== []) {
-            throw new RuntimeException("{$name}: only is and size are allowed");
+        if (array_diff(array_keys($value), ['is', 'size', 'listed']) !== []) {
+            throw new RuntimeException("{$name}: only is, size and listed are allowed");
         }
         if (!isset($value['is'])) {
             return [null, []];

@@ -79,7 +79,7 @@ final readonly class Payloads5 implements PayloadTypes
     private function size(string $element, string $value): array
     {
         $size = $this->profile->size($element);
-        if ($size === null) {
+        if ($size === null || in_array(strtolower($value), array_map(strtolower(...), $this->profile->listed($element)), true)) {
             return [];
         }
         // Characters, not bytes; the pure-PHP way to count UTF-8 code points.

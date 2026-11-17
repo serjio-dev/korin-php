@@ -17,7 +17,7 @@ use Korin\Gedcom\Version;
  * $grammars, in 5.x the grammars too (dates, ages, times, 5.5.5 place names), as the validator
  * checks them. Without, any text fits a grammar: the value rules convert dates and ages.
  * Lengths (5.5.5 {Size=min:max}, KV3010) are never checked: a value too long for 5.5.5 is still
- * its value, and the printed sizes contradict the listed values (NAME_TYPE aka, {Size=5:30}).
+ * its value.
  *
  * @internal
  */

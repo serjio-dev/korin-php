@@ -9,7 +9,10 @@ use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Version;
 use PhpBench\Attributes as Bench;
 
-/** 5.5.1 → 7.0 of a document already read, to the output bytes (spec section 9: 50 MB in ≤ 2× the full read time). */
+/**
+ * Conversion of a 5.5.1 document already read, to the output bytes: to 7.0 (spec section 9:
+ * 50 MB in ≤ 2× the full read time), and, with no target but no regression, to 5.5 and 5.5.5.
+ */
 #[Bench\BeforeClassMethods('prepare')]
 #[Bench\Revs(1)]
 final class ConvertBench
@@ -37,6 +40,20 @@ final class ConvertBench
     public function benchConvert10MbTo70(): void
     {
         Gedcom::convert($this->document, Version::V7_0);
+    }
+
+    #[Bench\BeforeMethods('read10Mb')]
+    #[Bench\Iterations(5)]
+    public function benchConvert10MbTo55(): void
+    {
+        Gedcom::convert($this->document, Version::V5_5);
+    }
+
+    #[Bench\BeforeMethods('read10Mb')]
+    #[Bench\Iterations(5)]
+    public function benchConvert10MbTo555(): void
+    {
+        Gedcom::convert($this->document, Version::V5_5_5);
     }
 
     #[Bench\BeforeMethods('read50Mb')]

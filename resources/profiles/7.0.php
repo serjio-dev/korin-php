@@ -2616,6 +2616,7 @@ return [
     ],
     'types' => [],
     'sizes' => [],
+    'listed' => [],
     'calendars' => [
         'FRENCH_R' => [
             'uri' => 'https://gedcom.io/terms/v7/cal-FRENCH_R',
