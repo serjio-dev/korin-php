@@ -12,6 +12,8 @@ use Korin\Gedcom\Exception\InvalidValueException;
  */
 final class Family extends RecordView
 {
+    public const TAG = 'FAM';
+
     /** @var array<string, true> family events of 5.5, 5.5.1, 5.5.5 and 7.0 */
     public const EVENTS = [
         'ANUL' => true, 'CENS' => true, 'DIV' => true, 'DIVF' => true, 'ENGA' => true, 'MARB' => true,

@@ -54,6 +54,12 @@ break the API; such changes are described in `UPGRADE.md`.
   `Record::view()` for a streamed record, which throws `RequiresDocumentException` for anything
   in another record.
 
+- Views of the other records: `Source` (title, author, publication, repositories with their
+  call numbers), `Repository`, `MediaObject` with its `MediaFile`s, `SharedNote` (SNOTE in 7.0,
+  NOTE in 5.x) and `Submitter`; `sources()`, `source()`, `repositories()`, `mediaObjects()`,
+  `sharedNotes()`, `submitters()` and the others on `Document` and `IndexedDocument`, and
+  `Record::view()` for each.
+
 ### Changed
 
 - `convert()` converts the records in the order of the output: a record a rule moves right

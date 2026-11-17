@@ -28,29 +28,50 @@ abstract class RecordView
         protected readonly Document|IndexedDocument|null $file,
     ) {}
 
+    /** @var string the record's tag; see {@see self::tagIn()} */
+    public const TAG = '';
+
     /** @var array<string, true> events of the record type, by tag */
     public const EVENTS = [];
 
-    /** @internal the view of an INDI record; null for no record, another type or an unparsable line */
-    public static function individual(?Node $record, Document|IndexedDocument|null $file): ?Individual
+    /** The views of the records that have one. */
+    private const VIEWS = [Individual::class, Family::class, Source::class, Repository::class, MediaObject::class, SharedNote::class, Submitter::class];
+
+    /** The tag of the record type in a version. */
+    public static function tagIn(Version $version): string
     {
-        return $record !== null && $record->tag() === 'INDI' && !$record->document()->isInvalid($record->id()) ? new Individual($record, $file) : null;
+        return static::TAG;
     }
 
-    /** @internal the view of a FAM record; null for no record, another type or an unparsable line */
-    public static function family(?Node $record, Document|IndexedDocument|null $file): ?Family
+    /**
+     * @internal the view of a record of this type; null for no record, another type or an unparsable line
+     *
+     * @template T of RecordView
+     *
+     * @param class-string<T> $class
+     *
+     * @return ?T
+     */
+    public static function typed(?Node $record, Document|IndexedDocument|null $file, string $class): ?self
     {
-        return $record !== null && $record->tag() === 'FAM' && !$record->document()->isInvalid($record->id()) ? new Family($record, $file) : null;
+        if ($record === null || $record->document()->isInvalid($record->id()) || $record->tag() !== $class::tagIn($record->document()->version())) {
+            return null;
+        }
+
+        return new $class($record, $file);
     }
 
     /** @internal the view of a record by its tag, null for records without one */
     public static function of(Node $node, Document|IndexedDocument|null $file): ?self
     {
-        return match ($node->tag()) {
-            'INDI' => new Individual($node, $file),
-            'FAM' => new Family($node, $file),
-            default => null,
-        };
+        foreach (self::VIEWS as $class) {
+            $view = self::typed($node, $file, $class);
+            if ($view !== null) {
+                return $view;
+            }
+        }
+
+        return null;
     }
 
     public function node(): Node
@@ -66,6 +87,25 @@ abstract class RecordView
     protected function version(): Version
     {
         return $this->node->document()->version();
+    }
+
+    /** The value of the first substructure with this tag. */
+    protected function text(string $tag): ?string
+    {
+        return $this->node->first($tag)?->value();
+    }
+
+    /** Replaces the value of the first substructure with this tag, adds one, or removes it for null. */
+    protected function setText(string $tag, ?string $value): static
+    {
+        $child = $this->node->first($tag);
+        if ($value === null) {
+            $child?->remove();
+        } else {
+            ($child ?? $this->node->addChild($tag))->setValue($value);
+        }
+
+        return $this;
     }
 
     /** @return list<string> the pointers of these substructures, null pointers left out */

@@ -13,6 +13,8 @@ use Korin\Gedcom\Exception\InvalidValueException;
  */
 final class Individual extends RecordView
 {
+    public const TAG = 'INDI';
+
     /** @var array<string, true> individual events of 5.5, 5.5.1, 5.5.5 and 7.0 */
     public const EVENTS = [
         'ADOP' => true, 'BAPM' => true, 'BARM' => true, 'BASM' => true, 'BIRT' => true, 'BLES' => true,

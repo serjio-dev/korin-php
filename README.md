@@ -5,8 +5,8 @@ without losing a single tag. Every unavoidable loss is reported.
 
 > **Status: 0.3 — early development.** Reading, lossless writing, editing, validation and
 > conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, also for files of any size (streaming
-> and indexed reading, streaming conversion), and the model of individuals and families with
-> dates, ages, names and places; views of the other records and GEDZIP are planned — see
+> and indexed reading, streaming conversion), and the model: views of every record type with
+> dates, ages, names and places; GEDZIP is planned — see
 > [the specification](docs/SPEC.md) for the roadmap and [CHANGELOG.md](CHANGELOG.md) for releases.
 > Until 1.0 a minor release may break the API.
 
@@ -105,6 +105,9 @@ $anna = $doc->addIndividual()                  // @I1@
 $anna->addBirth(GedcomDate::parse('12 MAR 1921'), Place::of('Полтава, Україна'));
 $doc->addFamily()->setWife($anna)->addChild($doc->addIndividual());   // FAMS and FAMC set too
 ```
+
+`Source`, `Repository`, `MediaObject`, `SharedNote` (SNOTE in 7.0, NOTE in 5.x) and `Submitter`
+have views too: `$doc->source('@S1@')?->repositories()`, `$doc->mediaObjects()`.
 
 The same views work on `open()` (read only, related records are read from the file) and, limited
 to one record, on `stream()`: `$record->view()?->familyXrefs()` works, `parents()` throws

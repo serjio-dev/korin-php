@@ -13,7 +13,12 @@ use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\Model\Family;
 use Korin\Gedcom\Model\Individual;
+use Korin\Gedcom\Model\MediaObject;
 use Korin\Gedcom\Model\RecordView;
+use Korin\Gedcom\Model\Repository;
+use Korin\Gedcom\Model\SharedNote;
+use Korin\Gedcom\Model\Source;
+use Korin\Gedcom\Model\Submitter;
 use Korin\Gedcom\Version;
 
 /**
@@ -190,23 +195,78 @@ final class Document
     /** @return list<Individual> the INDI records, in order */
     public function individuals(): array
     {
-        return $this->views('INDI', Individual::class);
+        return $this->views(Individual::class);
     }
 
     public function individual(string $xref): ?Individual
     {
-        return RecordView::individual($this->record($xref), $this);
+        return RecordView::typed($this->record($xref), $this, Individual::class);
     }
 
     /** @return list<Family> the FAM records, in order */
     public function families(): array
     {
-        return $this->views('FAM', Family::class);
+        return $this->views(Family::class);
     }
 
     public function family(string $xref): ?Family
     {
-        return RecordView::family($this->record($xref), $this);
+        return RecordView::typed($this->record($xref), $this, Family::class);
+    }
+
+    /** @return list<Source> the SOUR records, in order */
+    public function sources(): array
+    {
+        return $this->views(Source::class);
+    }
+
+    public function source(string $xref): ?Source
+    {
+        return RecordView::typed($this->record($xref), $this, Source::class);
+    }
+
+    /** @return list<Repository> the REPO records, in order */
+    public function repositories(): array
+    {
+        return $this->views(Repository::class);
+    }
+
+    public function repository(string $xref): ?Repository
+    {
+        return RecordView::typed($this->record($xref), $this, Repository::class);
+    }
+
+    /** @return list<MediaObject> the OBJE records, in order */
+    public function mediaObjects(): array
+    {
+        return $this->views(MediaObject::class);
+    }
+
+    public function mediaObject(string $xref): ?MediaObject
+    {
+        return RecordView::typed($this->record($xref), $this, MediaObject::class);
+    }
+
+    /** @return list<SharedNote> the note records (SNOTE in 7.0, NOTE in 5.x), in order */
+    public function sharedNotes(): array
+    {
+        return $this->views(SharedNote::class);
+    }
+
+    public function sharedNote(string $xref): ?SharedNote
+    {
+        return RecordView::typed($this->record($xref), $this, SharedNote::class);
+    }
+
+    /** @return list<Submitter> the SUBM records, in order */
+    public function submitters(): array
+    {
+        return $this->views(Submitter::class);
+    }
+
+    public function submitter(string $xref): ?Submitter
+    {
+        return RecordView::typed($this->record($xref), $this, Submitter::class);
     }
 
     /** Adds an INDI record; without an xref the first free one of @I1@, @I2@ … */
@@ -825,18 +885,19 @@ final class Document
     }
 
     /**
-     * @template T of Individual|Family
+     * @template T of RecordView
      *
      * @param class-string<T> $class
      *
      * @return list<T>
      */
-    private function views(string $tag, string $class): array
+    private function views(string $class): array
     {
         $views = [];
         foreach ($this->childIds(self::ROOT) as $id) {
-            if ($this->tag[$id] === $tag && !$this->isInvalid($id)) {
-                $views[] = new $class($this->node($id), $this);
+            $view = RecordView::typed($this->node($id), $this, $class);
+            if ($view !== null) {
+                $views[] = $view;
             }
         }
 
