@@ -18,6 +18,19 @@ break the API; such changes are described in `UPGRADE.md`.
   throws `UnsupportedVersionException`; preserve mode writes it. `Version::isWritable()`.
 - `KV1009` (info): a file of GEDCOM 4.0 or of a 5.0–5.4 draft, read with the 5.5 profile.
   `5.01`, which some programs write for the 5.1 draft, is read as 5.5 (it was an unknown version).
+- Vendor dialects ([docs/dialects.md](docs/dialects.md)): `Document::sourceSystem()` and
+  `IndexedDocument::sourceSystem()` give the program that wrote the file (`Extension\SourceSystem`,
+  `Extension\Program` for the identifiers Tamura Jones lists). Documented mistakes are corrected
+  as the file is read, reported as `KV1010` (info), off with `ReadOptions::withDialects(false)`:
+  PAF 5 files declaring 5.5 are read as 5.5.1, `CHAR IBMPC` of Brother's Keeper before 6.1.12
+  as Windows-1252, `CHAR ASCII` with `VERS MacOS Roman` (GEDitCOM) or `MACINTOSH`
+  (MacFamilyTree) as MacRoman. `HEAD.CHAR` `MS-DOS`, `IBM DOS` (CP850), `OEM` (CP437),
+  `WINDOWS`, `IBM WINDOWS` (Windows-1252) are read too.
+
+### Fixed
+
+- `HEAD.CHAR` of a file with Mac line endings (CR only) was not found, so its encoding was
+  guessed from content.
 
 ## [0.4.0] - 2026-11-17
 

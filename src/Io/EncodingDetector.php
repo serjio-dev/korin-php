@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Korin\Gedcom\Io;
 
 use Korin\Gedcom\Diagnostic;
+use Korin\Gedcom\Extension\Dialects;
+use Korin\Gedcom\Extension\Program;
 use Korin\Gedcom\Io\Codec\Utf8;
 use Korin\Gedcom\Severity;
 
@@ -19,7 +21,8 @@ final class EncodingDetector
 
     private const STANDARD_CHAR = ['ANSEL', 'ASCII', 'UNICODE', 'UTF-8'];
 
-    public function detect(string $bytes, ?Encoding $forced = null): Detection
+    /** @param bool $dialects whether documented CHAR mistakes of programs are corrected (KV1010) */
+    public function detect(string $bytes, ?Encoding $forced = null, bool $dialects = true): Detection
     {
         if ($forced !== null) {
             $bom = $forced->bom();
@@ -39,10 +42,10 @@ final class EncodingDetector
             return new Detection(Encoding::Utf16Be, false, $this->declaredChar($bytes, Encoding::Utf16Be)[0] ?? null);
         }
 
-        return $this->detectAsciiCompatible($bytes);
+        return $this->detectAsciiCompatible($bytes, $dialects);
     }
 
-    private function detectAsciiCompatible(string $bytes): Detection
+    private function detectAsciiCompatible(string $bytes, bool $dialects): Detection
     {
         $sample = substr($bytes, 0, self::SAMPLE_SIZE);
         if (strlen($bytes) > self::SAMPLE_SIZE) {
@@ -65,6 +68,12 @@ final class EncodingDetector
         }
 
         $isUtf8 = Utf8::isValid($sample);
+        $dialect = $dialects && !$isUtf8 ? $this->dialect($sample, $mapped instanceof Encoding ? $mapped : null) : null;
+        if ($dialect !== null) {
+            $diagnostics[] = new Diagnostic('KV1010', Severity::Info, $dialect[1], $line, 'HEAD/CHAR');
+
+            return new Detection($dialect[0], false, $declared, $diagnostics);
+        }
         $contradiction = static fn(string $actual): Diagnostic => new Diagnostic(
             'KV1102',
             Severity::Warning,
@@ -124,14 +133,53 @@ final class EncodingDetector
             'UNICODE', 'UTF16' => 'UNICODE',
             'ASCII', 'USASCII' => Encoding::Ascii,
             'ANSEL' => Encoding::Ansel,
-            'ANSI', 'WINDOWS1252', 'CP1252', 'LATIN1', 'ISO88591', 'ISO8859' => Encoding::Windows1252,
+            // WINDOWS, IBM WINDOWS (EasyTree, Reunion), OEM (Généatique), MS-DOS and IBM DOS (Family Tree
+            // Maker for Windows, Reunion): Tamura Jones, "GEDCOM Character Encodings".
+            'ANSI', 'WINDOWS1252', 'CP1252', 'LATIN1', 'ISO88591', 'ISO8859', 'WINDOWS', 'IBMWINDOWS' => Encoding::Windows1252,
             'WINDOWS1251', 'CP1251', 'WIN1251', 'CYRILLIC' => Encoding::Windows1251,
             'WINDOWS1250', 'CP1250', 'WIN1250' => Encoding::Windows1250,
-            'IBMPC', 'IBM', 'CP437', 'IBM437' => Encoding::Cp437,
-            'CP850', 'IBM850' => Encoding::Cp850,
+            'IBMPC', 'IBM', 'CP437', 'IBM437', 'OEM' => Encoding::Cp437,
+            'CP850', 'IBM850', 'MSDOS', 'IBMDOS' => Encoding::Cp850,
             'MACINTOSH', 'MACROMAN', 'MAC' => Encoding::MacRoman,
             default => null,
         };
+    }
+
+    /**
+     * A documented CHAR mistake of the program that wrote the file ({@see Dialects::encoding()}),
+     * read from the lines of HEAD before the file is parsed.
+     *
+     * @return ?array{Encoding, string}
+     */
+    private function dialect(string $sample, ?Encoding $declared): ?array
+    {
+        // The lines between the first level-0 line (HEAD) and the next one.
+        if ($declared === null || preg_match('/(*ANYCRLF)^[ \t]*0[ \t][^\r\n]*\R(.*?)(?=^[ \t]*0[ \t]|\z)/ms', $sample, $m) !== 1) {
+            return null;
+        }
+        $sour = $this->line($m[1], 'SOUR');
+        $char = $this->line($m[1], 'CHAR');
+
+        return Dialects::encoding(
+            $declared,
+            $char === null ? null : $this->line($char[1], 'VERS', 2)[0] ?? null,
+            $sour === null ? null : Program::fromIdentifier($sour[0]),
+            $sour === null ? null : $this->line($sour[1], 'VERS', 2)[0] ?? null,
+        );
+    }
+
+    /**
+     * The value of the first line of a level and tag in some lines of HEAD, and the lines under it.
+     *
+     * @return ?array{string, string}
+     */
+    private function line(string $lines, string $tag, int $level = 1): ?array
+    {
+        if (preg_match("/(*ANYCRLF)^[ \t]*{$level}[ \t]+{$tag}(?:[ \t]+([^\r\n]*))?((?:\R[ \t]*(?![0-{$level}][ \t])[0-9]+[ \t][^\r\n]*)*)/m", $lines, $m) !== 1) {
+            return null;
+        }
+
+        return [trim($m[1]), $m[2]];
     }
 
     /**
@@ -145,11 +193,11 @@ final class EncodingDetector
         if ($encoding->codeUnitSize() === 2) {
             $sample = str_replace("\0", '', $sample);
         }
-        if (preg_match('/^(.*?)^[ \t]*1[ \t]+CHAR[ \t]+([^\r\n]*)/ms', $sample, $m) !== 1) {
+        if (preg_match('/(*ANYCRLF)^(.*?)^[ \t]*1[ \t]+CHAR[ \t]+([^\r\n]*)/ms', $sample, $m) !== 1) {
             return [];
         }
         // Only accept CHAR that belongs to HEAD: no level-0 line between HEAD and it.
-        if (preg_match_all('/^[ \t]*0[ \t]/m', $m[1]) > 1) {
+        if (preg_match_all('/(*ANYCRLF)^[ \t]*0[ \t]/m', $m[1]) > 1) {
             return [];
         }
 
