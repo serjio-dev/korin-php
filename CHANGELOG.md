@@ -37,6 +37,13 @@ break the API; such changes are described in `UPGRADE.md`.
   records in order and keep what the checks between records need packed; the validation of a
   `Document` is as fast as before.
 
+- Value objects in `Korin\Gedcom\Model`, the same for every version: `GedcomDate` (`DateKind`,
+  `Date`: calendars, dual years, BCE, phrases; `days()` as Julian Day Numbers), `Age`
+  (`AgeBound`, the 5.x words), `PersonalName`, `Place`, `Coordinates`. `parse($value, $version)`
+  accepts what the validator finds valid for the version, without a warning; `toGedcom($version)`
+  writes the version's form or throws `Exception\InvalidValueException`. Every date and age of
+  the corpus that parses writes back to the same value object.
+
 ### Changed
 
 - `convert()` converts the records in the order of the output: a record a rule moves right
