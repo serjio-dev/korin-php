@@ -193,6 +193,8 @@ final readonly class Parser
         $version = Version::fromDeclared($declared);
         if ($version === null) {
             $report(new Diagnostic('KV1008', Severity::Warning, 'Unknown GEDCOM version; read as 5.5.1', $vers->line(), 'HEAD/GEDC/VERS'));
+        } elseif ($version->readAs() === Version::V5_5 && trim($declared) !== '5.5') {
+            $report(new Diagnostic('KV1009', Severity::Info, ($version === Version::V4_0 ? 'GEDCOM 4.0' : 'A 5.5 draft') . ' is read with the 5.5 profile', $vers->line(), 'HEAD/GEDC/VERS'));
         }
 
         return $version;

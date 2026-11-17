@@ -55,7 +55,7 @@ Full support covers 5.5, 5.5.1, 5.5.5 and 7.0.x; older versions are read only. A
 | 5.5.1 (1999, re-issued 2019) | ✓ | ✓ | The most widespread; default format for "compatibility" exports |
 | 5.5 (1996) | ✓ | ✓ | Encodings ANSEL, ASCII, UNICODE (UTF-16) only |
 | 5.0–5.4 (drafts) | best effort | — | Read with the 5.5 profile in lenient mode |
-| 4.0 | best effort | — | Old PAF exports; converted to 5.5 with a report |
+| 4.0 | best effort | — | Old PAF and Roots exports (`GEDC.VERS` `4.0`, `4.0.4.18`, `4+`); validated with the 5.5 profile, converted to 5.5 and on |
 | GEDCOM X | — | — | A different model (JSON/XML); separate `korin/gedcomx` package after 1.0 |
 
 **Encodings for reading:** UTF-8 (with and without BOM), UTF-16 LE/BE, ASCII, ANSEL (with reordering of combining diacritics), Windows-1250/1251/1252, CP437/CP850 (IBMPC), MacRoman. Windows-1251 is non-standard but mandatory: many programs export Cyrillic that way.

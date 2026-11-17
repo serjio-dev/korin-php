@@ -1,7 +1,7 @@
 # Conversion rules
 
 What `Gedcom::convert()` changes, by version pair. Conversions run along the chain
-5.5 ↔ 5.5.1 ↔ 7.0, with 5.5.5 attached to 5.5.1 (SPEC section 7); output conventions and loss
+4.0 → 5.5 ↔ 5.5.1 ↔ 7.0, with 5.5.5 attached to 5.5.1 (SPEC section 7); output conventions and loss
 codes are in [losses.md](losses.md).
 
 ```php
@@ -160,6 +160,29 @@ A conversion between 5.5 and 7.0 goes through 5.5.1: 7.0 → 5.5 is 7.0 → 5.5.
 5.5.1 → 5.5, with one loss report for both, located in the input. Converting a 7.0 file to 5.5
 and back gives the same fingerprint, except for `KL3` losses, as it does through 5.5.1 (tested
 on every 7.0 input of the corpus).
+
+## 4.0 → 5.5
+
+GEDCOM 4.0 (1989) has a dictionary of tags, but no grammar of where they go, and writes values
+in words. A 4.0 file (`HEAD.GEDC.VERS` `4.0`, `4.0.4.18` as PAF writes it, or `4+` as Roots and
+Ultimate Family Tree do) is read as `Version::V4_0` and validated with the 5.5 profile (`KV1009`);
+it is read only, so it converts to 5.5 and from there to any version. Best effort: the values
+take the form 5.5 has for them, and nothing is reported for that, as with other spellings.
+
+| 4.0 | 5.5 |
+| --- | --- |
+| `SEX Male`, `Female` | `M`, `F` |
+| A date in words: month names (`11 June 1861`, `Sept.`), `Abt.`, `c.`, `Before`, `After`, `Between … and …` | The 5.5 date when it then fits 5.5: `11 JUN 1861`, `ABT 1850`, `BET 1880 AND 1882` |
+| Any other date that does not fit 5.5, which 4.0 calls irregular and keeps as written (`4/5 January 1751/52`, `7-12-84`, `2 days after Easter, 1690`) | A date phrase: `(4/5 January 1751/52)` |
+| A date with `@` (a 4.0 calendar escape) or a parenthesis | Stays; the 5.5 validator reports it |
+| A structure 5.5 does not have where it stands (`HEAL`, `SYMB`) | An extension, `KL2001` |
+| `HEAD` without `GEDC.FORM`, `CHAR IBMPC` | `GEDC.VERS 5.5`, `FORM LINEAGE-LINKED`, `CHAR UNICODE` |
+
+5.5 requires a submitter, which a 4.0 file may not have; the conversion does not invent one.
+The `+` continuation and the `@#L` and `@#C` escapes of 4.0 are not read: such lines are kept
+as they are (`KV1001`).
+
+A 5.0–5.4 draft (and `5.01`, the 5.1 of some programs) is read as 5.5, with `KV1009`.
 
 ## 5.5.1 → 5.5.5
 

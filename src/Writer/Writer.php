@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Writer;
 
+use Korin\Gedcom\Exception\UnsupportedVersionException;
 use Korin\Gedcom\Io\Codec\Codec;
 use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Encoding;
@@ -18,6 +19,9 @@ final class Writer
     {
         $encoding = $options->encoding ?? $document->encoding();
         $normalize = $options->mode === WriteMode::Normalize;
+        if ($normalize && !$document->version()->isWritable()) {
+            throw new UnsupportedVersionException("GEDCOM {$document->version()->value} is read only: convert the document to 5.5 or later to normalize it");
+        }
         // Original bytes are kept only in preserve mode and in their own encoding.
         $reencode = !$normalize && $encoding !== $document->encoding();
         $verbatim = !$normalize && !$reencode;

@@ -71,8 +71,9 @@ All codes are listed in [docs/diagnostics.md](docs/diagnostics.md).
 
 ## Conversion
 
-Any of 5.5, 5.5.1, 5.5.5 and 7.0 converts to any other. Nothing is dropped silently: data the
-target version cannot hold is kept as an extension tag and reported with a stable code.
+Any of 5.5, 5.5.1, 5.5.5 and 7.0 converts to any other; GEDCOM 4.0 and the 5.0–5.4 drafts are
+read (best effort, with the 5.5 profile) and convert to any of them. Nothing is dropped silently:
+data the target version cannot hold is kept as an extension tag and reported with a stable code.
 
 ```php
 use Korin\Gedcom\Version;

@@ -24,7 +24,8 @@ final class ProfileConformanceTest extends TestCase
     public static function cases(): iterable
     {
         foreach (Version::cases() as $version) {
-            if (Profile::has($version)) {
+            // 4.0 has no profile of its own: it is read with that of 5.5.
+            if ($version->readAs() === $version && Profile::has($version)) {
                 yield from Cases::of(Profile::for($version));
             }
         }

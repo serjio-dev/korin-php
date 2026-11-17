@@ -88,7 +88,7 @@ final readonly class Age implements \Stringable
                 $parts[] = $number . $unit;
             }
         }
-        $space = $version === Version::V5_5 || $version === Version::V5_5_1 ? '' : ' ';
+        $space = $version->readAs() === Version::V5_5 || $version === Version::V5_5_1 ? '' : ' ';
         $value = ($this->bound === null ? '' : $this->bound->value . $space) . implode(' ', $parts);
         if (!Grammars::isAge($version, $value)) {
             throw new InvalidValueException("The age cannot be written in GEDCOM {$version->value}");
