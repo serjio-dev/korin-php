@@ -31,6 +31,9 @@ final readonly class AnselCodec implements Codec
         0xF9 => "\u{032E}", 0xFA => "\u{FE22}", 0xFB => "\u{FE23}", 0xFE => "\u{0313}",
     ];
 
+    /** Letters with a horn, spacing characters in ANSEL: NFD splits them into the letter and U+031B. */
+    private const HORN = ['O' => 0xAC, 'U' => 0xAD, 'o' => 0xBC, 'u' => 0xBD];
+
     /** @var array<string, string> base . mark → composed */
     private array $compose;
 
@@ -72,6 +75,9 @@ final readonly class AnselCodec implements Codec
             $char = Utf8::chr($cp);
             if ($cp < 0x80) {
                 $out .= $char;
+            } elseif ($cp === 0x031B && isset(self::HORN[substr($out, -1)])) {
+                // The base is always the last byte: marks before the horn in NFD went in front of it.
+                $out = substr($out, 0, -1) . chr(self::HORN[substr($out, -1)]);
             } elseif (isset($this->encodeMap[$char], self::COMBINING[$this->encodeMap[$char]]) && $out !== '') {
                 // Unicode puts marks after the base; ANSEL needs them before it. Every ANSEL base is one byte.
                 $out = substr($out, 0, -1) . chr($this->encodeMap[$char]) . substr($out, -1);

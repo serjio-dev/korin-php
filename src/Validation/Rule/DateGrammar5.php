@@ -139,7 +139,7 @@ final readonly class DateGrammar5
         }
         $day = $m[1];
         $month = $m[2];
-        $year = (int) $m[3];
+        $year = DateGrammar::cycleYear($m[3]);
         $dual = $m[4] ?? '';
         $bc = ($m[5] ?? '') !== '';
         // Only Gregorian years can be dual; a day needs a month.
@@ -170,7 +170,7 @@ final readonly class DateGrammar5
         }
         $day = $m[1];
         $month = $m[2];
-        $year = (int) $m[3];
+        $year = DateGrammar::cycleYear($m[3]);
         $dual = $m[4] ?? '';
         $bce = ($m[5] ?? '') !== '';
         $proleptic = isset(self::PROLEPTIC_555[$calendar]);

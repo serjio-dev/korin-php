@@ -14,6 +14,7 @@ php bin/generate-encoding-tables.php   # regenerate resources/encodings (needs i
 php bin/generate-profiles.php          # compile spec/<version> into resources/profiles; --check in CI
 composer bench          # PHPBench; test files are generated into build/bench on first run
 vendor/bin/phpbench run --report=korin --filter=10Mb --filter=WriteBench   # without the 50 MB subject
+php fuzz/seed.php ../gedcom-corpus && (mkdir -p build/fuzz/crashes && cd build/fuzz/crashes && php -d memory_limit=2G ../../../vendor/bin/php-fuzzer fuzz ../../../fuzz/read.php ../read)   # docs/fuzzing.md
 (cd tools/liberu-comparison && composer install && php compare.php ../../docs/comparison/liberu-php-gedcom.md)   # PHP 8.4+
 ```
 

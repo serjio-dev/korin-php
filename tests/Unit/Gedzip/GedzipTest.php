@@ -100,6 +100,22 @@ final class GedzipTest extends TestCase
         Gedcom::readGedzip($this->dir . '/in.gdz');
     }
 
+    /** Found by fuzzing: the zip stream warned (CRC error) rather than the reader throwing. */
+    #[Test]
+    public function damagedGedcomIsRejected(): void
+    {
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($this->dir . '/in.gdz', \ZipArchive::CREATE));
+        $zip->addFromString('gedcom.ged', self::GED);
+        $zip->setCompressionName('gedcom.ged', \ZipArchive::CM_STORE);
+        $zip->close();
+        $bytes = (string) file_get_contents($this->dir . '/in.gdz');
+        file_put_contents($this->dir . '/in.gdz', str_replace('2 VERS 7.0', '2 VERS 7.1', $bytes));
+
+        $this->expectExceptionObject(new GedzipException('gedcom.ged is damaged: CRC error'));
+        Gedcom::readGedzip($this->dir . '/in.gdz');
+    }
+
     #[Test]
     public function notAZipIsRejected(): void
     {

@@ -209,7 +209,7 @@ final class Context
             } else {
                 foreach ($this->source->walk() as $id) {
                     $found = $this->source->tagOf($id);
-                    if ($found[0] === '_') {
+                    if (str_starts_with($found, '_')) {
                         $this->extensionTags[$found] = true;
                     }
                 }

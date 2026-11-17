@@ -60,8 +60,10 @@ final readonly class Validator
             $severity = $options->severities[$diagnostic->code] ?? null;
             $reported[] = $severity === null ? $diagnostic : $diagnostic->withSeverity($severity);
         }
-        // Document order; diagnostics without a line (about the whole file) come last.
-        usort($reported, static fn(Diagnostic $a, Diagnostic $b): int => ($a->line ?? PHP_INT_MAX) <=> ($b->line ?? PHP_INT_MAX));
+        // Document order; diagnostics without a line (about the whole file) come last. On one line,
+        // by code: read() and open() find them in another order (encoding before or after syntax).
+        usort($reported, static fn(Diagnostic $a, Diagnostic $b): int => [$a->line ?? PHP_INT_MAX, $a->code, $a->path, $a->message]
+            <=> [$b->line ?? PHP_INT_MAX, $b->code, $b->path, $b->message]);
 
         return new ValidationReport($reported);
     }

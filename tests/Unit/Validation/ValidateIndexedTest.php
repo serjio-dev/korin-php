@@ -25,6 +25,10 @@ final class ValidateIndexedTest extends TestCase
         yield 'structure, values and lines that are not GEDCOM lines' => [self::HEAD_551 . "0 @I1@ INDI\n1 SEX Q\n1 FOO bar\nnot a line\n1 NAME A\n2 GIVN\n0 @R1@ REPO\n0 BAR\n0 TRLR\n0 @I9@ INDI\n"];
         yield '5.5.5 SUBM not after HEAD, no BOM' => ["0 HEAD\n1 GEDC\n2 VERS 5.5.5\n2 FORM LINEAGE-LINKED\n3 VERS 5.5.5\n1 CHAR UTF-8\n1 SUBM @U1@\n0 @I1@ INDI\n0 @U1@ SUBM\n1 NAME U\n0 TRLR\n"];
         yield '7.0, void pointers and extensions' => ["\xEF\xBB\xBF0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 FAMC @VOID@\n1 _LINK @X1@\n1 ASSO @I2@\n2 ROLE FRIEND\n0 TRLR\n"];
+        // Found by fuzzing: an ANSEL combining mark goes with the character after it, here a space.
+        yield 'ANSEL marks on delimiters' => ["0 HEAD\r\n1 CHAR ANSEL\r\n1 GEDC\r\n2 VERS 5.5.1\r\n0 @U1@ SUBM\r\n0\xE9 @1@ INDI\r\n1 FAMS @F1@\r\n0 @I1@ \xF7INDI\r\n0 @I1@ \xF7INDI\r\n0 TRLR\r\n"];
+        // Found by fuzzing: diagnostics of one line came in another order (encoding before syntax).
+        yield 'CHAR as a record' => ["x\n1 CHAR WHATEVER\n0 TRLR\n"];
         yield 'no HEAD' => ["0 @I1@ INDI\n1 NAME A\n0 TRLR\n"];
         yield 'empty' => [''];
     }

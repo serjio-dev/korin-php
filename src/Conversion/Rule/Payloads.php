@@ -49,7 +49,7 @@ final class Payloads
                 return $payload === 'Y';
             }
             if ($structure->enumerationSet !== null) {
-                return $payload[0] === '_' || in_array($payload, $profile->enumeration($structure->enumerationSet), true);
+                return str_starts_with($payload, '_') || in_array($payload, $profile->enumeration($structure->enumerationSet), true);
             }
 
             return $structure->pointerTarget() === null || str_contains($type, '|');

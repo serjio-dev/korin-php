@@ -10,6 +10,7 @@ use Korin\Gedcom\Conversion\LossReport;
 use Korin\Gedcom\Exception\ConversionException;
 use Korin\Gedcom\Exception\GedzipException;
 use Korin\Gedcom\Exception\IoException;
+use Korin\Gedcom\Exception\ParseException;
 use Korin\Gedcom\Gedzip\Archive;
 use Korin\Gedcom\Gedzip\GedzipReader;
 use Korin\Gedcom\Gedzip\GedzipWriter;
@@ -25,6 +26,10 @@ use Korin\Gedcom\Writer\Writer;
 /** Entry point for common tasks; the classes behind it can be injected directly. */
 final class Gedcom
 {
+    /**
+     * @throws IoException when the file cannot be read
+     * @throws ParseException when a line exceeds the limits of the options (length, nesting), or at an error in strict mode
+     */
     public static function read(string $path, ReadOptions $options = new ReadOptions()): Document
     {
         $bytes = @file_get_contents($path);
@@ -39,6 +44,8 @@ final class Gedcom
      * Reads a file one record at a time, in memory that does not grow with the file.
      *
      * @param string|resource $source a path, or an open handle read from its current position (not closed)
+     *
+     * @throws ParseException when a line exceeds the limits of the options (length, nesting), or at an error in strict mode
      */
     public static function stream(mixed $source, ReadOptions $options = new ReadOptions()): RecordStream
     {
@@ -57,6 +64,8 @@ final class Gedcom
      * read its records in order (as {@see self::convertFile()} does), not at random.
      *
      * @param string|resource $source a path, or an open handle read from its current position (not closed)
+     *
+     * @throws ParseException when a line exceeds the limits of the options (length, nesting), or at an error in strict mode
      */
     public static function open(mixed $source, ReadOptions $options = new ReadOptions()): IndexedDocument
     {
@@ -82,6 +91,9 @@ final class Gedcom
         return new IndexedDocument($handle, $options, close: true, path: $entry);
     }
 
+    /**
+     * @throws ParseException when a line exceeds the limits of the options (length, nesting), or at an error in strict mode
+     */
     public static function parse(string $bytes, ReadOptions $options = new ReadOptions()): Document
     {
         return (new Parser())->parse($bytes, $options);

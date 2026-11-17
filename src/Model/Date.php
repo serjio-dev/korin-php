@@ -27,7 +27,11 @@ final readonly class Date
 
     public const BCE = 'BCE';
 
+    /** The largest year: Julian Day Numbers of larger ones would overflow an int. */
+    public const MAX_YEAR = 999_999_999;
+
     /**
+     * @param ?int $year     0 to MAX_YEAR; the grammars allow years of any length, which a Date cannot hold
      * @param ?int $dualYear the year by a 1 January new year: 1649 for "1648/49"
      */
     public function __construct(
@@ -38,7 +42,7 @@ final readonly class Date
         public ?string $epoch = null,
         public ?int $dualYear = null,
     ) {
-        if (($year === null ? $day === null : $year < 0) || ($day !== null && ($month === null || $day < 1)) || ($month !== null && preg_match('/^_?[A-Z][A-Z0-9_]*$/', $month) !== 1)
+        if (($year === null ? $day === null : $year < 0 || $year > self::MAX_YEAR) || ($day !== null && ($month === null || $day < 1)) || ($month !== null && preg_match('/^_?[A-Z][A-Z0-9_]*$/', $month) !== 1)
             || preg_match('/^_?[A-Z][A-Z0-9_]*$/', $calendar) !== 1 || ($epoch !== null && preg_match('/^_?[A-Z][A-Z0-9_]*$/', $epoch) !== 1)
             || ($dualYear !== null && ($year === null || $dualYear <= $year || $dualYear - $year > 99))) {
             throw new InvalidValueException('Not a date: a year, a month tag, a day of a month and calendar and epoch tags');
@@ -48,6 +52,21 @@ final readonly class Date
     public static function of(?int $year, ?string $month = null, ?int $day = null, string $calendar = self::GREGORIAN): self
     {
         return new self($year, $month, $day, $calendar);
+    }
+
+    /**
+     * @internal the year of a date value, which may have more digits than an int holds
+     *
+     * @throws InvalidValueException for a year above MAX_YEAR
+     */
+    public static function year(string $digits): int
+    {
+        $digits = ltrim($digits, '0');
+        if (strlen($digits) > strlen((string) self::MAX_YEAR)) {
+            throw new InvalidValueException('A year of more than ' . strlen((string) self::MAX_YEAR) . ' digits');
+        }
+
+        return (int) $digits;
     }
 
     public function isBce(): bool

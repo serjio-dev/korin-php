@@ -238,6 +238,15 @@ final class ConverterTest extends TestCase
         ], array_map(strval(...), $losses->entries()));
     }
 
+    /** Found by fuzzing: an empty line has no tag, and looking for extension tags read its first byte. */
+    #[Test]
+    public function emptyLinesDoNotStopTheConversion(): void
+    {
+        $output = Gedcom::convert(Gedcom::parse("0 SUBM\n\n2 LANG R"), Version::V7_0)->output();
+
+        self::assertStringContainsString("0 SUBM\n1 LANG und\n2 _PHRASE R\n", $output);
+    }
+
     #[Test]
     public function newXrefsNeedThePrepass(): void
     {

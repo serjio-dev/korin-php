@@ -26,11 +26,30 @@ break the API; such changes are described in `UPGRADE.md`.
   as Windows-1252, `CHAR ASCII` with `VERS MacOS Roman` (GEDitCOM) or `MACINTOSH`
   (MacFamilyTree) as MacRoman. `HEAD.CHAR` `MS-DOS`, `IBM DOS` (CP850), `OEM` (CP437),
   `WINDOWS`, `IBM WINDOWS` (Windows-1252) are read too.
+- Fuzzing with nikic/php-fuzzer: targets for reading, value grammars, codecs and GEDZIP in
+  `fuzz/`, run nightly by the `fuzz` workflow ([docs/fuzzing.md](docs/fuzzing.md)).
+- `ParseException` is documented on `Gedcom::read()`, `parse()`, `open()` and `stream()`: outside
+  strict mode it is thrown only for the limits of `ReadOptions`.
 
 ### Fixed
 
 - `HEAD.CHAR` of a file with Mac line endings (CR only) was not found, so its encoding was
   guessed from content.
+
+Found by fuzzing ([docs/fuzzing.md](docs/fuzzing.md)):
+
+- `Ơ`, `ơ`, `Ư`, `ư` could not be written in ANSEL (`UnencodableCharacterException` on writing an
+  edited ANSEL file with a Vietnamese name): they are the ANSEL letters 0xAC, 0xBC, 0xAD, 0xBD.
+- An ANSEL combining mark before a delimiter made `open()` and `stream()` find other records
+  than `read()`.
+- Diagnostics of one line are sorted by code, so `open()` and `read()` give the same report.
+- Years longer than an int raised a PHP warning in validation and a `TypeError` in
+  `GedcomDate::parse()`; a `Date` holds years up to `Date::MAX_YEAR` (999 999 999), and a longer
+  one is an `InvalidValueException` (`tryParse()`: null). 4.0 dates are checked against the 5.5
+  grammar rather than the model.
+- A conversion raised a PHP warning on an empty line in some files.
+- A damaged `gedcom.ged` in a GEDZIP archive raised a PHP warning, or with a wrong CRC no error;
+  it is a `GedzipException`.
 
 ## [0.4.0] - 2026-11-17
 
