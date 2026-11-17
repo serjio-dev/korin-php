@@ -28,6 +28,10 @@ new codes may be added in minor releases. Messages are informative and may chang
 | `KV1102` | warning | `HEAD.CHAR` contradicts the content; the content wins |
 | `KV1103` | info | No usable `HEAD.CHAR`; the encoding is guessed from content |
 | `KV1104` | warning | 5.5.5: the file does not start with a byte order mark ("All GEDCOM 5.5.5 files … must start with a Byte Order Mark"). Reported by `Gedcom::validate()` for the file, without a line; a warning, because the BOM carries no data |
+| `KV1201` | warning | GEDZIP: an entry name is not a safe relative path (`..`, an absolute path, `\`, a drive letter, a control character); the entry is ignored. Reported by `Gedcom::readGedzip()` in `Archive::diagnostics()` |
+| `KV1202` | warning | GEDZIP: an entry is a symbolic link; it is ignored |
+| `KV1203` | warning | GEDZIP: `gedcom.ged` is not GEDCOM 7.0; it is read as what it declares |
+| `KV1204` | warning | GEDZIP: a `FILE` reference that is a relative path names no entry of the archive |
 
 In strict mode (`ReadOptions::withStrict()`) every error-level `KV1` diagnostic throws
 `ParseException` instead.
