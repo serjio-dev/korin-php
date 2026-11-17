@@ -63,4 +63,35 @@ final class ConvertBench
     {
         Gedcom::convert($this->document, Version::V7_0);
     }
+
+    /** Streaming conversion (spec section 9: 50 MB to 7.0 in ≤ 64 MB). */
+    #[Bench\Iterations(5)]
+    public function benchConvertFile10MbTo70(): void
+    {
+        Gedcom::convertFile(BenchFile::path(10), $this->sink(), Version::V7_0);
+    }
+
+    #[Bench\Iterations(5)]
+    public function benchConvertFile10MbTo555(): void
+    {
+        Gedcom::convertFile(BenchFile::path(10), $this->sink(), Version::V5_5_5);
+    }
+
+    #[Bench\Iterations(2)]
+    #[Bench\Groups(['large'])]
+    public function benchConvertFile50MbTo70(): void
+    {
+        Gedcom::convertFile(BenchFile::path(50), $this->sink(), Version::V7_0);
+    }
+
+    /** @return resource the output, thrown away (on disk beyond 2 MB) */
+    private function sink(): mixed
+    {
+        $sink = fopen('php://temp', 'w+b');
+        if ($sink === false) {
+            throw new \RuntimeException('Cannot open php://temp');
+        }
+
+        return $sink;
+    }
 }

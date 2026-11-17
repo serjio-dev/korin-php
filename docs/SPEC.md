@@ -307,6 +307,8 @@ Some steps cannot write output before they have seen the whole input, because th
 1. **Prepass** — lexer only, no tree (roughly a third of the full read time). Collects the set of xrefs and record offsets, extension tags, the `SUBN` offset, and the encoding over the whole file. This is the same information as the `open()` index, so `convertFile()` is built on `open()` plus a sequential walk rather than separate code.
 2. **Main pass** — records one at a time: conversion steps, writing. New records (extracted `OBJE` / `SOUR`) are accumulated and written before `TRLR`.
 
+**Order.** Both `convert()` and `convertFile()` convert the records in the order of the output: a record a rule moves right after the one it converts (the 5.5.5 submitter after `HEAD`) is converted next, and the records a rule adds right after the record that added them. `convertFile()` converts `HEAD` together with the records its rules take from elsewhere in the file (the `SUBN` records for `HEAD._SUBN`, the `SUBM` records that may be the 5.5.5 submitter); a file whose first record is not `HEAD` is converted whole, in memory.
+
 **Prepass only when needed.** Each step declares `needsPrepass()`; the chain runs a prepass only if at least one step needs it. 5.5 ↔ 5.5.1 are single-pass; 7.0 → 5.5.1 and 5.5.5 → 5.5.1 need only the xrefs (a `SUBN` record from `HEAD._SUBN` gets a new one).
 
 **Inputs that cannot be read twice:**

@@ -77,6 +77,9 @@ final class Document
 
     private bool $readOnly = false;
 
+    /** @var array<int, int> first node => line base, for records of a file parsed together that are not contiguous in it */
+    private array $lineBases = [];
+
     /** Whether {@see $xrefIndex} must be rebuilt: setXref() can leave duplicates it cannot track. */
     private bool $indexStale = false;
 
@@ -490,6 +493,17 @@ final class Document
         return $length > 0 && strcspn($this->source, $ascii, $offset, $length) < $length;
     }
 
+    /**
+     * @internal the record after an attached one, or the first record after 0; null at the end.
+     * Unlike {@see self::records()}, constant time.
+     */
+    public function nextRecord(int $after): ?int
+    {
+        $id = $after === self::ROOT ? $this->firstChildOf(self::ROOT) : $this->nextOf($after);
+
+        return $id >= 0 ? $id : null;
+    }
+
     /** @internal */
     public function hasChildren(int $id): bool
     {
@@ -499,7 +513,24 @@ final class Document
     /** @internal 1-based source line, 0 for nodes added after reading */
     public function lineOf(int $id): int
     {
-        return $this->pos[$id] < 0 ? 0 : $id + $this->lineBase;
+        if ($this->pos[$id] < 0) {
+            return 0;
+        }
+        $base = $this->lineBase;
+        foreach ($this->lineBases as $first => $lineBase) {
+            if ($id < $first) {
+                break;
+            }
+            $base = $lineBase;
+        }
+
+        return $id + $base;
+    }
+
+    /** @internal the lines parsed from now on start at this line of the file (a record parsed with others it does not follow) */
+    public function continueAtLine(int $line): void
+    {
+        $this->lineBases[$this->nextId()] = $line - $this->nextId();
     }
 
     /** @internal lines of the file before the source: 0 unless the document is a record of a stream */
@@ -595,11 +626,13 @@ final class Document
     /**
      * @internal
      *
+     * @param ?list<int> $records only these records (convertFile() writes some of a document's records apart)
+     *
      * @return \Generator<int, int> attached node ids in document order (depth first), root excluded
      */
-    public function walk(): \Generator
+    public function walk(?array $records = null): \Generator
     {
-        $stack = array_reverse($this->childIds(self::ROOT));
+        $stack = array_reverse($records ?? $this->childIds(self::ROOT));
         while ($stack !== []) {
             $id = array_pop($stack);
             yield $id;

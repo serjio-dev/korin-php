@@ -57,8 +57,34 @@ final readonly class Parser
         return $document;
     }
 
-    /** @return array<string, int> line terminators (raw bytes) by count */
-    private function parseLines(Document $document, string $bytes, int $start, ReadOptions $options): array
+    /**
+     * @internal records of a file that are not contiguous in it, parsed into one document as
+     * {@see self::parseRecord()} parses one, each with its own line numbers
+     *
+     * @param non-empty-list<array{string, int}> $records bytes and first line of each, in file order
+     */
+    public function parseRecords(array $records, Encoding $encoding, Version $version, bool $bom, string $lineEnding, ReadOptions $options): Document
+    {
+        $source = implode('', array_column($records, 0));
+        $document = new Document($version, $encoding, $bom, $lineEnding, $source, lineBase: $records[0][1] - 1);
+        $lines = [];
+        $offset = 0;
+        foreach ($records as [$bytes, $line]) {
+            $lines[$offset] = $line;
+            $offset += strlen($bytes);
+        }
+        $this->parseLines($document, $source, 0, $options, $lines);
+
+        return $document;
+    }
+
+    /**
+     * @param array<int, int> $lines byte offset => the line of the file that starts there, where
+     *                               the lines of the source do not follow each other in the file
+     *
+     * @return array<string, int> line terminators (raw bytes) by count
+     */
+    private function parseLines(Document $document, string $bytes, int $start, ReadOptions $options, array $lines = []): array
     {
         $encoding = $document->encoding();
         $codec = Codecs::for($encoding);
@@ -71,6 +97,10 @@ final readonly class Parser
 
         foreach (LineSplitter::split($bytes, $encoding, $start) as [$offset, $length, $eol]) {
             ++$lineNumber;
+            if (isset($lines[$offset]) && $offset > 0) {
+                $lineNumber = $lines[$offset];
+                $document->continueAtLine($lineNumber);
+            }
             if ($eol > 0) {
                 $terminator = substr($bytes, $offset + $length, $eol);
                 $eolCounts[$terminator] = ($eolCounts[$terminator] ?? 0) + 1;

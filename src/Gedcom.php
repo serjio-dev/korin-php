@@ -6,6 +6,7 @@ namespace Korin\Gedcom;
 
 use Korin\Gedcom\Conversion\ConversionResult;
 use Korin\Gedcom\Conversion\Converter;
+use Korin\Gedcom\Conversion\LossReport;
 use Korin\Gedcom\Exception\ConversionException;
 use Korin\Gedcom\Exception\IoException;
 use Korin\Gedcom\Syntax\Document;
@@ -94,6 +95,36 @@ final class Gedcom
     public static function convert(Document $document, Version $to, ConvertOptions $options = new ConvertOptions()): ConversionResult
     {
         return (new Converter())->convert($document, $to, $options);
+    }
+
+    /**
+     * Converts a file of any size record by record, writing the output as it goes: the same bytes
+     * and losses as {@see self::convert()} of the whole document, in memory that holds an index
+     * of the input rather than its tree.
+     *
+     * @param string|resource $input  a path, or an open handle read from its current position (not closed)
+     * @param string|resource $output a path, or an open handle written from its current position (not closed)
+     *
+     * @throws ConversionException when the conversion is not supported, or at a loss under LossPolicy::Fail
+     */
+    public static function convertFile(mixed $input, mixed $output, Version $to, ConvertOptions $options = new ConvertOptions(), ReadOptions $read = new ReadOptions()): LossReport
+    {
+        $document = self::open($input, $read);
+        if (is_resource($output)) {
+            return (new Converter())->convertFile($document, $output, $to, $options);
+        }
+        if (!is_string($output)) {
+            throw new \InvalidArgumentException('A path or a stream resource is expected');
+        }
+        $handle = @fopen($output, 'wb');
+        if ($handle === false) {
+            throw new IoException("Cannot write {$output}");
+        }
+        try {
+            return (new Converter())->convertFile($document, $handle, $to, $options);
+        } finally {
+            fclose($handle);
+        }
     }
 
     public static function write(Document $document, string $path, WriteOptions $options = new WriteOptions()): void

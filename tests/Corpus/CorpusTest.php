@@ -24,7 +24,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class CorpusTest extends TestCase
 {
-    private const IMPLEMENTED = ['read', 'roundtrip-preserve', 'roundtrip-stream', 'fingerprint', 'validate', 'edit', 'convert'];
+    private const IMPLEMENTED = ['read', 'roundtrip-preserve', 'roundtrip-stream', 'fingerprint', 'validate', 'edit', 'convert', 'convert-stream'];
 
     /** @return iterable<string, array{string, string, array<string, mixed>, ?array{to: string, expected: string, losses: string}}> */
     public static function cases(): iterable
@@ -43,7 +43,7 @@ final class CorpusTest extends TestCase
             /** @var list<string> $checks */
             $checks = $case['checks'];
             foreach (array_intersect($checks, self::IMPLEMENTED) as $check) {
-                if ($check !== 'convert') {
+                if ($check !== 'convert' && $check !== 'convert-stream') {
                     yield basename($dir) . ' ' . $check => [$dir, $check, $case, null];
                     continue;
                 }
@@ -53,7 +53,7 @@ final class CorpusTest extends TestCase
                 $conversions = $case['convert'];
                 foreach ($conversions as $conversion) {
                     if ((new Converter())->supports(Version::from($input['version']), Version::from($conversion['to']))) {
-                        yield basename($dir) . " convert {$conversion['to']}" => [$dir, $check, $case, $conversion];
+                        yield basename($dir) . " {$check} {$conversion['to']}" => [$dir, $check, $case, $conversion];
                     }
                 }
             }
@@ -81,6 +81,7 @@ final class CorpusTest extends TestCase
             'validate' => $this->checkValidate($document, $case),
             'edit' => $this->checkEdit($document, $dir),
             'convert' => $this->checkConvert($document, $dir, $conversion ?? self::fail('No conversion')),
+            'convert-stream' => $this->checkConvertStream($document, $dir . '/' . $input['file'], $conversion ?? self::fail('No conversion')),
             default => self::fail("Check {$check} is not implemented"),
         };
     }
@@ -172,6 +173,23 @@ final class CorpusTest extends TestCase
         sort($expected);
         sort($actual);
         self::assertSame($expected, $actual, 'Losses: ' . implode('; ', array_map(strval(...), $result->losses()->entries())));
+    }
+
+    /**
+     * convertFile() writes the output of convert() and reports its losses, byte for byte.
+     *
+     * @param array{to: string, expected: string, losses: string} $conversion
+     */
+    private function checkConvertStream(\Korin\Gedcom\Syntax\Document $document, string $path, array $conversion): void
+    {
+        $to = Version::from($conversion['to']);
+        $result = Gedcom::convert($document, $to);
+        $out = fopen('php://memory', 'w+b');
+        self::assertNotFalse($out);
+        $losses = Gedcom::convertFile($path, $out, $to);
+        rewind($out);
+        self::assertSame($result->output(), stream_get_contents($out), 'Output');
+        self::assertSame(json_encode($result->losses()), json_encode($losses), 'Losses');
     }
 
     /**

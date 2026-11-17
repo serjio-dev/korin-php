@@ -50,7 +50,8 @@ reads it back, on first use only: an ordinary document whose preserve-mode outpu
 
 The converter holds the source, its working copy (only changed lines take memory) and the
 output at once: converting a 50 MB 5.5.1 file to 7.0 peaks at about 1.5 times the memory of
-reading it. `convertFile()` will convert large files in constant memory.
+reading it. `Gedcom::convertFile($in, $out, $to)` converts a file record by record with the same
+output and report, holding an index of the input instead of its tree (43 MB for 50 MB).
 
 | Range | Level |
 | --- | --- |

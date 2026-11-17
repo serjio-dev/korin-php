@@ -4,8 +4,8 @@ Read, validate, convert and write GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0 —
 without losing a single tag. Every unavoidable loss is reported.
 
 > **Status: 0.3 — early development.** Reading, lossless writing, editing, validation and
-> conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, and streaming and indexed reading;
-> the typed model, GEDZIP and streaming conversion are planned — see
+> conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, also for files of any size (streaming
+> and indexed reading, streaming conversion); the typed model and GEDZIP are planned — see
 > [the specification](docs/SPEC.md) for the roadmap and [CHANGELOG.md](CHANGELOG.md) for releases.
 > Until 1.0 a minor release may break the API.
 
@@ -111,6 +111,12 @@ $family = $doc->record('@F1@');             // parsed from the file, the last 10
 $copy = $family?->document()->copy();       // an editable copy of the record
 ```
 
+`Gedcom::convertFile()` converts record by record, with the output and loss report of `convert()`:
+
+```php
+$losses = Gedcom::convertFile('huge.ged', 'huge-7.ged', Version::V7_0);
+```
+
 ## Performance
 
 Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-series, no opcache):
@@ -123,9 +129,10 @@ Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-ser
 | Preserve-mode write of 10 MB, unchanged / 10% of surnames edited | 76 MB | 104 ms / 121 ms |
 | Streaming read, 10 MB / 50 MB UTF-8 | 2.3 MB | 0.58 s / 2.9 s |
 | `open()` index, 10 MB / 50 MB UTF-8; then an uncached record | 7.8 MB / 27 MB | 0.14 s / 0.72 s; 11 µs |
+| `convertFile()` to 7.0, 10 MB / 50 MB | 14 MB / 43 MB | 1.8 s / 9.0 s |
 
 The 1.0 target for a full read of 50 MB is ≤ 512 MB and ≤ 20 s.
-Streaming conversion is planned. Run the benchmarks with `composer bench`.
+Run the benchmarks with `composer bench`.
 A baseline comparison with liberu-genealogy/php-gedcom is in [docs/comparison](docs/comparison/liberu-php-gedcom.md).
 
 ## License and trademarks

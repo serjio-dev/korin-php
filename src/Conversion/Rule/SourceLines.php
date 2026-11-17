@@ -26,6 +26,9 @@ final class SourceLines implements Rule
     /** @var ?array<int, true> source lines with bytes invalid in the encoding */
     private ?array $undecodable = null;
 
+    /** The document they were collected from: convertFile() converts one record at a time, each in its own. */
+    private ?Document $from = null;
+
     /** Whether the reader found lines that are not GEDCOM lines; without them and KV1003 there is nothing to do. */
     private bool $invalid = false;
 
@@ -36,8 +39,10 @@ final class SourceLines implements Rule
 
     public function record(Document $document, int $record, Context $context): void
     {
-        if ($this->undecodable === null) {
+        if ($this->undecodable === null || $this->from !== $document) {
+            $this->from = $document;
             $this->undecodable = [];
+            $this->invalid = false;
             foreach ($document->diagnostics() as $diagnostic) {
                 if ($diagnostic->code === 'KV1003' && $diagnostic->line !== null) {
                     $this->undecodable[$diagnostic->line] = true;

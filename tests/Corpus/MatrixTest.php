@@ -64,6 +64,12 @@ final class MatrixTest extends TestCase
         self::assertSame($result->output(), $again->output(), 'Deterministic output');
         self::assertSame(array_map(strval(...), $result->losses()->entries()), array_map(strval(...), $again->losses()->entries()), 'Deterministic loss report');
         self::assertSame($result->output(), Gedcom::convert($result->document(), $to)->output(), 'Converting to its own version changes nothing');
+        $out = fopen('php://memory', 'w+b');
+        self::assertNotFalse($out);
+        $losses = Gedcom::convertFile($file, $out, $to);
+        rewind($out);
+        self::assertSame($result->output(), stream_get_contents($out), 'convertFile() writes the output of convert()');
+        self::assertSame(json_encode($result->losses()), json_encode($losses), 'convertFile() reports the losses of convert()');
 
         $before = [];
         foreach (Gedcom::validate($input)->errors() as $error) {

@@ -228,9 +228,7 @@ final class IndexedDocument implements \Countable
 
             return $document->records()[0];
         }
-        [$offset, $line] = $this->entry($i);
-        $next = $i + 1 < $this->count ? $this->entry($i + 1)[0] : $this->end;
-        $node = $this->parse($this->bytes($offset, $next - $offset), $line, $i === 0);
+        $node = $this->parse($this->bytesAt($i), $this->entry($i)[1], $i === 0);
         if ($cache && $this->cacheSize > 0) {
             $this->cache[$i] = $node->document();
             if (count($this->cache) > $this->cacheSize) {
@@ -239,6 +237,31 @@ final class IndexedDocument implements \Countable
         }
 
         return $node;
+    }
+
+    /** @internal the bytes of the record with this number, as in the file */
+    public function bytesAt(int $i): string
+    {
+        [$offset] = $this->entry($i);
+        $next = $i + 1 < $this->count ? $this->entry($i + 1)[0] : $this->end;
+
+        return $this->bytes($offset, $next - $offset);
+    }
+
+    /**
+     * @internal writes the file as it is, BOM included
+     *
+     * @param resource $out
+     */
+    public function copyTo(mixed $out): void
+    {
+        if (!is_resource($this->handle) || fseek($this->handle, $this->start) !== 0) {
+            throw new IoException('Cannot seek in the file');
+        }
+        $copied = stream_copy_to_stream($this->handle, $out, $this->end - $this->start);
+        if ($copied !== $this->end - $this->start) {
+            throw new IoException('Cannot copy the file');
+        }
     }
 
     /** @internal tag of the record with this number, without reading it ('' for a line that is not a GEDCOM line) */

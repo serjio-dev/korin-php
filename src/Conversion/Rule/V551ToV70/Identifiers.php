@@ -57,7 +57,7 @@ final class Identifiers implements NodeRule
             $type .= '#' . rawurlencode($fragment);
             $node->setValue($value);
         } elseif ($tag === 'RIN') {
-            $this->system ??= (string) $document->head()?->first('SOUR')?->value();
+            $this->system ??= (string) $context->head()?->first('SOUR')?->value();
             $type .= $this->system === '' ? '' : '#' . rawurlencode($this->system);
         }
         $document->setTag($id, 'EXID');
