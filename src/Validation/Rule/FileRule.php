@@ -8,6 +8,7 @@ use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Severity;
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Validation\Records\Records;
 use Korin\Gedcom\Version;
 
 /**
@@ -19,36 +20,56 @@ use Korin\Gedcom\Version;
  */
 final class FileRule implements Rule
 {
-    public function check(Document $document, Profile $profile): array
+    private bool $active = false;
+
+    private ?string $previous = null;
+
+    private bool $done = false;
+
+    /** @var list<Diagnostic> */
+    private array $out = [];
+
+    private Profile $profile;
+
+    public function begin(Records $records, Profile $profile): void
     {
-        if ($document->version() !== Version::V5_5_5) {
-            return [];
+        $this->profile = $profile;
+        $this->active = $records->version() === Version::V5_5_5;
+        $this->previous = null;
+        $this->done = !$this->active;
+        $this->out = [];
+        if ($this->active && !$records->hasBom()) {
+            $this->out[] = new Diagnostic('KV1104', Severity::Warning, 'A GEDCOM 5.5.5 file must start with a byte order mark');
         }
-        $out = [];
-        if (!$document->hasBom()) {
-            $out[] = new Diagnostic('KV1104', Severity::Warning, 'A GEDCOM 5.5.5 file must start with a byte order mark');
-        }
+    }
+
+    public function record(Document $document, int $id, int $key): void
+    {
         // Records the validator does not check (extensions, invalid lines) do not count; without
         // a HEAD the reader has already reported the file (KV1004).
-        $previous = null;
-        foreach ($document->childIds(0) as $id) {
-            $tag = $document->tagOf($id);
-            if ($document->isInvalid($id) || str_starts_with($tag, '_')) {
-                continue;
-            }
-            if ($tag === 'SUBM') {
-                if ($previous !== null && $previous !== 'HEAD') {
-                    $line = $document->lineOf($id);
-                    $out[] = new Diagnostic('KV2004', Severity::Error, 'The SUBM record must directly follow HEAD', $line > 0 ? $line : null, $document->node($id)->path(), $profile->record('SUBM')?->uri);
-                }
-                break;
-            }
-            if ($previous === null && $tag !== 'HEAD') {
-                break;
-            }
-            $previous = $tag;
+        $tag = $document->tagOf($id);
+        if ($this->done || $document->isInvalid($id) || str_starts_with($tag, '_')) {
+            return;
         }
+        if ($tag === 'SUBM') {
+            if ($this->previous !== null && $this->previous !== 'HEAD') {
+                $line = $document->lineOf($id);
+                $this->out[] = new Diagnostic('KV2004', Severity::Error, 'The SUBM record must directly follow HEAD', $line > 0 ? $line : null, $document->node($id)->path(), $this->profile->record('SUBM')?->uri);
+            }
+            $this->done = true;
 
-        return $out;
+            return;
+        }
+        if ($this->previous === null && $tag !== 'HEAD') {
+            $this->done = true;
+
+            return;
+        }
+        $this->previous = $tag;
+    }
+
+    public function end(): array
+    {
+        return $this->out;
     }
 }

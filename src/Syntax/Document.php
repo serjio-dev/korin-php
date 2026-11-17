@@ -7,6 +7,7 @@ namespace Korin\Gedcom\Syntax;
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Exception\DetachedNodeException;
 use Korin\Gedcom\Exception\InvalidPathException;
+use Korin\Gedcom\Exception\ReadOnlyException;
 use Korin\Gedcom\Io\Codec\Codec;
 use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Encoding;
@@ -73,6 +74,11 @@ final class Document
 
     /** @var array<string, int> xref => first record with it; see {@see self::index()} */
     private array $xrefIndex = [];
+
+    private bool $readOnly = false;
+
+    /** @var array<int, int> first node => line base, for records of a file parsed together that are not contiguous in it */
+    private array $lineBases = [];
 
     /** Whether {@see $xrefIndex} must be rebuilt: setXref() can leave duplicates it cannot track. */
     private bool $indexStale = false;
@@ -175,6 +181,7 @@ final class Document
     /** Adds a record before TRLR (or at the end when there is none). */
     public function addRecord(string $tag, ?string $xref = null, ?string $value = null): Node
     {
+        $this->assertWritable();
         if ($xref !== null && isset($this->index()[$xref])) {
             throw new \InvalidArgumentException("Xref {$xref} is already used");
         }
@@ -190,12 +197,14 @@ final class Document
 
     public function removeRecord(string $xref): void
     {
+        $this->assertWritable();
         $this->record($xref)?->remove();
     }
 
     /** Renames a record's xref and every pointer to it. */
     public function renameXref(string $from, string $to): void
     {
+        $this->assertWritable();
         if (!isset($this->index()[$from])) {
             throw new \InvalidArgumentException("No record with xref {$from}");
         }
@@ -216,10 +225,24 @@ final class Document
         }
     }
 
-    /** Cheap independent snapshot: arrays are copied on write. */
+    /** Cheap independent snapshot: arrays are copied on write. A copy of a read-only document can be edited. */
     public function copy(): self
     {
-        return clone $this;
+        $copy = clone $this;
+        $copy->readOnly = false;
+
+        return $copy;
+    }
+
+    public function isReadOnly(): bool
+    {
+        return $this->readOnly;
+    }
+
+    /** @internal from now on every change throws {@see ReadOnlyException} */
+    public function freeze(): void
+    {
+        $this->readOnly = true;
     }
 
 
@@ -244,6 +267,7 @@ final class Document
 
     public function createNode(int $parent, ?string $xref, string $tag, ?string $payload, ?int $before = null): int
     {
+        $this->assertWritable();
         $id = $this->append($parent, $xref, $tag, -1, $before);
         $this->payload[$id] = $payload;
         $this->dirty[$id] = true;
@@ -274,6 +298,7 @@ final class Document
     /** @internal */
     public function removeNode(int $id): void
     {
+        $this->assertWritable();
         $this->assertAttached($id);
         $parent = $this->parent[$id];
         $this->unlink($id);
@@ -302,6 +327,7 @@ final class Document
     /** @internal */
     public function setPayload(int $id, ?string $payload): void
     {
+        $this->assertWritable();
         $this->assertAttached($id);
         $this->payload[$id] = $payload;
         $this->dirty[$id] = true;
@@ -314,6 +340,7 @@ final class Document
      */
     public function moveNode(int $id, int $parent, ?int $before = null): void
     {
+        $this->assertWritable();
         $this->assertAttached($id);
         $this->assertAttached($parent);
         if (($this->parent[$id] === self::ROOT) !== ($parent === self::ROOT)) {
@@ -338,6 +365,7 @@ final class Document
     /** @internal a new tag for a node, its value and substructures kept (conversion) */
     public function setTag(int $id, string $tag): void
     {
+        $this->assertWritable();
         $this->assertAttached($id);
         $this->markDirty($id);
         $this->tag[$id] = $tag;
@@ -349,6 +377,7 @@ final class Document
      */
     public function setXref(int $id, ?string $xref): void
     {
+        $this->assertWritable();
         $this->assertAttached($id);
         $this->markDirty($id);
         if ($xref === null) {
@@ -375,6 +404,14 @@ final class Document
     public function addDiagnostic(Diagnostic $diagnostic): void
     {
         $this->diagnostics[] = $diagnostic;
+    }
+
+    /** @internal */
+    public function assertWritable(): void
+    {
+        if ($this->readOnly) {
+            throw new ReadOnlyException('The document is read only; edit a copy');
+        }
     }
 
     /** @internal */
@@ -456,6 +493,17 @@ final class Document
         return $length > 0 && strcspn($this->source, $ascii, $offset, $length) < $length;
     }
 
+    /**
+     * @internal the record after an attached one, or the first record after 0; null at the end.
+     * Unlike {@see self::records()}, constant time.
+     */
+    public function nextRecord(int $after): ?int
+    {
+        $id = $after === self::ROOT ? $this->firstChildOf(self::ROOT) : $this->nextOf($after);
+
+        return $id >= 0 ? $id : null;
+    }
+
     /** @internal */
     public function hasChildren(int $id): bool
     {
@@ -465,7 +513,24 @@ final class Document
     /** @internal 1-based source line, 0 for nodes added after reading */
     public function lineOf(int $id): int
     {
-        return $this->pos[$id] < 0 ? 0 : $id + $this->lineBase;
+        if ($this->pos[$id] < 0) {
+            return 0;
+        }
+        $base = $this->lineBase;
+        foreach ($this->lineBases as $first => $lineBase) {
+            if ($id < $first) {
+                break;
+            }
+            $base = $lineBase;
+        }
+
+        return $id + $base;
+    }
+
+    /** @internal the lines parsed from now on start at this line of the file (a record parsed with others it does not follow) */
+    public function continueAtLine(int $line): void
+    {
+        $this->lineBases[$this->nextId()] = $line - $this->nextId();
     }
 
     /** @internal lines of the file before the source: 0 unless the document is a record of a stream */
@@ -561,11 +626,13 @@ final class Document
     /**
      * @internal
      *
+     * @param ?list<int> $records only these records (convertFile() writes some of a document's records apart)
+     *
      * @return \Generator<int, int> attached node ids in document order (depth first), root excluded
      */
-    public function walk(): \Generator
+    public function walk(?array $records = null): \Generator
     {
-        $stack = array_reverse($this->childIds(self::ROOT));
+        $stack = array_reverse($records ?? $this->childIds(self::ROOT));
         while ($stack !== []) {
             $id = array_pop($stack);
             yield $id;

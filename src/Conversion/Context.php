@@ -10,6 +10,7 @@ use Korin\Gedcom\Severity;
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Spec\Structure;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Syntax\Node;
 
 /**
  * What a rule may use besides the record it converts: the options, the prepass, new xrefs and
@@ -47,7 +48,7 @@ final class Context
     private array $uris = [];
 
     /** @var ?array<string, true> extension tags of the input, collected on first use */
-    private ?array $inputExtensions = null;
+    private ?array $extensionTags = null;
 
     /** @var array<int, bool> whether a structure of the document being converted is an extension or inside one */
     private array $extensions = [];
@@ -69,12 +70,52 @@ final class Context
     /** @var array<int, ?string> later steps: the structure URIs of the record as the step began */
     private array $stepUris = [];
 
+    /** The document whose HEAD rules read: the one being converted, or in convertFile() the converted HEAD. */
+    private ?Document $headDocument = null;
+
+    /**
+     * @param ?\Closure(): array<string, true> $inputExtensions the extension tags of the input, when they do not come from $source
+     */
     public function __construct(
-        private readonly Document $source,
-        private readonly Document $document,
+        private Document $source,
+        private Document $document,
         public readonly ConvertOptions $options,
-        private readonly ?Prepass $prepass,
+        private ?Prepass $prepass,
+        private readonly ?\Closure $inputExtensions = null,
     ) {}
+
+    /**
+     * @internal for Converter::convertFile(): the next records are in another document, one or a
+     * few records of the input and the copy of it they are converted in. What is known of a
+     * record and its structures is forgotten; the losses and the xrefs handed out stay.
+     */
+    public function unit(Document $source, Document $document, ?Prepass $prepass): void
+    {
+        $this->source = $source;
+        $this->document = $document;
+        $this->prepass = $prepass;
+        $this->trailer = null;
+        $this->trailerFound = false;
+        $this->uris = [];
+        $this->urisRecord = 0;
+        $this->extensions = [];
+        $this->extracted = [];
+        $this->stepUris = [];
+        $this->watermark = 0;
+        $this->first = true;
+    }
+
+    /** @internal for Converter::convertFile(): HEAD is in this document, converted */
+    public function setHeadDocument(Document $document): void
+    {
+        $this->headDocument = $document;
+    }
+
+    /** HEAD of the document being converted: in it, every record after HEAD sees HEAD converted. */
+    public function head(): ?Node
+    {
+        return ($this->headDocument ?? $this->document)->head();
+    }
 
     /** @throws \LogicException when no rule of the conversion declared needsPrepass() */
     public function prepass(): Prepass
@@ -157,21 +198,25 @@ final class Context
 
     /**
      * Whether the input has a structure with this extension tag. The first call walks every line
-     * of the input once; convertFile() will take the tags from its prepass (SPEC section 7).
+     * of the input once (convertFile(): reads the file once more).
      */
     public function inputHasExtension(string $tag): bool
     {
-        if ($this->inputExtensions === null) {
-            $this->inputExtensions = [];
-            foreach ($this->source->walk() as $id) {
-                $found = $this->source->tagOf($id);
-                if ($found[0] === '_') {
-                    $this->inputExtensions[$found] = true;
+        if ($this->extensionTags === null) {
+            $this->extensionTags = [];
+            if ($this->inputExtensions !== null) {
+                $this->extensionTags = ($this->inputExtensions)();
+            } else {
+                foreach ($this->source->walk() as $id) {
+                    $found = $this->source->tagOf($id);
+                    if ($found[0] === '_') {
+                        $this->extensionTags[$found] = true;
+                    }
                 }
             }
         }
 
-        return isset($this->inputExtensions[$tag]);
+        return isset($this->extensionTags[$tag]);
     }
 
     /** Sets a text value by the rules of the current step's target version: its "@" escaping, "\n" as CONT lines. */

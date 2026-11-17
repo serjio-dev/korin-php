@@ -13,7 +13,8 @@ use Korin\Gedcom\WriteOptions;
 
 final class Writer
 {
-    public function serialize(Document $document, WriteOptions $options = new WriteOptions()): string
+    /** @param ?list<int> $records @internal only these records, in this order (convertFile()) */
+    public function serialize(Document $document, WriteOptions $options = new WriteOptions(), ?array $records = null): string
     {
         $encoding = $options->encoding ?? $document->encoding();
         $normalize = $options->mode === WriteMode::Normalize;
@@ -34,7 +35,7 @@ final class Writer
         $out = $bom ? $encoding->bom() : '';
         $pendingEol = null;
         $lastIsNew = false;
-        foreach ($document->walk() as $id) {
+        foreach ($document->walk($records) as $id) {
             if ($pendingEol !== null) {
                 // A line that had no terminator (the last one in the input) is no longer last.
                 $out .= $pendingEol === '' ? $eol : $pendingEol;

@@ -223,9 +223,9 @@ $archive->media('photos/anna.jpg');  // a stream, without extracting to disk
 | --- | --- | --- |
 | `Gedcom::read()` | The whole tree | Full model, editing, validation at all levels |
 | `Gedcom::stream()` | Constant | `Syntax\Record` with original bytes; `view()` gives a model limited to the record; methods that need other records throw `RequiresDocumentException`. Validation levels 1–4 |
-| `Gedcom::open()` | Index: xref → file offset, ~50 bytes per record, + an LRU cache of parsed records | Full read-only model; validation at all levels. For editing, `$doc->load()` returns a document as after `read()`. Needs a seekable source; otherwise the input is first copied to `php://temp` |
+| `Gedcom::open()` | Index: xref → file offset, ~100 bytes per record, + an LRU cache of parsed records | Full read-only model; validation at all levels. For editing, `$doc->load()` returns a document as after `read()`. Needs a seekable source; otherwise the input is first copied to `php://temp` |
 
-`stream()` followed by writing each `Record` in `preserve` mode reproduces the input file byte for byte. In a stream the encoding is detected from the BOM, `HEAD.CHAR` and a heuristic over the first 64 KB; a contradiction later in the file produces a diagnostic without re-decoding. Each `Record` is a document of its own that holds the diagnostics of its lines; those of the whole file (encoding, `HEAD`, `TRLR`, version) are the stream's. The version comes from the first `HEAD`: records before it are read as 5.5.1.
+`stream()` followed by writing each `Record` in `preserve` mode reproduces the input file byte for byte. In a stream the encoding is detected from the BOM, `HEAD.CHAR` and a heuristic over the first 64 KB; a contradiction later in the file produces a diagnostic without re-decoding. Each `Record` is a document of its own that holds the diagnostics of its lines; those of the whole file (encoding, `HEAD`, `TRLR`, version) are the stream's. The version comes from the first `HEAD`: records before it are read as 5.5.1. `open()` holds the same file-level diagnostics; its records are read-only documents of their own (a `copy()` can be edited) and all have the version of the first `HEAD`.
 
 **Options** (immutable objects with `with*()` methods):
 
@@ -307,6 +307,8 @@ Some steps cannot write output before they have seen the whole input, because th
 1. **Prepass** — lexer only, no tree (roughly a third of the full read time). Collects the set of xrefs and record offsets, extension tags, the `SUBN` offset, and the encoding over the whole file. This is the same information as the `open()` index, so `convertFile()` is built on `open()` plus a sequential walk rather than separate code.
 2. **Main pass** — records one at a time: conversion steps, writing. New records (extracted `OBJE` / `SOUR`) are accumulated and written before `TRLR`.
 
+**Order.** Both `convert()` and `convertFile()` convert the records in the order of the output: a record a rule moves right after the one it converts (the 5.5.5 submitter after `HEAD`) is converted next, and the records a rule adds right after the record that added them. `convertFile()` converts `HEAD` together with the records its rules take from elsewhere in the file (the `SUBN` records for `HEAD._SUBN`, the `SUBM` records that may be the 5.5.5 submitter); a file whose first record is not `HEAD` is converted whole, in memory.
+
 **Prepass only when needed.** Each step declares `needsPrepass()`; the chain runs a prepass only if at least one step needs it. 5.5 ↔ 5.5.1 are single-pass; 7.0 → 5.5.1 and 5.5.5 → 5.5.1 need only the xrefs (a `SUBN` record from `HEAD._SUBN` gets a new one).
 
 **Inputs that cannot be read twice:**
@@ -337,6 +339,8 @@ The validator checks a document against its version's profile at five levels and
 - Every diagnostic has a line, a tree path and a reference to the specification section.
 - Report formats: PHP objects, JSON, text for the CLI.
 - All codes are documented in `docs/diagnostics.md` and keep their meaning within a major version.
+
+The rules see the records one at a time, in order, and look up what they need of other records by xref, so `Gedcom::validate()` takes an `open()` document too: the file is read once, record by record, and the report is that of the document `load()` would give (the `validate-indexed` check in the corpus). What the reference and plausibility checks keep for the end is packed: a few integers per link and per individual (64 MB for a 50 MB file, its index included).
 
 Validator quality control: its findings for 7.0 are checked against the expected results of the official test files and against the open-source validators in the [gedcom.io list](https://gedcom.io/tools/).
 

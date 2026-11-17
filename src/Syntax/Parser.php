@@ -45,24 +45,46 @@ final readonly class Parser
     }
 
     /**
-     * @internal one record of a stream ({@see RecordStream}): a document whose only record is
+     * @internal one record of a stream or an indexed file: a document whose only record is
      * these lines, numbered from $firstLine. File-level checks (HEAD, TRLR, version) are the
-     * stream's.
-     *
-     * @param array<string, int> $eolCounts line terminators seen so far, updated
+     * caller's.
      */
-    public function parseRecord(string $bytes, Encoding $encoding, Version $version, bool $bom, string $lineEnding, int $firstLine, ReadOptions $options, array &$eolCounts = []): Document
+    public function parseRecord(string $bytes, Encoding $encoding, Version $version, bool $bom, string $lineEnding, int $firstLine, ReadOptions $options): Document
     {
         $document = new Document($version, $encoding, $bom, $lineEnding, $bytes, lineBase: $firstLine - 1);
-        foreach ($this->parseLines($document, $bytes, 0, $options) as $terminator => $count) {
-            $eolCounts[$terminator] = ($eolCounts[$terminator] ?? 0) + $count;
-        }
+        $this->parseLines($document, $bytes, 0, $options);
 
         return $document;
     }
 
-    /** @return array<string, int> line terminators (raw bytes) by count */
-    private function parseLines(Document $document, string $bytes, int $start, ReadOptions $options): array
+    /**
+     * @internal records of a file that are not contiguous in it, parsed into one document as
+     * {@see self::parseRecord()} parses one, each with its own line numbers
+     *
+     * @param non-empty-list<array{string, int}> $records bytes and first line of each, in file order
+     */
+    public function parseRecords(array $records, Encoding $encoding, Version $version, bool $bom, string $lineEnding, ReadOptions $options): Document
+    {
+        $source = implode('', array_column($records, 0));
+        $document = new Document($version, $encoding, $bom, $lineEnding, $source, lineBase: $records[0][1] - 1);
+        $lines = [];
+        $offset = 0;
+        foreach ($records as [$bytes, $line]) {
+            $lines[$offset] = $line;
+            $offset += strlen($bytes);
+        }
+        $this->parseLines($document, $source, 0, $options, $lines);
+
+        return $document;
+    }
+
+    /**
+     * @param array<int, int> $lines byte offset => the line of the file that starts there, where
+     *                               the lines of the source do not follow each other in the file
+     *
+     * @return array<string, int> line terminators (raw bytes) by count
+     */
+    private function parseLines(Document $document, string $bytes, int $start, ReadOptions $options, array $lines = []): array
     {
         $encoding = $document->encoding();
         $codec = Codecs::for($encoding);
@@ -75,6 +97,10 @@ final readonly class Parser
 
         foreach (LineSplitter::split($bytes, $encoding, $start) as [$offset, $length, $eol]) {
             ++$lineNumber;
+            if (isset($lines[$offset]) && $offset > 0) {
+                $lineNumber = $lines[$offset];
+                $document->continueAtLine($lineNumber);
+            }
             if ($eol > 0) {
                 $terminator = substr($bytes, $offset + $length, $eol);
                 $eolCounts[$terminator] = ($eolCounts[$terminator] ?? 0) + 1;
@@ -170,6 +196,14 @@ final readonly class Parser
         }
 
         return $version;
+    }
+
+    /** @internal the version HEAD.GEDC.VERS names; null when it is missing or unknown */
+    public static function declaredVersion(Node $head): ?Version
+    {
+        $declared = $head->first('GEDC')?->first('VERS')?->value();
+
+        return $declared === null ? null : Version::fromDeclared($declared);
     }
 
     private function report(Document $document, ReadOptions $options, Diagnostic $diagnostic): void

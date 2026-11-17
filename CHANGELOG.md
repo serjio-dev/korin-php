@@ -16,6 +16,33 @@ break the API; such changes are described in `UPGRADE.md`.
   corpus check). The encoding is detected on the first 64 KB; the stream's `diagnostics()`
   are those of the whole file (encoding, `HEAD`, `TRLR`, version). The version comes from the
   first `HEAD`.
+- `Gedcom::open()` / `Syntax\IndexedDocument`: a file indexed without its tree (about 100
+  bytes per record: 16 packed for offset, line and tag, the rest for the xref map; 27 MB and
+  0.72 s for 50 MB), records parsed from the file by xref, path or in order (11 µs for an
+  uncached one), the last 1000 cached. Records are read only (`ReadOnlyException`,
+  `Document::isReadOnly()`), a `copy()` of one can be edited; `load()` reads the whole file
+  into a `Document`. In strict mode every record is parsed while indexing, so `open()` rejects
+  what `read()` rejects. A stream that cannot seek is copied to `php://temp`. Every corpus
+  input gives the records, lines and diagnostics of `read()`.
+- `Gedcom::convertFile($in, $out, $to)` / `Converter::convertFile()`: conversion of a file
+  record by record, written as it goes, with the output and `LossReport` of `convert()` byte
+  for byte (the `convert-stream` corpus check and every cell of the conversion matrix): 43 MB
+  for 50 MB to 7.0 (`read()` and `convert()` peak at 674 MB), in 9 s (5.6 s for `read()`
+  and `convert()`). HEAD takes along the records its rules move (SUBN into `HEAD._SUBN`, the
+  5.5.5 submitter after HEAD); the records a conversion adds wait in `php://temp` for `TRLR`. A
+  file whose first record is not HEAD is converted whole.
+- `Gedcom::validate()` takes an `open()` document: the file is checked record by record, read
+  once, with the report of the whole document (the `validate-indexed` corpus
+  check): 64 MB and 10.7 s for 50 MB, plausibility checks included. The rules visit the
+  records in order and keep what the checks between records need packed; the validation of a
+  `Document` is as fast as before.
+
+### Changed
+
+- `convert()` converts the records in the order of the output: a record a rule moves right
+  after the one it converts (the 5.5.5 submitter after HEAD) is converted next, and the records
+  a rule adds right after the record that added them. Outputs of the corpus are unchanged; the
+  order of loss entries and new xrefs can differ for such records.
 
 ## [0.3.0] - 2026-11-17
 

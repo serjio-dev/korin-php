@@ -10,6 +10,7 @@ use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Spec\Structure;
 use Korin\Gedcom\Spec\Substructure;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Validation\Records\Records;
 
 /**
  * Level 2: every standard tag is allowed where it stands, and substructures occur as often as
@@ -22,20 +23,62 @@ final class StructureRule implements Rule
 {
     private const CONTINUATION = ['CONC' => true, 'CONT' => true];
 
-    public function check(Document $document, Profile $profile): array
-    {
-        $out = [];
-        $this->children($document, $profile, 0, null, $profile->records(), $out);
+    private Profile $profile;
 
-        return $out;
+    /** @var array<string, int> records so far by tag */
+    private array $counts = [];
+
+    /** @var list<Diagnostic> */
+    private array $out = [];
+
+    public function begin(Records $records, Profile $profile): void
+    {
+        $this->profile = $profile;
+        $this->counts = [];
+        $this->out = [];
+    }
+
+    public function record(Document $document, int $id, int $key): void
+    {
+        $tag = $document->tagOf($id);
+        if ($document->isInvalid($id) || isset(self::CONTINUATION[$tag]) || str_starts_with($tag, '_')) {
+            return;
+        }
+        $substructure = $this->profile->records()[$tag] ?? null;
+        if ($substructure === null) {
+            $this->out[] = $this->diagnostic($document, 'KV2001', "{$tag} is not allowed as a record", $id, null);
+
+            return;
+        }
+        $this->counts[$tag] = ($this->counts[$tag] ?? 0) + 1;
+        $max = $substructure->cardinality->max;
+        if ($max !== null && $this->counts[$tag] === $max + 1) {
+            $this->out[] = $this->diagnostic($document, 'KV2002', "{$tag} occurs more than {$max} time(s) as a record", $id, null);
+        }
+        $definition = $this->profile->structure($substructure->uri);
+        if ($definition !== null) {
+            $this->children($document, $this->profile, $id, $definition, $definition->substructures, $this->out);
+        }
+    }
+
+    public function end(): array
+    {
+        foreach ($this->profile->records() as $tag => $substructure) {
+            // The top-level HEAD and TRLR are reported by the parser (KV1004, KV1005).
+            if ($tag !== 'HEAD' && $tag !== 'TRLR' && $substructure->cardinality->isRequired() && ($this->counts[$tag] ?? 0) < $substructure->cardinality->min) {
+                // The file itself has neither a line nor a path.
+                $this->out[] = new Diagnostic('KV2003', Severity::Error, "The file requires a {$tag} record", null, null, $substructure->uri);
+            }
+        }
+
+        return $this->out;
     }
 
     /**
-     * @param ?Structure $structure null for the top level
      * @param array<string, Substructure> $allowed
      * @param list<Diagnostic> $out
      */
-    private function children(Document $document, Profile $profile, int $parent, ?Structure $structure, array $allowed, array &$out): void
+    private function children(Document $document, Profile $profile, int $parent, Structure $structure, array $allowed, array &$out): void
     {
         $counts = [];
         $first = [];
@@ -46,14 +89,14 @@ final class StructureRule implements Rule
             }
             $substructure = $allowed[$tag] ?? null;
             if ($substructure === null) {
-                $out[] = $this->diagnostic($document, 'KV2001', "{$tag} is not allowed " . ($structure === null ? 'as a record' : "in {$structure->tag}"), $child, $structure?->uri);
+                $out[] = $this->diagnostic($document, 'KV2001', "{$tag} is not allowed in {$structure->tag}", $child, $structure->uri);
                 continue;
             }
             $counts[$tag] = ($counts[$tag] ?? 0) + 1;
             $first[$tag] ??= $child;
             $max = $substructure->cardinality->max;
             if ($max !== null && $counts[$tag] === $max + 1) {
-                $out[] = $this->diagnostic($document, 'KV2002', "{$tag} occurs more than {$max} time(s) " . ($structure === null ? 'as a record' : "in {$structure->tag}"), $child, $structure?->uri);
+                $out[] = $this->diagnostic($document, 'KV2002', "{$tag} occurs more than {$max} time(s) in {$structure->tag}", $child, $structure->uri);
             }
             $definition = $profile->structure($substructure->uri);
             if ($definition !== null) {
@@ -61,14 +104,8 @@ final class StructureRule implements Rule
             }
         }
         foreach ($allowed as $tag => $substructure) {
-            // The top-level HEAD and TRLR are reported by the parser (KV1004, KV1005).
-            if ($structure === null && ($tag === 'HEAD' || $tag === 'TRLR')) {
-                continue;
-            }
             if ($substructure->cardinality->isRequired() && ($counts[$tag] ?? 0) < $substructure->cardinality->min) {
-                $out[] = $structure === null
-                    ? $this->diagnostic($document, 'KV2003', "The file requires a {$tag} record", $parent, $substructure->uri)
-                    : $this->diagnostic($document, 'KV2003', "{$structure->tag} requires {$tag}", $parent, $structure->uri);
+                $out[] = $this->diagnostic($document, 'KV2003', "{$structure->tag} requires {$tag}", $parent, $structure->uri);
             }
         }
     }
@@ -77,7 +114,6 @@ final class StructureRule implements Rule
     {
         $line = $document->lineOf($id);
 
-        // The file itself (node 0) has neither a line nor a path.
-        return new Diagnostic($code, Severity::Error, $message, $line > 0 ? $line : null, $id === 0 ? null : $document->node($id)->path(), $reference);
+        return new Diagnostic($code, Severity::Error, $message, $line > 0 ? $line : null, $document->node($id)->path(), $reference);
     }
 }

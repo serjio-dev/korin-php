@@ -60,7 +60,7 @@ final class Identifiers implements NodeRule
             }
         }
         $uri = $type === null ? null : (string) $context->value($type);
-        $this->rin ??= self::RIN . $this->fragment((string) $document->head()?->first('SOUR')?->value());
+        $this->rin ??= self::RIN . $this->fragment((string) $context->head()?->first('SOUR')?->value());
         [$tag, $converted] = match (true) {
             $uri === self::AFN => ['AFN', $value],
             $uri === self::RFN && !str_contains($value, ':') => ['RFN', $value],
