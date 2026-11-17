@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Validation\Rule;
 
+use Korin\Gedcom\Model\Date;
+
 /**
  * The days a date value can mean, as Julian Day Numbers, for comparing dates: "1907" is
  * 1 JAN to 31 DEC 1907, "BEF 1907" has no first day, "BET 1900 AND 1910" spans both years.
@@ -82,14 +84,8 @@ final class DateRange
         return [$day, $day];
     }
 
-    /** Julian Day Number of a date with an astronomical year (1 BCE is 0). */
     private static function day(int $year, int $month, int $day, bool $julian): int
     {
-        $a = intdiv(14 - $month, 12);
-        $y = $year + 4800 - $a;
-        $m = $month + 12 * $a - 3;
-        $days = $day + intdiv(153 * $m + 2, 5) + 365 * $y + intdiv($y, 4);
-
-        return $julian ? $days - 32083 : $days - intdiv($y, 100) + intdiv($y, 400) - 32045;
+        return Date::julianDay($year, $month, $day, $julian);
     }
 }

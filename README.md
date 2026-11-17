@@ -5,7 +5,8 @@ without losing a single tag. Every unavoidable loss is reported.
 
 > **Status: 0.3 — early development.** Reading, lossless writing, editing, validation and
 > conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, also for files of any size (streaming
-> and indexed reading, streaming conversion); the typed model and GEDZIP are planned — see
+> and indexed reading, streaming conversion), and value objects for dates, ages, names and places;
+> the typed views of records and GEDZIP are planned — see
 > [the specification](docs/SPEC.md) for the roadmap and [CHANGELOG.md](CHANGELOG.md) for releases.
 > Until 1.0 a minor release may break the API.
 
@@ -84,6 +85,26 @@ foreach ($result->losses() as $loss) {
 
 The rules for each version pair are in [docs/conversion.md](docs/conversion.md), the loss codes
 and policies in [docs/losses.md](docs/losses.md).
+
+## Values
+
+Dates, ages, names, places and coordinates are immutable value objects in `Korin\Gedcom\Model`.
+They are parsed by the grammar of a version and written for any version; a value a version
+cannot write throws `InvalidValueException` rather than being changed:
+
+```php
+use Korin\Gedcom\Model\{Age, GedcomDate, PersonalName, Place};
+
+$date = GedcomDate::parse('abt @#DJULIAN@ 1650', Version::V5_5_1);
+$date->kind;                                // DateKind::About
+$date->date?->calendar;                     // "JULIAN"
+$date->toGedcom(Version::V7_0);             // "ABT JULIAN 1650"
+GedcomDate::parse('BEF 1907')->days();      // [PHP_INT_MIN, 2417941]: Julian Day Numbers
+
+Age::parse('<1y', Version::V5_5_1)->toGedcom(Version::V7_0);   // "< 1y"
+PersonalName::parse('Анна /Коваль/')->withSurname('Ковальова');  // "Анна /Ковальова/"
+Place::of('Полтава, Україна')->name();                           // "Полтава"
+```
 
 ## Large files
 
