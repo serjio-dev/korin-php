@@ -29,7 +29,7 @@ final readonly class Place implements \Stringable
     /** "Полтава, Україна", the parts separated by commas; spaces around them are not part of them. */
     public static function of(string $value): self
     {
-        return new self(array_map(trim(...), explode(',', $value)));
+        return new self(array_map(static fn(string $part): string => trim($part, ' '), explode(',', $value)));
     }
 
     /** The smallest jurisdiction that is named: "Полтава". */
