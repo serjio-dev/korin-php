@@ -7,6 +7,16 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+### Added
+
+- `Gedcom::stream()` / `Syntax\RecordStream`: a file (a path or a stream resource) read one
+  `Syntax\Record` at a time, in about 2.3 MB whatever its size (50 MB in 2.9 s). Each record
+  is a document of its own with the nodes, line numbers and diagnostics `read()` gives it;
+  written in preserve mode, the records are the file byte for byte (the `roundtrip-stream`
+  corpus check). The encoding is detected on the first 64 KB; the stream's `diagnostics()`
+  are those of the whole file (encoding, `HEAD`, `TRLR`, version). The version comes from the
+  first `HEAD`.
+
 ## [0.3.0] - 2026-11-17
 
 Conversion: every pair of GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0, directly or through 5.5.1, with a

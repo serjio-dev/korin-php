@@ -24,7 +24,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class CorpusTest extends TestCase
 {
-    private const IMPLEMENTED = ['read', 'roundtrip-preserve', 'fingerprint', 'validate', 'edit', 'convert'];
+    private const IMPLEMENTED = ['read', 'roundtrip-preserve', 'roundtrip-stream', 'fingerprint', 'validate', 'edit', 'convert'];
 
     /** @return iterable<string, array{string, string, array<string, mixed>, ?array{to: string, expected: string, losses: string}}> */
     public static function cases(): iterable
@@ -76,6 +76,7 @@ final class CorpusTest extends TestCase
         match ($check) {
             'read' => $this->checkRead($document, $bytes, $case),
             'roundtrip-preserve' => self::assertSame($bytes, Gedcom::serialize($document), 'Preserve mode must reproduce the input byte for byte'),
+            'roundtrip-stream' => $this->checkStream($dir . '/' . $input['file'], $bytes, $document),
             'fingerprint' => self::assertEquals(json_decode((string) file_get_contents($dir . '/fingerprint.json'), true), Fingerprint::of($document)),
             'validate' => $this->checkValidate($document, $case),
             'edit' => $this->checkEdit($document, $dir),
@@ -171,6 +172,30 @@ final class CorpusTest extends TestCase
         sort($expected);
         sort($actual);
         self::assertSame($expected, $actual, 'Losses: ' . implode('; ', array_map(strval(...), $result->losses()->entries())));
+    }
+
+    /**
+     * Each record of the stream written in preserve mode gives the input; the records hold the
+     * lines and diagnostics of the whole document.
+     */
+    private function checkStream(string $path, string $bytes, \Korin\Gedcom\Syntax\Document $document): void
+    {
+        $stream = Gedcom::stream($path);
+        $out = '';
+        $diagnostics = [];
+        $records = 0;
+        foreach ($stream as $record) {
+            ++$records;
+            $out .= Gedcom::serialize($record->document());
+            array_push($diagnostics, ...array_map(strval(...), $record->document()->diagnostics()));
+        }
+        self::assertSame($bytes, $out, 'Records written in preserve mode must reproduce the input byte for byte');
+        self::assertCount($records, $document->records());
+        array_push($diagnostics, ...array_map(strval(...), $stream->diagnostics()));
+        $expected = array_map(strval(...), $document->diagnostics());
+        sort($expected);
+        sort($diagnostics);
+        self::assertSame($expected, $diagnostics, 'Diagnostics');
     }
 
     private function checkEdit(\Korin\Gedcom\Syntax\Document $document, string $dir): void

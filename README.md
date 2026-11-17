@@ -4,8 +4,8 @@ Read, validate, convert and write GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0 —
 without losing a single tag. Every unavoidable loss is reported.
 
 > **Status: 0.3 — early development.** Reading, lossless writing, editing, validation and
-> conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today; the typed model, GEDZIP and
-> streaming are planned — see
+> conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, and streaming reading; the typed
+> model, GEDZIP, the indexed mode and streaming conversion are planned — see
 > [the specification](docs/SPEC.md) for the roadmap and [CHANGELOG.md](CHANGELOG.md) for releases.
 > Until 1.0 a minor release may break the API.
 
@@ -85,6 +85,22 @@ foreach ($result->losses() as $loss) {
 The rules for each version pair are in [docs/conversion.md](docs/conversion.md), the loss codes
 and policies in [docs/losses.md](docs/losses.md).
 
+## Large files
+
+`Gedcom::stream()` reads one record at a time; memory does not grow with the file. Each record
+is a document of its own, with the lines and diagnostics `read()` would give it:
+
+```php
+$stream = Gedcom::stream('huge.ged');       // a path or an open stream resource
+foreach ($stream as $record) {
+    if ($record->tag() === 'INDI') {
+        echo $record->xref(), ' ', $record->node()->first('NAME')?->value(), PHP_EOL;
+    }
+    fwrite($out, Gedcom::serialize($record->document()));   // the record's original bytes
+}
+$stream->diagnostics();                     // encoding, HEAD, TRLR and version of the whole file
+```
+
 ## Performance
 
 Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-series, no opcache):
@@ -95,9 +111,10 @@ Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-ser
 | Full read, 10 MB Windows-1251 | 105 MB | 0.49 s |
 | Full read, 50 MB UTF-8 (2.4 million lines) | 426 MB | 1.6 s |
 | Preserve-mode write of 10 MB, unchanged / 10% of surnames edited | 76 MB | 104 ms / 121 ms |
+| Streaming read, 10 MB / 50 MB UTF-8 | 2.3 MB | 0.58 s / 2.9 s |
 
 The 1.0 target for a full read of 50 MB is ≤ 512 MB and ≤ 20 s.
-Streaming and indexed modes for large files are planned. Run the benchmarks with `composer bench`.
+The indexed mode (`open()`) and streaming conversion are planned. Run the benchmarks with `composer bench`.
 A baseline comparison with liberu-genealogy/php-gedcom is in [docs/comparison](docs/comparison/liberu-php-gedcom.md).
 
 ## License and trademarks

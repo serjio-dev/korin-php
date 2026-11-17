@@ -81,6 +81,7 @@ final class Document
      * @internal use {@see \Korin\Gedcom\Gedcom::parse()} or {@see self::create()}
      *
      * @param list<Diagnostic> $diagnostics
+     * @param int              $lineBase    lines of the file before the source (a record of a stream)
      */
     public function __construct(
         private Version $version,
@@ -89,6 +90,7 @@ final class Document
         private string $lineEnding,
         private readonly string $source = '',
         private array $diagnostics = [],
+        private readonly int $lineBase = 0,
     ) {}
 
     /** A new, empty document: HEAD with GEDC.VERS, and TRLR. */
@@ -463,7 +465,13 @@ final class Document
     /** @internal 1-based source line, 0 for nodes added after reading */
     public function lineOf(int $id): int
     {
-        return $this->pos[$id] < 0 ? 0 : $id;
+        return $this->pos[$id] < 0 ? 0 : $id + $this->lineBase;
+    }
+
+    /** @internal lines of the file before the source: 0 unless the document is a record of a stream */
+    public function lineBase(): int
+    {
+        return $this->lineBase;
     }
 
     /** @internal whether a node with this id exists and is attached */
