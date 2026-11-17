@@ -13,6 +13,7 @@ use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\Model\Family;
 use Korin\Gedcom\Model\Individual;
+use Korin\Gedcom\Model\RecordView;
 use Korin\Gedcom\Version;
 
 /**
@@ -84,6 +85,9 @@ final class Document
 
     /** Whether {@see $xrefIndex} must be rebuilt: setXref() can leave duplicates it cannot track. */
     private bool $indexStale = false;
+
+    /** Whether two records have had the same xref: removing the first one then needs the index rebuilt. */
+    private bool $duplicateXrefs = false;
 
     /** @var array<string, int> xref prefix => the number to try next, see {@see self::freeXref()} */
     private array $nextXref = [];
@@ -191,9 +195,7 @@ final class Document
 
     public function individual(string $xref): ?Individual
     {
-        $record = $this->record($xref);
-
-        return $record?->tag() === 'INDI' ? new Individual($record, $this) : null;
+        return RecordView::individual($this->record($xref), $this);
     }
 
     /** @return list<Family> the FAM records, in order */
@@ -204,20 +206,22 @@ final class Document
 
     public function family(string $xref): ?Family
     {
-        $record = $this->record($xref);
-
-        return $record?->tag() === 'FAM' ? new Family($record, $this) : null;
+        return RecordView::family($this->record($xref), $this);
     }
 
     /** Adds an INDI record; without an xref the first free one of @I1@, @I2@ … */
     public function addIndividual(?string $xref = null): Individual
     {
+        $this->assertWritable();
+
         return new Individual($this->addRecord('INDI', $xref ?? $this->freeXref('I')), $this);
     }
 
     /** Adds a FAM record; without an xref the first free one of @F1@, @F2@ … */
     public function addFamily(?string $xref = null): Family
     {
+        $this->assertWritable();
+
         return new Family($this->addRecord('FAM', $xref ?? $this->freeXref('F')), $this);
     }
 
@@ -347,7 +351,12 @@ final class Document
         $this->unlink($id);
         $xref = $this->xref[$id] ?? null;
         if ($parent === self::ROOT && $xref !== null && ($this->xrefIndex[$xref] ?? null) === $id) {
-            unset($this->xrefIndex[$xref]);
+            // Another record may have the xref too: it becomes the first one.
+            if ($this->duplicateXrefs) {
+                $this->indexStale = true;
+            } else {
+                unset($this->xrefIndex[$xref]);
+            }
         }
         $this->markRemoved($id);
     }
@@ -693,6 +702,7 @@ final class Document
             $this->xrefIndex = [];
             foreach ($this->childIds(self::ROOT) as $id) {
                 if (isset($this->xref[$id])) {
+                    $this->duplicateXrefs = $this->duplicateXrefs || isset($this->xrefIndex[$this->xref[$id]]);
                     $this->xrefIndex[$this->xref[$id]] ??= $id;
                 }
             }
@@ -710,6 +720,7 @@ final class Document
         if ($xref !== null) {
             $this->xref[$id] = $xref;
             if ($parent === self::ROOT) {
+                $this->duplicateXrefs = $this->duplicateXrefs || isset($this->xrefIndex[$xref]);
                 $this->xrefIndex[$xref] ??= $id;
             }
         }

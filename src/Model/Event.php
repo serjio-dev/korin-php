@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Model;
 
+use Korin\Gedcom\Exception\InvalidValueException;
 use Korin\Gedcom\Syntax\Node;
 use Korin\Gedcom\Version;
 
@@ -48,7 +49,7 @@ final readonly class Event
     /**
      * Replaces the DATE, its phrase included; null removes it.
      *
-     * @throws \Korin\Gedcom\Exception\InvalidValueException when the version cannot write the date
+     * @throws InvalidValueException when the version cannot write the date
      */
     public function setDate(?GedcomDate $date): self
     {
@@ -83,9 +84,12 @@ final readonly class Event
         return $this->version() === Version::V7_0 ? $parsed?->withPhrase($age->first('PHRASE')?->value()) : $parsed;
     }
 
-    /** @throws \Korin\Gedcom\Exception\InvalidValueException when the version cannot write the age */
+    /** @throws InvalidValueException when the version cannot write the age; 5.x has no phrase of an age */
     public function setAge(?Age $age): self
     {
+        if ($age?->phrase !== null && $this->version() !== Version::V7_0) {
+            throw new InvalidValueException("GEDCOM {$this->version()->value} has no phrase of an age");
+        }
         $this->setValue('AGE', $age?->toGedcom($this->version()), $age?->phrase);
 
         return $this;

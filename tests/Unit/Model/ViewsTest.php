@@ -155,6 +155,88 @@ final class ViewsTest extends TestCase
         $petro->parents();
     }
 
+    #[Test]
+    public function replacedPartnerLosesItsFams(): void
+    {
+        $doc = Gedcom::parse(self::FILE_551);
+        $family = $doc->family('@F1@');
+        $ivan = $doc->individual('@I1@');
+        $petro = $doc->individual('@I3@');
+        self::assertNotNull($family);
+        self::assertNotNull($ivan);
+        self::assertNotNull($petro);
+
+        $family->setHusband($petro);
+
+        self::assertSame([], $ivan->familiesAsSpouse());
+        self::assertSame(['@F1@'], array_map(static fn(Family $f): ?string => $f->xref(), $petro->familiesAsSpouse()));
+        self::assertSame([], array_values(array_filter(Gedcom::validate($doc)->diagnostics(), static fn(\Korin\Gedcom\Diagnostic $d): bool => $d->code === 'KV4004' && str_contains($d->message, '@I1@'))));
+    }
+
+    #[Test]
+    public function eventIsNotAddedWhenItsDateCannotBeWritten(): void
+    {
+        $doc = Gedcom::parse(self::FILE_551);
+        $anna = $doc->individual('@I2@');
+        self::assertNotNull($anna);
+
+        try {
+            $anna->addBirth(GedcomDate::parse('BEF 1900')->withPhrase('unsure'));
+            self::fail('5.5.1 has no phrase of a range');
+        } catch (InvalidValueException) {
+            self::assertSame([], $anna->events());
+        }
+        $this->expectException(InvalidValueException::class);
+        $anna->addDeath()->setAge(Age::parse('<8y', Version::V5_5_1)->withPhrase('young'));
+    }
+
+    #[Test]
+    public function namePiecesFollowTheName(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NAME Анна /Коваль/\n2 GIVN Анна\n2 SURN Коваль\n2 NICK Ганнуся\n2 SURN Kowal\n0 TRLR\n");
+        $anna = $doc->individual('@I1@');
+        self::assertNotNull($anna);
+
+        $anna->editName(static fn(PersonalName $name): PersonalName => $name->withSurname('Ковальова'));
+        self::assertStringContainsString("1 NAME Анна /Ковальова/\n2 GIVN Анна\n2 SURN Ковальова\n2 NICK Ганнуся\n2 SURN Kowal\n", Gedcom::serialize($doc));
+        $anna->setName(PersonalName::of('Анна'));
+        self::assertStringContainsString("1 NAME Анна\n2 GIVN Анна\n2 NICK Ганнуся\n2 SURN Kowal\n", Gedcom::serialize($doc));
+    }
+
+    #[Test]
+    public function repeatedLinksGiveEachRelativeOnce(): void
+    {
+        $doc = Gedcom::parse(str_replace("1 FAMC @F1@\n", "1 FAMC @F1@\n2 PEDI BIRTH\n1 FAMC @F1@\n2 PEDI ADOPTED\n", self::FILE_551));
+
+        self::assertSame(['@I1@', '@I2@'], array_map(static fn(Individual $i): ?string => $i->xref(), $doc->individual('@I3@')?->parents() ?? []));
+    }
+
+    #[Test]
+    public function editingAnOpenFileIsReadOnly(): void
+    {
+        $doc = Gedcom::open($this->handle(self::FILE_551));
+        $family = $doc->family('@F1@');
+        $ivan = $doc->individual('@I1@');
+        self::assertNotNull($family);
+        self::assertNotNull($ivan);
+
+        $this->expectException(ReadOnlyException::class);
+        $family->addChild($ivan);
+    }
+
+    #[Test]
+    public function removedDuplicateXrefLeavesTheOtherRecord(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n0 @I1@ INDI\n1 NAME A\n0 @I1@ INDI\n1 NAME B\n0 TRLR\n");
+        $doc->removeRecord('@I1@');
+
+        self::assertSame('B', $doc->individual('@I1@')?->name()?->full());
+        self::assertSame('@I2@', $doc->addIndividual()->xref());
+        $doc->freeze();
+        $this->expectException(ReadOnlyException::class);
+        $doc->addFamily();
+    }
+
     /** @return resource */
     private function handle(string $bytes): mixed
     {

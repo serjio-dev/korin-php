@@ -12,7 +12,7 @@ use Korin\Gedcom\Exception\InvalidValueException;
  */
 final class Family extends RecordView
 {
-    /** Family events of 5.5, 5.5.1, 5.5.5 and 7.0. */
+    /** @var array<string, true> family events of 5.5, 5.5.1, 5.5.5 and 7.0 */
     public const EVENTS = [
         'ANUL' => true, 'CENS' => true, 'DIV' => true, 'DIVF' => true, 'ENGA' => true, 'MARB' => true,
         'MARC' => true, 'MARR' => true, 'MARL' => true, 'MARS' => true, 'EVEN' => true,
@@ -111,20 +111,6 @@ final class Family extends RecordView
         return $this->events('MARR')[0] ?? null;
     }
 
-    /** Adds an event; one without a date or place is "Y", it happened. */
-    public function addEvent(string $tag, ?GedcomDate $date = null, ?Place $place = null): Event
-    {
-        if (!isset(self::EVENTS[$tag])) {
-            throw new InvalidValueException("{$tag} is not a family event");
-        }
-        $event = $this->addEventTo($tag, $date, $place);
-        if ($date === null && $place === null && $tag !== 'EVEN') {
-            $event->node()->setValue('Y');
-        }
-
-        return $event;
-    }
-
     public function addMarriage(?GedcomDate $date = null, ?Place $place = null): Event
     {
         return $this->addEvent('MARR', $date, $place);
@@ -144,11 +130,23 @@ final class Family extends RecordView
         return $individuals;
     }
 
+    /** Points the first HUSB or WIFE to the partner; the one it replaces loses its FAMS, unless it is still a partner. */
     private function setPartner(string $tag, Individual $partner): self
     {
         $xref = $this->member($partner);
-        ($this->node->first($tag) ?? $this->node->addChild($tag))->setPointer($xref);
+        $line = $this->node->first($tag) ?? $this->node->addChild($tag);
+        $replaced = $line->pointer();
+        $line->setPointer($xref);
         $this->link($partner, 'FAMS');
+        if ($replaced === null || $replaced === $xref || in_array($replaced, [...$this->pointers('HUSB'), ...$this->pointers('WIFE')], true)) {
+            return $this;
+        }
+        $former = $this->node->document()->record($replaced);
+        foreach ($former?->tag() === 'INDI' ? $former->all('FAMS') : [] as $back) {
+            if ($back->pointer() === $this->xref()) {
+                $back->remove();
+            }
+        }
 
         return $this;
     }
@@ -156,6 +154,9 @@ final class Family extends RecordView
     /** The xref of an individual of the same document. */
     private function member(Individual $individual): string
     {
+        // Records of an open() file are read only, and documents of their own.
+        $this->node->document()->assertWritable();
+        $individual->node()->document()->assertWritable();
         $xref = $individual->xref();
         if ($xref === null || $this->xref() === null || $individual->node()->document() !== $this->node->document()) {
             throw new InvalidValueException('The family and the individual must have xrefs and be in one document');

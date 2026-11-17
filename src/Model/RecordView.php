@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Model;
 
+use Korin\Gedcom\Exception\InvalidValueException;
 use Korin\Gedcom\Exception\RequiresDocumentException;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Syntax\IndexedDocument;
@@ -26,6 +27,21 @@ abstract class RecordView
         protected readonly Node $node,
         protected readonly Document|IndexedDocument|null $file,
     ) {}
+
+    /** @var array<string, true> events of the record type, by tag */
+    public const EVENTS = [];
+
+    /** @internal the view of an INDI record; null for no record, another type or an unparsable line */
+    public static function individual(?Node $record, Document|IndexedDocument|null $file): ?Individual
+    {
+        return $record !== null && $record->tag() === 'INDI' && !$record->document()->isInvalid($record->id()) ? new Individual($record, $file) : null;
+    }
+
+    /** @internal the view of a FAM record; null for no record, another type or an unparsable line */
+    public static function family(?Node $record, Document|IndexedDocument|null $file): ?Family
+    {
+        return $record !== null && $record->tag() === 'FAM' && !$record->document()->isInvalid($record->id()) ? new Family($record, $file) : null;
+    }
 
     /** @internal the view of a record by its tag, null for records without one */
     public static function of(Node $node, Document|IndexedDocument|null $file): ?self
@@ -94,15 +110,21 @@ abstract class RecordView
         return $events;
     }
 
-    protected function addEventTo(string $tag, ?GedcomDate $date, ?Place $place): Event
+    /**
+     * Adds an event of the record type; one without a date or place is "Y", it happened. The
+     * tree is not changed when the date cannot be written in the version.
+     *
+     * @throws InvalidValueException for a tag that is not an event of the record type, or a date the version cannot write
+     */
+    public function addEvent(string $tag, ?GedcomDate $date = null, ?Place $place = null): Event
     {
-        $event = new Event($this->node->addChild($tag));
-        if ($date !== null) {
-            $event->setDate($date);
+        if (!isset(static::EVENTS[$tag])) {
+            throw new InvalidValueException("{$tag} is not an event of {$this->node->tag()}");
         }
-        if ($place !== null) {
-            $event->setPlace($place);
-        }
+        $this->node->document()->assertWritable();
+        $date?->toGedcom($this->version());
+        $event = new Event($this->node->addChild($tag, $date === null && $place === null && $tag !== 'EVEN' ? 'Y' : null));
+        $event->setDate($date)->setPlace($place);
 
         return $event;
     }

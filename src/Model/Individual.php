@@ -13,7 +13,7 @@ use Korin\Gedcom\Exception\InvalidValueException;
  */
 final class Individual extends RecordView
 {
-    /** Individual events of 5.5, 5.5.1, 5.5.5 and 7.0. */
+    /** @var array<string, true> individual events of 5.5, 5.5.1, 5.5.5 and 7.0 */
     public const EVENTS = [
         'ADOP' => true, 'BAPM' => true, 'BARM' => true, 'BASM' => true, 'BIRT' => true, 'BLES' => true,
         'BURI' => true, 'CENS' => true, 'CHR' => true, 'CHRA' => true, 'CONF' => true, 'CREM' => true,
@@ -43,10 +43,26 @@ final class Individual extends RecordView
         return $names;
     }
 
-    /** Replaces the value of the first NAME (its substructures stay), or adds one. */
+    /**
+     * Replaces the value of the first NAME, or adds one. Its pieces GIVN, SURN and NSFX that were
+     * the parts of the old value follow the new one (removed when the new one has no such part);
+     * pieces that said something else, and the other substructures, stay.
+     */
     public function setName(PersonalName $name): self
     {
-        ($this->node->first('NAME') ?? $this->node->addChild('NAME'))->setValue($name->toGedcom());
+        $node = $this->node->first('NAME') ?? $this->node->addChild('NAME');
+        $old = PersonalName::tryParse((string) $node->value());
+        $node->setValue($name->toGedcom());
+        if ($old === null) {
+            return $this;
+        }
+        foreach (['GIVN' => [$old->given, $name->given], 'SURN' => [$old->surname, $name->surname], 'NSFX' => [$old->suffix, $name->suffix]] as $tag => [$was, $is]) {
+            foreach ($node->all($tag) as $piece) {
+                if ($piece->value() === $was) {
+                    $is === null || $is === '' ? $piece->remove() : $piece->setValue($is);
+                }
+            }
+        }
 
         return $this;
     }
@@ -91,20 +107,6 @@ final class Individual extends RecordView
         return $this->events('DEAT')[0] ?? null;
     }
 
-    /** Adds an event; one without a date or place is "Y", it happened. */
-    public function addEvent(string $tag, ?GedcomDate $date = null, ?Place $place = null): Event
-    {
-        if (!isset(self::EVENTS[$tag])) {
-            throw new InvalidValueException("{$tag} is not an individual event");
-        }
-        $event = $this->addEventTo($tag, $date, $place);
-        if ($date === null && $place === null && $tag !== 'EVEN') {
-            $event->node()->setValue('Y');
-        }
-
-        return $event;
-    }
-
     public function addBirth(?GedcomDate $date = null, ?Place $place = null): Event
     {
         return $this->addEvent('BIRT', $date, $place);
@@ -141,7 +143,7 @@ final class Individual extends RecordView
             array_push($parents, ...$family->partners());
         }
 
-        return $parents;
+        return $this->distinct($parents);
     }
 
     /** @return list<Individual> the other partners of the families of FAMS */
@@ -156,7 +158,7 @@ final class Individual extends RecordView
             }
         }
 
-        return $spouses;
+        return $this->distinct($spouses);
     }
 
     /** @return list<Individual> CHIL of the families of FAMS */
@@ -167,14 +169,29 @@ final class Individual extends RecordView
             array_push($children, ...$family->children());
         }
 
-        return $children;
+        return $this->distinct($children);
+    }
+
+    /**
+     * @param list<Individual> $individuals
+     *
+     * @return list<Individual> each one once, in order: a FAMC repeated (another PEDI) gives the same parents
+     */
+    private function distinct(array $individuals): array
+    {
+        $seen = [];
+        foreach ($individuals as $individual) {
+            $seen[(string) $individual->xref()] ??= $individual;
+        }
+
+        return array_values($seen);
     }
 
     /** @return list<Family> */
     private function families(string $tag): array
     {
         $families = [];
-        foreach ($this->pointers($tag) as $xref) {
+        foreach (array_unique($this->pointers($tag)) as $xref) {
             $record = $this->lookUp($xref, 'FAM');
             if ($record !== null) {
                 $families[] = new Family($record, $this->file);
