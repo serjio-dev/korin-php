@@ -42,6 +42,7 @@ final class Profile
     /** @throws \InvalidArgumentException when there is no profile for the version yet */
     public static function for(Version $version): self
     {
+        $version = $version->readAs();
         if (!isset(self::$loaded[$version->value])) {
             if (!self::has($version)) {
                 throw new \InvalidArgumentException("No profile for GEDCOM {$version->value} yet");
@@ -169,6 +170,6 @@ final class Profile
 
     private static function file(Version $version): string
     {
-        return __DIR__ . "/../../resources/profiles/{$version->value}.php";
+        return __DIR__ . "/../../resources/profiles/{$version->readAs()->value}.php";
     }
 }

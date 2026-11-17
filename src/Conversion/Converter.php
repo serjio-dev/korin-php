@@ -7,6 +7,7 @@ namespace Korin\Gedcom\Conversion;
 use Korin\Gedcom\ConvertOptions;
 use Korin\Gedcom\Exception\ConversionException;
 use Korin\Gedcom\Exception\IoException;
+use Korin\Gedcom\Exception\UnsupportedVersionException;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\Syntax\Document;
@@ -56,6 +57,9 @@ final readonly class Converter
     public function convert(Document $document, Version $to, ConvertOptions $options = new ConvertOptions()): ConversionResult
     {
         $from = $document->version();
+        if (!$to->isWritable()) {
+            throw new UnsupportedVersionException("GEDCOM {$to->value} is read only: convert to 5.5 or later");
+        }
         if ($from === $to) {
             $copy = $document->copy();
 
@@ -69,7 +73,7 @@ final readonly class Converter
         $this->convertRecords($work, $context, $route, $rules);
         $work->setVersion($to);
 
-        $encoding = self::ENCODINGS[$to->value];
+        $encoding = self::ENCODINGS[$to->value] ?? throw new UnsupportedVersionException("GEDCOM {$to->value} is read only");
         $this->stamp($work, $to, $encoding);
         $bytes = (new Writer())->serialize($work, WriteOptions::normalize()->withEncoding($encoding)->withLineEnding($document->lineEnding()));
 
@@ -92,6 +96,9 @@ final readonly class Converter
     public function convertFile(IndexedDocument $input, mixed $out, Version $to, ConvertOptions $options = new ConvertOptions()): LossReport
     {
         $from = $input->version();
+        if (!$to->isWritable()) {
+            throw new UnsupportedVersionException("GEDCOM {$to->value} is read only: convert to 5.5 or later");
+        }
         if ($from === $to) {
             $input->copyTo($out);
 
@@ -121,7 +128,7 @@ final readonly class Converter
 
             return $tags;
         });
-        $encoding = self::ENCODINGS[$to->value];
+        $encoding = self::ENCODINGS[$to->value] ?? throw new UnsupportedVersionException("GEDCOM {$to->value} is read only");
         $write = WriteOptions::normalize()->withEncoding($encoding)->withLineEnding($input->lineEnding());
         $writer = new Writer();
         $added = $this->temporary();

@@ -7,6 +7,18 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+### Added
+
+- GEDCOM 4.0, read only (best effort, SPEC section 3): `Version::V4_0` for `HEAD.GEDC.VERS`
+  `4.0`, `4.0.4.18` (PAF) and `4+` (Roots, Ultimate Family Tree), validated with the 5.5 profile
+  (`Version::readAs()`). It converts to 5.5 and on: `SEX Male`/`Female` → `M`/`F`, dates in
+  words in their 5.5 form (`11 June 1861` → `11 JUN 1861`, `Abt. 1850` → `ABT 1850`), irregular
+  dates as date phrases, structures 5.5 lacks as extensions (`KL2001`)
+  ([docs/conversion.md](docs/conversion.md#40--55)). Writing it normalized, or converting to it,
+  throws `UnsupportedVersionException`; preserve mode writes it. `Version::isWritable()`.
+- `KV1009` (info): a file of GEDCOM 4.0 or of a 5.0–5.4 draft, read with the 5.5 profile.
+  `5.01`, which some programs write for the 5.1 draft, is read as 5.5 (it was an unknown version).
+
 ## [0.4.0] - 2026-11-17
 
 Model and media: files of any size (streaming, indexed reading, streaming conversion and

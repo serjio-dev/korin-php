@@ -209,7 +209,8 @@ final class ProfileTest extends TestCase
     public function everyVersionHasAProfile(): void
     {
         foreach (Version::cases() as $version) {
-            self::assertSame($version, Profile::for($version)->version());
+            // 4.0 is read with the 5.5 profile.
+            self::assertSame($version->readAs(), Profile::for($version)->version());
         }
     }
 }

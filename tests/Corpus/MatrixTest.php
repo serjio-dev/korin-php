@@ -46,7 +46,7 @@ final class MatrixTest extends TestCase
             /** @var array{input: array{file: string}} $case */
             $case = Yaml::parseFile($file);
             if (str_ends_with($case['input']['file'], '.ged')) {
-                foreach (Version::cases() as $to) {
+                foreach (array_filter(Version::cases(), static fn(Version $to): bool => $to->isWritable()) as $to) {
                     yield basename(dirname($file)) . ' to ' . $to->value => [dirname($file) . '/' . $case['input']['file'], $to];
                 }
             }
@@ -81,7 +81,7 @@ final class MatrixTest extends TestCase
 
     private function isLimit(Version $to, Diagnostic $error): bool
     {
-        foreach (self::LIMITS[$to->value] as [$code, $pattern]) {
+        foreach (self::LIMITS[$to->value] ?? [] as [$code, $pattern]) {
             if ($error->code === $code && preg_match($pattern, $error->message) === 1) {
                 return true;
             }
