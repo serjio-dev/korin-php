@@ -7,15 +7,22 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-17
+
+Conversion: every pair of GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0, directly or through 5.5.1, with a
+`LossReport` of everything the target cannot hold ([docs/losses.md](docs/losses.md)), and the
+conversion matrix over the corpus. No breaking changes. Streaming conversion (`convertFile()`)
+follows in 0.4 with the indexed mode it is built on; 4.0 and 5.0–5.4 input in 0.5.
+
 ### Added
 
 - `Gedcom::convert()` / `Conversion\Converter` with `ConversionResult` and `LossReport`
   ([docs/losses.md](docs/losses.md)), `ConvertOptions` with the loss policies
-  `PreserveAsExtension`, `DropWithReport` and `Fail` (`ConversionException`). The framework
-  and the 5.5.1 → 7.0 step below; the other steps follow. Lines that are not GEDCOM are dropped and reported (`KL1001`), lines with
-  bytes invalid in their encoding are reported (`KL1002`). `ConversionResult::output()` is
-  the converted file; `document()` reads it back on first use.
-- Conversion 5.5.1 → 7.0, first rules ([docs/conversion.md](docs/conversion.md)): UTF-8 with
+  `PreserveAsExtension`, `DropWithReport` and `Fail` (`ConversionException`). Lines that are
+  not GEDCOM are dropped and reported (`KL1001`), lines with bytes invalid in their encoding
+  are reported (`KL1002`). `ConversionResult::output()` is the converted file; `document()`
+  reads it back on first use.
+- Conversion 5.5.1 → 7.0 ([docs/conversion.md](docs/conversion.md)): UTF-8 with
   a BOM, `CHAR` and `GEDC.FORM` removed, `CONC` joined, `@` escaped by the 7.0 rules, xrefs
   invalid in 7.0 renamed to `@X<n>@`, dangling pointers to `@VOID@`, `NOTE` records and
   pointers to them to `SNOTE`; `SUBN` to `HEAD._SUBN`, inline `OBJE` and `SOUR` to records,
@@ -25,7 +32,7 @@ break the API; such changes are described in `UPGRADE.md`.
   enumeration values in 7.0 form (`OTHER` + `PHRASE` for values 7.0 does not have);
   `HEAD.FILE` removed, `FONE`/`ROMN` to `TRAN` with a BCP 47 `LANG`, and `HEAD.SCHMA` for
   the extension tags the conversion writes.
-- Conversion 7.0 → 5.5.1, first rules: `GEDC.FORM` and `CHAR UTF-8` added, `@` escaped by
+- Conversion 7.0 → 5.5.1: `GEDC.FORM` and `CHAR UTF-8` added, `@` escaped by
   the 5.5.1 rules and long lines split into `CONC`, `SNOTE` to `NOTE`, `HEAD._SUBN` back to a
   `SUBN` record, `UID` to `_UID`, `EXID` back to `AFN`/`RFN`/`RIN` (others to `_EXID`,
   `KL2001`), pointers to `@VOID@` to extensions (`KL4001`); dates (escapes, `B.C.`, a
@@ -159,6 +166,7 @@ streaming and indexed reading follow in 0.2–0.4.
   gedcom7code test files; PHPBench benchmarks; a baseline comparison with
   liberu-genealogy/php-gedcom ([docs/comparison](docs/comparison/liberu-php-gedcom.md)).
 
-[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.3.0
 [0.2.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.2.0
 [0.1.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.1.0

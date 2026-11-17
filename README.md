@@ -3,8 +3,8 @@
 Read, validate, convert and write GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0 —
 without losing a single tag. Every unavoidable loss is reported.
 
-> **Status: 0.2 — early development.** Reading, lossless writing, editing and validation against
-> the profiles of 5.5, 5.5.1, 5.5.5 and 7.0 work today; conversion, the typed model, GEDZIP and
+> **Status: 0.3 — early development.** Reading, lossless writing, editing, validation and
+> conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today; the typed model, GEDZIP and
 > streaming are planned — see
 > [the specification](docs/SPEC.md) for the roadmap and [CHANGELOG.md](CHANGELOG.md) for releases.
 > Until 1.0 a minor release may break the API.
@@ -66,6 +66,24 @@ echo json_encode($report);           // code, severity, message, line, path, ref
 ```
 
 All codes are listed in [docs/diagnostics.md](docs/diagnostics.md).
+
+## Conversion
+
+Any of 5.5, 5.5.1, 5.5.5 and 7.0 converts to any other. Nothing is dropped silently: data the
+target version cannot hold is kept as an extension tag and reported with a stable code.
+
+```php
+use Korin\Gedcom\Version;
+
+$result = Gedcom::convert($doc, Version::V5_5_1);
+file_put_contents('family-551.ged', $result->output());
+foreach ($result->losses() as $loss) {
+    echo $loss, PHP_EOL;   // KL3002 warning line 19 (@I1@/SEX), extension: SEX X has no 5.5.1 value: SEX U
+}
+```
+
+The rules for each version pair are in [docs/conversion.md](docs/conversion.md), the loss codes
+and policies in [docs/losses.md](docs/losses.md).
 
 ## Performance
 
