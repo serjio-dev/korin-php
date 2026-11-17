@@ -9,7 +9,12 @@ use Korin\Gedcom\Exception\IoException;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\Model\Family;
 use Korin\Gedcom\Model\Individual;
+use Korin\Gedcom\Model\MediaObject;
 use Korin\Gedcom\Model\RecordView;
+use Korin\Gedcom\Model\Repository;
+use Korin\Gedcom\Model\SharedNote;
+use Korin\Gedcom\Model\Source;
+use Korin\Gedcom\Model\Submitter;
 use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\Version;
 
@@ -195,32 +200,79 @@ final class IndexedDocument implements \Countable
 
     public function individual(string $xref): ?Individual
     {
-        return RecordView::individual($this->record($xref), $this);
-    }
-
-    public function family(string $xref): ?Family
-    {
-        return RecordView::family($this->record($xref), $this);
+        return RecordView::typed($this->record($xref), $this, Individual::class);
     }
 
     /** @return \Generator<int, Individual> the INDI records in order, read one after another */
     public function individuals(): \Generator
     {
-        for ($i = 0; $i < $this->count; ++$i) {
-            if ($this->tagAt($i) === 'INDI') {
-                yield new Individual($this->recordAt($i, cache: false), $this);
-            }
-        }
+        return $this->views(Individual::class);
+    }
+
+    public function family(string $xref): ?Family
+    {
+        return RecordView::typed($this->record($xref), $this, Family::class);
     }
 
     /** @return \Generator<int, Family> the FAM records in order, read one after another */
     public function families(): \Generator
     {
-        for ($i = 0; $i < $this->count; ++$i) {
-            if ($this->tagAt($i) === 'FAM') {
-                yield new Family($this->recordAt($i, cache: false), $this);
-            }
-        }
+        return $this->views(Family::class);
+    }
+
+    public function source(string $xref): ?Source
+    {
+        return RecordView::typed($this->record($xref), $this, Source::class);
+    }
+
+    /** @return \Generator<int, Source> the SOUR records in order, read one after another */
+    public function sources(): \Generator
+    {
+        return $this->views(Source::class);
+    }
+
+    public function repository(string $xref): ?Repository
+    {
+        return RecordView::typed($this->record($xref), $this, Repository::class);
+    }
+
+    /** @return \Generator<int, Repository> the REPO records in order, read one after another */
+    public function repositories(): \Generator
+    {
+        return $this->views(Repository::class);
+    }
+
+    public function mediaObject(string $xref): ?MediaObject
+    {
+        return RecordView::typed($this->record($xref), $this, MediaObject::class);
+    }
+
+    /** @return \Generator<int, MediaObject> the OBJE records in order, read one after another */
+    public function mediaObjects(): \Generator
+    {
+        return $this->views(MediaObject::class);
+    }
+
+    public function sharedNote(string $xref): ?SharedNote
+    {
+        return RecordView::typed($this->record($xref), $this, SharedNote::class);
+    }
+
+    /** @return \Generator<int, SharedNote> the note records (SNOTE in 7.0, NOTE in 5.x) in order, read one after another */
+    public function sharedNotes(): \Generator
+    {
+        return $this->views(SharedNote::class);
+    }
+
+    public function submitter(string $xref): ?Submitter
+    {
+        return RecordView::typed($this->record($xref), $this, Submitter::class);
+    }
+
+    /** @return \Generator<int, Submitter> the SUBM records in order, read one after another */
+    public function submitters(): \Generator
+    {
+        return $this->views(Submitter::class);
     }
 
     public function head(): ?Node
@@ -317,6 +369,26 @@ final class IndexedDocument implements \Countable
     public function xrefs(): array
     {
         return $this->xrefs;
+    }
+
+    /**
+     * @template T of RecordView
+     *
+     * @param class-string<T> $class
+     *
+     * @return \Generator<int, T>
+     */
+    private function views(string $class): \Generator
+    {
+        $tag = $class::tagIn($this->version);
+        for ($i = 0; $i < $this->count; ++$i) {
+            if ($this->tagAt($i) === $tag) {
+                $view = RecordView::typed($this->recordAt($i, cache: false), $this, $class);
+                if ($view !== null) {
+                    yield $view;
+                }
+            }
+        }
     }
 
     /** @return array{int, int, int} offset, line, tag id */
