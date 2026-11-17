@@ -37,11 +37,13 @@ final class V551ToV70 implements Step
             new Rules\Submissions(),
             new Nodes(
                 new Rules\Xrefs(),
+                new Rules\Repositories(),
                 new Rules\NoteRecords(),
                 new Rules\InlineRecords(),
                 new Rules\Identifiers(),
                 new Rules\Uids(),
                 new Rules\TextValues(),
+                new Rules\Events(),
                 new Rules\Translations(),
                 new Rules\Dates(),
                 new Rules\Ages(),

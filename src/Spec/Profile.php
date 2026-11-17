@@ -19,6 +19,7 @@ use Korin\Gedcom\Version;
  *     enumsets: array<string, list<string>>,
  *     types: array<string, string>,
  *     sizes: array<string, array{int, int}>,
+ *     listed?: array<string, list<string>>,
  *     calendars: array<string, array{uri: string, months: list<string>, epochs: list<string>}>
  * }
  */
@@ -135,6 +136,17 @@ final class Profile
     public function size(string $element): ?array
     {
         return $this->data['sizes'][$element] ?? null;
+    }
+
+    /**
+     * Values the specification lists for a 5.5.5 text element with a size, valid whatever their
+     * length: the printed size contradicts them ("<NAME_TYPE>" aka, {Size=5:30}).
+     *
+     * @return list<string>
+     */
+    public function listed(string $element): array
+    {
+        return $this->data['listed'][$element] ?? [];
     }
 
     /** @return list<string> values of an enumeration set (7.0 URI) or of a 5.x element ("<SEX_VALUE>") */

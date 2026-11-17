@@ -50,7 +50,9 @@ because some sizes contradict the grammar (`TIME_VALUE {Size=7:12}` against `hh:
   enumeration.
 - Elements whose values include `<user defined>` (`NAME_TYPE`, `PHONETISATION_METHOD`,
   `ROMANISATION_METHOD`) and lists described in prose (`EVENTS_RECORDED`,
-  `EVENT_TYPE_CITED_FROM`, which allows "a user supplied value") are text with a size.
+  `EVENT_TYPE_CITED_FROM`, which allows "a user supplied value") are text with a size. The
+  values the first three list are kept as `listed`: they are valid whatever their length, as
+  the printed `{Size=5:30}` would reject `aka`, `kana` and the others.
 - Grammars implemented in code (`Validation\Rule\Grammar5`, `DateGrammar5`): dates (years of
   3 or 4 digits, days without a leading zero, `BCE|BC|B.C.` after a lone Gregorian or Julian
   year, dual years with a month in both calendars, a Gregorian day and month without a year,

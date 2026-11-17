@@ -28,6 +28,8 @@ Implemented so far:
 | `NOTE` whose pointer leads nowhere (`NOTE @Smith family@`: text written without `@@`) | Text: `NOTE @@Smith family@` |
 | `NOTE` record, `NOTE` pointer | `SNOTE` |
 | `SUBN` record, `HEAD.SUBN` | `HEAD._SUBN` with the record's substructures, one per `SUBN`; the record and the pointer are removed |
+| `REPO` of a source without a pointer (`1 REPO` + `CALN`) | `REPO @VOID@`: 7.0 requires the pointer |
+| `EVEN Moved to Osaka` of an individual or family without `TYPE` | `TYPE Moved to Osaka` added first: 7.0 requires `TYPE`, and the value describes the event. `FACT` and `IDNO` without `TYPE` stay so (`KV2003` in the output): nothing names their type |
 | `OBJE` without a pointer | A new `OBJE` record `@X<n>@` (before `TRLR`, in order of appearance) with its substructures; the link keeps `TITL` |
 | `SOUR` with a description instead of a pointer | A new `SOUR` record `@X<n>@` with the description as `NOTE`; `TEXT` moves under a new `DATA` of the citation, `NOTE`, `QUAY` and the rest stay on it |
 | `AFN x` | `EXID x` + `TYPE https://gedcom.io/terms/v7/AFN` |
@@ -78,6 +80,7 @@ back, except for what the loss report lists. Implemented so far:
 | --- | --- |
 | UTF-8 | UTF-8, `HEAD.CHAR UTF-8`, no BOM |
 | — | `HEAD.GEDC.FORM LINEAGE-LINKED`, after `GEDC.VERS` |
+| No `HEAD.SOUR` | `1 SOUR Korin` first in `HEAD`: 5.x requires the system that wrote the file (as in every conversion to 5.x) |
 | Text with `@` | Every `@` doubled: `a@b` → `a@@b`. `@#DJULIAN@` in a 7.0 text is text, written `@#DJULIAN@` again (converting up reads it as text too) |
 | Lines of any length | Split into `CONC` at 255 bytes, between characters, never before a space |
 | `SNOTE` record, `SNOTE` pointer | `NOTE` |
@@ -88,6 +91,8 @@ back, except for what the loss report lists. Implemented so far:
 | `EXID` + `TYPE https://gedcom.io/terms/v7/RIN#<HEAD.SOUR>` | `RIN` |
 | Any other `EXID`, or one on a record without that tag in 5.5.1 | `_EXID` with its `TYPE`, `KL2001`. Not `REFN`: a number the user assigned is another kind of identifier, and it would stay `REFN` when converted up |
 | A pointer to `@VOID@` (`FAMC @VOID@` + `PHRASE`) | An extension with its tag and substructures (`_FAMC @VOID@`), `KL4001` |
+| `REPO @VOID@` of a source (a repository known by its call numbers) | `REPO` without a pointer, which 5.5.1 allows |
+| `EVEN` with a `TYPE` equal to its value (how 5.5.1 → 7.0 writes an `EVEN` without `TYPE`) | The `TYPE` removed |
 | Calendar names in `DATE` (`JULIAN`, `FRENCH_R`, `_ROMAN 24 _IUL 15`) | Escapes (`@#DJULIAN@`, `@#DFRENCH R@`, `@#DROMAN@ 24 IUL 15`); `BCE` → `B.C.` |
 | `DATE` + `PHRASE` | One 5.5.1 date: the `PHRASE` when it is the date it came from (`30 JAN 1649` + `PHRASE 30 JAN 1648/49` → `30 JAN 1648/49`), otherwise `INT 5 MAR 1900 (phrase)`, or `(phrase)` without a date. A `PHRASE` of an approximate date or a range stays |
 | A date 5.5.1 cannot write (an extension calendar) | `_DATE`, `KL3001` |
@@ -183,8 +188,7 @@ the inline sources and media (records in 5.5.5), new `ADR` lines and respelled v
 | A value no 5.5.5 spelling fits (`HEAD.SOUR.VERS 7.0 beta`) | The structure as an extension, `KL3001` |
 
 Lengths (5.5.5 `{Size=min:max}`, `KV3010`) are not converted: a value too long or too short
-for 5.5.5 is still its value, and the printed sizes contradict the values the specification
-lists (`NAME.TYPE aka` with `{Size=5:30}`). `FACT` and `IDNO` without the `TYPE` 5.5.5
+for 5.5.5 is still its value. `FACT` and `IDNO` without the `TYPE` 5.5.5
 requires get none: there is nothing to name it by.
 
 ## 5.5.5 → 5.5.1
@@ -204,3 +208,17 @@ requires get none: there is nothing to name it by.
 
 5.5.5 ↔ 7.0 goes through 5.5.1. A 7.0 file converted to 5.5.5 and back has the same
 fingerprint, except for `KL3` losses (tested on every 7.0 input of the corpus).
+
+## Conversion matrix
+
+Every corpus input is converted to every version (`tests/Corpus/MatrixTest.php`, SPEC
+section 10): the conversion is deterministic, converting the output to its own version changes
+nothing, and the output validates without errors other than those of the input and these
+limits of the target versions:
+
+| Target | Error the output may have | Why |
+| --- | --- | --- |
+| 5.x | `HEAD requires SUBM` (`KV2003`; 5.5.5: the file requires a `SUBM` record) | 7.0 does not require a submitter, and the conversion does not invent one |
+| 5.x | `FORM does not permit …` (`KV3006`) on a media `FORM` | 5.x lists a few formats from the 1990s; others (`png`, `pdf`) stay, as programs write them |
+| 5.5 | `OBJE requires BLOB` (`KV2003`) | A 5.5 media record holds the object itself; a file reference is `_FILE` (`KL2001`) |
+| 7.0, 5.5.5 | `FACT requires TYPE`, `IDNO requires TYPE` (`KV2003`) | 5.5.1 does not require `TYPE`, and nothing names it |

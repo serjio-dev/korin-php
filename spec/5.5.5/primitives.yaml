@@ -81,14 +81,14 @@ NAME_PIECE_SURNAME: {size: '1:120'}
 NAME_PIECE_SURNAME_PREFIX: {size: '1:30'}
 NAME_ROMANISED: {size: '1:120'}
 # [ aka | birth | immigrant | maiden | married | <user defined> ]
-NAME_TYPE: {size: '5:30'}
+NAME_TYPE: {size: '5:30', listed: [aka, birth, immigrant, maiden, married]}
 NATIONAL_OR_TRIBAL_ORIGIN: {size: '1:120'}
 NOBILITY_TYPE_TITLE: {size: '1:120'}
 NUMBER_OF_RELATIONSHIPS: {is: NUMBER, size: '1:3'}
 OCCUPATION: {size: '1:90'}
 PEDIGREE_LINKAGE_TYPE: [adopted, birth, foster]
 # [ <user defined> | hangul | kana ]
-PHONETISATION_METHOD: {size: '5:30'}
+PHONETISATION_METHOD: {size: '5:30', listed: [hangul, kana]}
 PHONE_NUMBER: {size: '1:25'}
 PHYSICAL_DESCRIPTION: {size: '1:4095'}
 PLACE_LATITUDE: PLACE_LATITUDE
@@ -105,7 +105,7 @@ RELIGIOUS_AFFILIATION: {size: '1:90'}
 RESPONSIBLE_AGENCY: {size: '1:120'}
 ROLE_IN_EVENT: [CHIL, HUSB, WIFE, MOTH, FATH, SPOU, (<ROLE_DESCRIPTOR>)]
 # [ <user defined> | pinyin | romaji | wadegiles ]
-ROMANISATION_METHOD: {size: '5:30'}
+ROMANISATION_METHOD: {size: '5:30', listed: [pinyin, romaji, wadegiles]}
 SCHOLASTIC_ACHIEVEMENT: {size: '1:248'}
 # Given as "M = Male, F = Female, X = Intersex, U = Unknown, N = Not recorded".
 SEX_VALUE: [M, F, X, U, N]

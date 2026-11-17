@@ -19,10 +19,11 @@ final class V70ToV551Test extends TestCase
     private const HEAD_551 = "0 HEAD\n1 SOUR Korin\n1 DATE 1 JAN 2020\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n";
 
     #[Test]
-    public function headGetsGedcFormAndChar(): void
+    public function headGetsGedcFormCharAndSour(): void
     {
         self::assertSame(self::HEAD_551 . "0 TRLR\n", $this->convert("\u{FEFF}" . self::HEAD . "0 TRLR\n"));
-        self::assertSame("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 NOTE x\n1 CHAR UTF-8\n0 TRLR\n", $this->convert("0 HEAD\n1 GEDC\n2 VERS 7.0\n1 NOTE x\n0 TRLR\n"));
+        // 5.5.1 requires HEAD.SOUR, the system that wrote the file.
+        self::assertSame("0 HEAD\n1 SOUR Korin\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 NOTE x\n1 CHAR UTF-8\n0 TRLR\n", $this->convert("0 HEAD\n1 GEDC\n2 VERS 7.0\n1 NOTE x\n0 TRLR\n"));
     }
 
     #[Test]
