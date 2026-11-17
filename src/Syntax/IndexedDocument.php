@@ -7,6 +7,8 @@ namespace Korin\Gedcom\Syntax;
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Exception\IoException;
 use Korin\Gedcom\Io\Encoding;
+use Korin\Gedcom\Model\Family;
+use Korin\Gedcom\Model\Individual;
 use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\Version;
 
@@ -188,6 +190,40 @@ final class IndexedDocument implements \Countable
         $i = $this->xrefs[$xref] ?? null;
 
         return $i === null ? null : $this->recordAt($i);
+    }
+
+    public function individual(string $xref): ?Individual
+    {
+        $record = $this->record($xref);
+
+        return $record?->tag() === 'INDI' ? new Individual($record, $this) : null;
+    }
+
+    public function family(string $xref): ?Family
+    {
+        $record = $this->record($xref);
+
+        return $record?->tag() === 'FAM' ? new Family($record, $this) : null;
+    }
+
+    /** @return \Generator<int, Individual> the INDI records in order, read one after another */
+    public function individuals(): \Generator
+    {
+        for ($i = 0; $i < $this->count; ++$i) {
+            if ($this->tagAt($i) === 'INDI') {
+                yield new Individual($this->recordAt($i, cache: false), $this);
+            }
+        }
+    }
+
+    /** @return \Generator<int, Family> the FAM records in order, read one after another */
+    public function families(): \Generator
+    {
+        for ($i = 0; $i < $this->count; ++$i) {
+            if ($this->tagAt($i) === 'FAM') {
+                yield new Family($this->recordAt($i, cache: false), $this);
+            }
+        }
     }
 
     public function head(): ?Node

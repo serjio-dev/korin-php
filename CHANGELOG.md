@@ -44,6 +44,16 @@ break the API; such changes are described in `UPGRADE.md`.
   writes the version's form or throws `Exception\InvalidValueException`. Every date and age of
   the corpus that parses writes back to the same value object.
 
+- Views of records in `Korin\Gedcom\Model`, live over the tree: `Individual` (names, sex,
+  events, families as child and spouse, parents, spouses, children), `Family` (partners,
+  children, events; `setHusband()`, `setWife()`, `addChild()` and `removeChild()` keep FAMS and
+  FAMC mutual), `Event` (date, place, age, type; the 7.0 PHRASE and the 5.x `INT` read and
+  written by the document's version), `Sex`. `Document::individuals()`, `individual()`,
+  `families()`, `family()`, `addIndividual()` and `addFamily()` (xrefs @I1@, @F1@ … in order);
+  the same on `IndexedDocument` (read only, records read from the file);
+  `Record::view()` for a streamed record, which throws `RequiresDocumentException` for anything
+  in another record.
+
 ### Changed
 
 - `convert()` converts the records in the order of the output: a record a rule moves right

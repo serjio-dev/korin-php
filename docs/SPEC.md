@@ -173,7 +173,7 @@ $doc->version();   // Version::V5_5_1
 $doc->encoding();  // Encoding::Windows1251
 
 foreach ($doc->individuals() as $person) {
-    echo $person->name()?->full(), ' — ', $person->birth()?->date()?->toString(), PHP_EOL;
+    echo $person->name()?->full(), ' — ', $person->birth()?->date()?->toGedcom(), PHP_EOL;
 }
 
 // Validation
