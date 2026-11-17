@@ -31,7 +31,9 @@ use Korin\Gedcom\Version;
  * rejects is rejected here too. {@see self::load()} reads the whole file into a {@see Document}.
  *
  * The document reads from the handle it was given whenever a record is asked for, seeking it:
- * the handle must stay open and is not for other reads meanwhile.
+ * the handle must stay open and is not for other reads meanwhile. A file that cannot seek
+ * (an entry of a ZIP through zip://) is read on forward and opened again to go back, so
+ * records read in order cost one pass.
  */
 final class IndexedDocument implements \Countable
 {
@@ -77,15 +79,17 @@ final class IndexedDocument implements \Countable
     /**
      * @internal use {@see \Korin\Gedcom\Gedcom::open()}
      *
-     * @param resource $handle seekable, read from its current position
-     * @param bool     $close  whether the document closes the handle when it is destroyed
+     * @param resource    $handle seekable, read from its current position; or, with $path, opened from it
+     * @param bool        $close  whether the document closes the handle when it is destroyed
+     * @param string|null $path   the file of a handle that cannot seek, opened again to go back
      */
     public function __construct(
-        private readonly mixed $handle,
+        private mixed $handle,
         private readonly ReadOptions $options = new ReadOptions(),
         private readonly bool $close = false,
         private readonly int $cacheSize = self::CACHE_SIZE,
         private readonly Parser $parser = new Parser(),
+        private readonly ?string $path = null,
     ) {
         $this->start = (int) ftell($handle);
         $reader = new RecordReader($handle, $options);
@@ -340,9 +344,7 @@ final class IndexedDocument implements \Countable
      */
     public function copyTo(mixed $out): void
     {
-        if (!is_resource($this->handle) || fseek($this->handle, $this->start) !== 0) {
-            throw new IoException('Cannot seek in the file');
-        }
+        $this->seek($this->start);
         $copied = stream_copy_to_stream($this->handle, $out, $this->end - $this->start);
         if ($copied !== $this->end - $this->start) {
             throw new IoException('Cannot copy the file');
@@ -413,9 +415,7 @@ final class IndexedDocument implements \Countable
 
     private function bytes(int $offset, int $length): string
     {
-        if (!is_resource($this->handle) || fseek($this->handle, $offset) !== 0) {
-            throw new IoException('Cannot seek in the file');
-        }
+        $this->seek($offset);
         $bytes = '';
         while (($remaining = $length - strlen($bytes)) > 0 && !feof($this->handle)) {
             $chunk = fread($this->handle, $remaining);
@@ -429,5 +429,35 @@ final class IndexedDocument implements \Countable
         }
 
         return $bytes;
+    }
+
+    private function seek(int $offset): void
+    {
+        if (!is_resource($this->handle)) {
+            throw new IoException('Cannot seek in the file');
+        }
+        if ($this->path === null) {
+            if (fseek($this->handle, $offset) !== 0) {
+                throw new IoException('Cannot seek in the file');
+            }
+
+            return;
+        }
+        $position = ftell($this->handle);
+        if ($position === false || $position > $offset) {
+            $handle = @fopen($this->path, 'rb');
+            if ($handle === false) {
+                throw new IoException('Cannot open the file again');
+            }
+            fclose($this->handle);
+            $this->handle = $handle;
+            $position = 0;
+        }
+        for ($skip = $offset - $position; $skip > 0; $skip -= strlen($chunk)) {
+            $chunk = fread($this->handle, min($skip, 65_536));
+            if ($chunk === false || $chunk === '') {
+                throw new IoException('The file changed after it was opened');
+            }
+        }
     }
 }

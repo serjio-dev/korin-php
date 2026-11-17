@@ -77,7 +77,10 @@ final class Gedcom
             return new IndexedDocument($copy, $options, close: true);
         }
 
-        return new IndexedDocument(self::handle($source), $options, close: true);
+        $handle = self::handle($source);
+
+        // An entry of a ZIP (zip://) cannot seek: it is opened again rather than copied.
+        return new IndexedDocument($handle, $options, close: true, path: stream_get_meta_data($handle)['seekable'] || !is_string($source) ? null : $source);
     }
 
     public static function parse(string $bytes, ReadOptions $options = new ReadOptions()): Document
