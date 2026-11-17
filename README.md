@@ -5,8 +5,8 @@ without losing a single tag. Every unavoidable loss is reported.
 
 > **Status: 0.3 — early development.** Reading, lossless writing, editing, validation and
 > conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, also for files of any size (streaming
-> and indexed reading, streaming conversion), and value objects for dates, ages, names and places;
-> the typed views of records and GEDZIP are planned — see
+> and indexed reading, streaming conversion), and the model of individuals and families with
+> dates, ages, names and places; views of the other records and GEDZIP are planned — see
 > [the specification](docs/SPEC.md) for the roadmap and [CHANGELOG.md](CHANGELOG.md) for releases.
 > Until 1.0 a minor release may break the API.
 
@@ -86,7 +86,29 @@ foreach ($result->losses() as $loss) {
 The rules for each version pair are in [docs/conversion.md](docs/conversion.md), the loss codes
 and policies in [docs/losses.md](docs/losses.md).
 
-## Values
+## Model
+
+`Individual`, `Family` and their `Event`s are live views of the tree: they read from it and
+write to it, so nothing they do not know about is lost. Linking a family also sets the pointer
+back (`FAMS`, `FAMC`):
+
+```php
+foreach ($doc->individuals() as $person) {
+    echo $person->name()?->full(), ' — ', $person->birth()?->date()?->toGedcom(), PHP_EOL;
+}
+$doc->individual('@I3@')?->parents();          // HUSB and WIFE of its FAMC families
+
+$doc = Document::create(Version::V7_0);
+$anna = $doc->addIndividual()                  // @I1@
+    ->setName(PersonalName::of('Анна', 'Коваль'))
+    ->setSex(Sex::Female);
+$anna->addBirth(GedcomDate::parse('12 MAR 1921'), Place::of('Полтава, Україна'));
+$doc->addFamily()->setWife($anna)->addChild($doc->addIndividual());   // FAMS and FAMC set too
+```
+
+The same views work on `open()` (read only, related records are read from the file) and, limited
+to one record, on `stream()`: `$record->view()?->familyXrefs()` works, `parents()` throws
+`RequiresDocumentException`.
 
 Dates, ages, names, places and coordinates are immutable value objects in `Korin\Gedcom\Model`.
 They are parsed by the grammar of a version and written for any version; a value a version

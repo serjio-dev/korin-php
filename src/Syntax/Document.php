@@ -11,6 +11,8 @@ use Korin\Gedcom\Exception\ReadOnlyException;
 use Korin\Gedcom\Io\Codec\Codec;
 use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Encoding;
+use Korin\Gedcom\Model\Family;
+use Korin\Gedcom\Model\Individual;
 use Korin\Gedcom\Version;
 
 /**
@@ -82,6 +84,9 @@ final class Document
 
     /** Whether {@see $xrefIndex} must be rebuilt: setXref() can leave duplicates it cannot track. */
     private bool $indexStale = false;
+
+    /** @var array<string, int> xref prefix => the number to try next, see {@see self::freeXref()} */
+    private array $nextXref = [];
 
     /**
      * @internal use {@see \Korin\Gedcom\Gedcom::parse()} or {@see self::create()}
@@ -176,6 +181,44 @@ final class Document
         }
 
         return $node;
+    }
+
+    /** @return list<Individual> the INDI records, in order */
+    public function individuals(): array
+    {
+        return $this->views('INDI', Individual::class);
+    }
+
+    public function individual(string $xref): ?Individual
+    {
+        $record = $this->record($xref);
+
+        return $record?->tag() === 'INDI' ? new Individual($record, $this) : null;
+    }
+
+    /** @return list<Family> the FAM records, in order */
+    public function families(): array
+    {
+        return $this->views('FAM', Family::class);
+    }
+
+    public function family(string $xref): ?Family
+    {
+        $record = $this->record($xref);
+
+        return $record?->tag() === 'FAM' ? new Family($record, $this) : null;
+    }
+
+    /** Adds an INDI record; without an xref the first free one of @I1@, @I2@ … */
+    public function addIndividual(?string $xref = null): Individual
+    {
+        return new Individual($this->addRecord('INDI', $xref ?? $this->freeXref('I')), $this);
+    }
+
+    /** Adds a FAM record; without an xref the first free one of @F1@, @F2@ … */
+    public function addFamily(?string $xref = null): Family
+    {
+        return new Family($this->addRecord('FAM', $xref ?? $this->freeXref('F')), $this);
     }
 
     /** Adds a record before TRLR (or at the end when there is none). */
@@ -768,6 +811,38 @@ final class Document
         } else {
             $this->children[$id] = ($first + 1) | ($last + 1) << 32;
         }
+    }
+
+    /**
+     * @template T of Individual|Family
+     *
+     * @param class-string<T> $class
+     *
+     * @return list<T>
+     */
+    private function views(string $tag, string $class): array
+    {
+        $views = [];
+        foreach ($this->childIds(self::ROOT) as $id) {
+            if ($this->tag[$id] === $tag && !$this->isInvalid($id)) {
+                $views[] = new $class($this->node($id), $this);
+            }
+        }
+
+        return $views;
+    }
+
+    /** The first free xref of a prefix, counting on from the last one given: the same document gives the same xrefs. */
+    private function freeXref(string $prefix): string
+    {
+        $index = $this->index();
+        $n = $this->nextXref[$prefix] ?? 1;
+        while (isset($index["@{$prefix}{$n}@"])) {
+            ++$n;
+        }
+        $this->nextXref[$prefix] = $n + 1;
+
+        return "@{$prefix}{$n}@";
     }
 
     private function firstRecord(string $tag): ?Node
