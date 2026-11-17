@@ -25,7 +25,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class CorpusTest extends TestCase
 {
-    private const IMPLEMENTED = ['read', 'roundtrip-preserve', 'roundtrip-stream', 'fingerprint', 'validate', 'validate-indexed', 'edit', 'convert', 'convert-stream'];
+    private const IMPLEMENTED = ['read', 'roundtrip-preserve', 'roundtrip-stream', 'fingerprint', 'validate', 'validate-indexed', 'edit', 'convert', 'convert-stream', 'gedzip'];
 
     /** @return iterable<string, array{string, string, array<string, mixed>, ?array{to: string, expected: string, losses: string}}> */
     public static function cases(): iterable
@@ -71,7 +71,7 @@ final class CorpusTest extends TestCase
     {
         /** @var array{file: string, version: string, encoding: string, bom?: bool} $input */
         $input = $case['input'];
-        $bytes = (string) file_get_contents($dir . '/' . $input['file']);
+        $bytes = str_ends_with($input['file'], '.gdz') ? $this->gedcomOfArchive($dir . '/' . $input['file']) : (string) file_get_contents($dir . '/' . $input['file']);
         $document = Gedcom::parse($bytes);
 
         match ($check) {
@@ -83,6 +83,7 @@ final class CorpusTest extends TestCase
             'validate-indexed' => $this->checkValidateIndexed($document, $dir . '/' . $input['file']),
             'edit' => $this->checkEdit($document, $dir),
             'convert' => $this->checkConvert($document, $dir, $conversion ?? self::fail('No conversion')),
+            'gedzip' => $this->checkGedzip($dir . '/' . $input['file'], $case),
             'convert-stream' => $this->checkConvertStream($document, $dir . '/' . $input['file'], $conversion ?? self::fail('No conversion')),
             default => self::fail("Check {$check} is not implemented"),
         };
@@ -151,6 +152,37 @@ final class CorpusTest extends TestCase
                 $codes = array_map(static fn(Diagnostic $x): string => $x->code, array_filter($diagnostics, static fn(Diagnostic $x): bool => $x->path === ($d['path'] ?? null)));
                 self::assertContains($d['code'], $codes, $summary);
             }
+        }
+    }
+
+    /** The gedcom.ged of an archive, as its bytes: the other checks apply to it. */
+    private function gedcomOfArchive(string $path): string
+    {
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path, \ZipArchive::RDONLY), 'input.gdz is a ZIP archive');
+        $bytes = $zip->getFromName('gedcom.ged');
+        self::assertIsString($bytes, 'input.gdz has gedcom.ged');
+
+        return $bytes;
+    }
+
+    /**
+     * The entries of the archive, the FILE references without one and the entries ignored
+     * equal expect.media.
+     *
+     * @param array<string, mixed> $case
+     */
+    private function checkGedzip(string $path, array $case): void
+    {
+        /** @var array{media: array{entries: list<string>, missing: list<string>, ignored: list<string>}} $expect */
+        $expect = $case['expect'];
+        $archive = Gedcom::readGedzip($path);
+
+        self::assertSame($expect['media']['entries'], $archive->entries(), 'Entries');
+        self::assertSame($expect['media']['missing'], $archive->missing(), 'References without an entry');
+        self::assertSame($expect['media']['ignored'], $archive->ignored(), 'Entries ignored');
+        foreach ($archive->entries() as $entry) {
+            self::assertTrue($archive->has(implode('/', array_map(rawurlencode(...), explode('/', $entry)))), "{$entry} is found by its reference");
         }
     }
 

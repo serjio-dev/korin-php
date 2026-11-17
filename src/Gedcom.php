@@ -8,7 +8,11 @@ use Korin\Gedcom\Conversion\ConversionResult;
 use Korin\Gedcom\Conversion\Converter;
 use Korin\Gedcom\Conversion\LossReport;
 use Korin\Gedcom\Exception\ConversionException;
+use Korin\Gedcom\Exception\GedzipException;
 use Korin\Gedcom\Exception\IoException;
+use Korin\Gedcom\Gedzip\Archive;
+use Korin\Gedcom\Gedzip\GedzipReader;
+use Korin\Gedcom\Gedzip\GedzipWriter;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Syntax\IndexedDocument;
 use Korin\Gedcom\Syntax\Parser;
@@ -135,6 +139,30 @@ final class Gedcom
         if (@file_put_contents($path, self::serialize($document, $options)) === false) {
             throw new IoException("Cannot write {$path}");
         }
+    }
+
+    /**
+     * Reads a GEDZIP archive (.gdz): gedcom.ged as a document, the media as streams on demand.
+     * Needs ext-zip.
+     *
+     * @throws GedzipException for no ZIP, no gedcom.ged or a limit of the options exceeded
+     */
+    public static function readGedzip(string $path, ReadOptions $options = new ReadOptions()): Archive
+    {
+        return (new GedzipReader())->read($path, $options);
+    }
+
+    /**
+     * Writes a GEDZIP archive: a 7.0 document as gedcom.ged, and the media under the names its
+     * FILE references use. Needs ext-zip.
+     *
+     * @param array<array-key, string|resource> $media entry name => a file to add, or a stream
+     *
+     * @throws GedzipException
+     */
+    public static function writeGedzip(Document $document, string $path, array $media = [], WriteOptions $options = new WriteOptions()): void
+    {
+        (new GedzipWriter())->write($document, $path, $media, $options);
     }
 
     public static function serialize(Document $document, WriteOptions $options = new WriteOptions()): string

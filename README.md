@@ -6,7 +6,7 @@ without losing a single tag. Every unavoidable loss is reported.
 > **Status: 0.3 — early development.** Reading, lossless writing, editing, validation and
 > conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, also for files of any size (streaming
 > and indexed reading, streaming conversion), and the model: views of every record type with
-> dates, ages, names and places; GEDZIP is planned — see
+> dates, ages, names and places, and GEDZIP archives — see
 > [the specification](docs/SPEC.md) for the roadmap and [CHANGELOG.md](CHANGELOG.md) for releases.
 > Until 1.0 a minor release may break the API.
 
@@ -130,6 +130,27 @@ Age::parse('<1y', Version::V5_5_1)->toGedcom(Version::V7_0);   // "< 1y"
 PersonalName::parse('Анна /Коваль/')->withSurname('Ковальова');  // "Анна /Ковальова/"
 Place::of('Полтава, Україна')->name();                           // "Полтава"
 ```
+
+## GEDZIP
+
+A `.gdz` archive (GEDCOM 7.0) holds `gedcom.ged` and the media its `FILE` references name.
+Reading and writing it needs `ext-zip`.
+
+```php
+$archive = Gedcom::readGedzip('family.gdz');
+$archive->document();                    // gedcom.ged
+$archive->media('photos/anna%20k.jpg');  // a stream: FILE references are URIs, nothing goes to disk
+$archive->missing();                     // relative references with no entry (KV1204)
+
+Gedcom::writeGedzip($doc, 'family.gdz', ['photos/anna k.jpg' => '/path/to/anna.jpg']);
+```
+
+Archives are treated as hostile: entries with `..`, absolute paths, backslashes or drive
+letters and symbolic links are ignored (KV1201, KV1202), and an archive is rejected before
+anything is decompressed when its entries hold more than `ReadOptions::$maxArchiveSize` bytes
+or one of more than 1 MiB is compressed more than `$maxCompressionRatio` times
+(`withArchiveLimits()`). A media stream is the entry as the archive gives it: limit how much
+you read when the archive is not yours.
 
 ## Large files
 
