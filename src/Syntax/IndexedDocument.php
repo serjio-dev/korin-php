@@ -19,7 +19,11 @@ use Korin\Gedcom\Version;
  * diagnostics {@see Parser} gives it in the whole file; {@see Document::copy()} of it can be
  * edited. The version is that of the first HEAD, for every record. {@see self::diagnostics()}
  * has those of the whole file (encoding, HEAD, TRLR, version); line diagnostics are on the
- * records. {@see self::load()} reads the whole file into a {@see Document}.
+ * records; in strict mode every record is parsed while the index is built, so a file read()
+ * rejects is rejected here too. {@see self::load()} reads the whole file into a {@see Document}.
+ *
+ * The document reads from the handle it was given whenever a record is asked for, seeking it:
+ * the handle must stay open and is not for other reads meanwhile.
  */
 final class IndexedDocument implements \Countable
 {
@@ -85,6 +89,10 @@ final class IndexedDocument implements \Countable
         $first = $head = null;
         $afterTrailer = null;
         foreach ($reader->records() as [$bytes, $offset, $line, $xref, $tag]) {
+            if ($options->strict) {
+                // As read() does: the first error of any line throws now, not when its record is read.
+                $this->parser->parseRecord($bytes, $this->encoding, $options->version ?? Version::V5_5_1, false, "\n", $line, $options);
+            }
             $i = $this->count++;
             if (!isset($tagIds[$tag])) {
                 $tagIds[$tag] = count($this->tagNames);
@@ -113,10 +121,13 @@ final class IndexedDocument implements \Countable
 
         $this->version = $options->version ?? Version::V5_5_1;
         $headNode = $head === null ? null : $this->parse($head[0], $head[1], $this->headIndex === 0);
-        if ($headNode !== null && $options->version === null) {
-            $this->version = Parser::declaredVersion($headNode) ?? $this->version;
+        if ($headNode !== null) {
+            $this->version = $options->version ?? Parser::declaredVersion($headNode) ?? $this->version;
+            // The lines do not depend on the version, only their values.
+            $headNode->document()->setVersion($this->version);
+            $this->cache[(int) $this->headIndex] = $headNode->document();
         }
-        $firstNode = $first === null ? null : $this->parse($first[0], $first[1], true);
+        $firstNode = $this->headIndex === 0 ? $headNode : ($first === null ? null : $this->parse($first[0], $first[1], true));
         $diagnostics = $detection->diagnostics;
         $this->parser->checkFile($firstNode, $this->trailerIndex !== null, $afterTrailer === false ? null : $afterTrailer, $headNode, $options, static function (Diagnostic $diagnostic) use (&$diagnostics): void {
             $diagnostics[] = $diagnostic;
@@ -274,7 +285,7 @@ final class IndexedDocument implements \Countable
 
     private function bytes(int $offset, int $length): string
     {
-        if (fseek($this->handle, $offset) !== 0) {
+        if (!is_resource($this->handle) || fseek($this->handle, $offset) !== 0) {
             throw new IoException('Cannot seek in the file');
         }
         $bytes = '';

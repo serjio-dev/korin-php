@@ -59,12 +59,6 @@ final class RecordReader
         return $this->detection;
     }
 
-    /** @return array<string, int> */
-    public function eolCounts(): array
-    {
-        return $this->eolCounts;
-    }
-
     /** The dominant line terminator so far, decoded; "\n" before the first one. */
     public function lineEnding(): string
     {
@@ -110,9 +104,8 @@ final class RecordReader
                     break;
                 }
                 ++$line;
-                if ($eol > 0) {
-                    $terminator = substr($this->buffer, $offset + $length, $eol);
-                    $this->eolCounts[$terminator] = ($this->eolCounts[$terminator] ?? 0) + 1;
+                if ($length > $this->options->maxLineLength) {
+                    throw new ParseException("Line {$line} exceeds the limit of {$this->options->maxLineLength} bytes");
                 }
                 $raw = substr($this->buffer, $offset, $length);
                 $match = $open ? $this->levelZero($raw, $utf16) : $this->match($raw, $utf16);
@@ -128,6 +121,11 @@ final class RecordReader
                     $open = $open || $match !== null;
                 }
                 $pending .= substr($this->buffer, $offset, $end - $offset);
+                // Counted after the record before it was yielded: its line ending is that of the lines up to its end.
+                if ($eol > 0) {
+                    $terminator = substr($this->buffer, $offset + $length, $eol);
+                    $this->eolCounts[$terminator] = ($this->eolCounts[$terminator] ?? 0) + 1;
+                }
             }
             if ($this->eof) {
                 break;

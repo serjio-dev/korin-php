@@ -223,7 +223,7 @@ $archive->media('photos/anna.jpg');  // a stream, without extracting to disk
 | --- | --- | --- |
 | `Gedcom::read()` | The whole tree | Full model, editing, validation at all levels |
 | `Gedcom::stream()` | Constant | `Syntax\Record` with original bytes; `view()` gives a model limited to the record; methods that need other records throw `RequiresDocumentException`. Validation levels 1–4 |
-| `Gedcom::open()` | Index: xref → file offset, ~50 bytes per record, + an LRU cache of parsed records | Full read-only model; validation at all levels. For editing, `$doc->load()` returns a document as after `read()`. Needs a seekable source; otherwise the input is first copied to `php://temp` |
+| `Gedcom::open()` | Index: xref → file offset, ~100 bytes per record, + an LRU cache of parsed records | Full read-only model; validation at all levels. For editing, `$doc->load()` returns a document as after `read()`. Needs a seekable source; otherwise the input is first copied to `php://temp` |
 
 `stream()` followed by writing each `Record` in `preserve` mode reproduces the input file byte for byte. In a stream the encoding is detected from the BOM, `HEAD.CHAR` and a heuristic over the first 64 KB; a contradiction later in the file produces a diagnostic without re-decoding. Each `Record` is a document of its own that holds the diagnostics of its lines; those of the whole file (encoding, `HEAD`, `TRLR`, version) are the stream's. The version comes from the first `HEAD`: records before it are read as 5.5.1. `open()` holds the same file-level diagnostics; its records are read-only documents of their own (a `copy()` can be edited) and all have the version of the first `HEAD`.
 

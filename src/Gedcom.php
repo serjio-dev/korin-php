@@ -59,8 +59,13 @@ final class Gedcom
                 return new IndexedDocument($source, $options);
             }
             $copy = fopen('php://temp', 'w+b');
-            if ($copy === false || stream_copy_to_stream($source, $copy) === false) {
-                throw new IoException('Cannot copy the stream');
+            if ($copy === false) {
+                throw new IoException('Cannot create a temporary stream');
+            }
+            if (stream_copy_to_stream($source, $copy) === false) {
+                fclose($copy);
+
+                throw new IoException('Cannot copy the stream to a temporary stream');
             }
             rewind($copy);
 

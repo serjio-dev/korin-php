@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Korin\Gedcom\Tests\Unit\Syntax;
 
 use Korin\Gedcom\Exception\IoException;
+use Korin\Gedcom\Exception\ParseException;
 use Korin\Gedcom\Exception\ReadOnlyException;
 use Korin\Gedcom\Gedcom;
+use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\Syntax\IndexedDocument;
 use Korin\Gedcom\Syntax\Node;
 use Korin\Gedcom\Version;
@@ -137,6 +139,44 @@ final class IndexedDocumentTest extends TestCase
             unset($indexed);
             unlink($path);
         }
+    }
+
+    #[Test]
+    public function strictModeRejectsAnErrorInAnyRecordWhileIndexing(): void
+    {
+        $this->expectException(ParseException::class);
+        $this->expectExceptionMessage('KV1002');
+
+        Gedcom::open(self::handle("0 HEAD\n0 @I1@ INDI\n0 @I2@ INDI\n2 DEEP\n0 TRLR\n"), (new ReadOptions())->withStrict());
+    }
+
+    #[Test]
+    public function lineLongerThanTheLimitIsRejectedWhileIndexing(): void
+    {
+        $this->expectException(ParseException::class);
+        $this->expectExceptionMessage('Line 3 exceeds the limit of 100 bytes');
+
+        Gedcom::open(self::handle("0 HEAD\n0 @I1@ INDI\n1 NOTE " . str_repeat('x', 1000) . "\n0 TRLR\n"), (new ReadOptions())->withLimits(100, 100));
+    }
+
+    #[Test]
+    public function closedHandleThrows(): void
+    {
+        $handle = self::handle(self::FILE);
+        $indexed = Gedcom::open($handle);
+        fclose($handle);
+
+        $this->expectException(IoException::class);
+        $indexed->record('@F1@');
+    }
+
+    #[Test]
+    public function headIsParsedWithTheDeclaredVersion(): void
+    {
+        $indexed = Gedcom::open(self::handle("0 HEAD\n1 GEDC\n2 VERS 7.0\n1 NOTE @@a @@b\n0 TRLR\n"));
+
+        self::assertSame(Version::V7_0, $indexed->head()?->document()->version());
+        self::assertSame('@a @@b', $indexed->find('HEAD/NOTE')?->value());
     }
 
     /** @return resource */
