@@ -182,6 +182,9 @@ final class GedzipTest extends TestCase
     #[Test]
     public function entryReplacedAfterOpenIsReported(): void
     {
+        if (PHP_OS_FAMILY === 'Windows') {
+            self::markTestSkipped('Windows does not let a file that is open be replaced');
+        }
         $this->zip(['gedcom.ged' => "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NAME Анна\n0 @I2@ INDI\n0 TRLR\n"]);
         $document = Gedcom::open('zip://' . $this->dir . '/in.gdz#gedcom.ged');
         $document->record('@I2@');
