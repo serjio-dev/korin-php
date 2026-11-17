@@ -340,6 +340,8 @@ The validator checks a document against its version's profile at five levels and
 - Report formats: PHP objects, JSON, text for the CLI.
 - All codes are documented in `docs/diagnostics.md` and keep their meaning within a major version.
 
+The rules see the records one at a time, in order, and look up what they need of other records by xref, so `Gedcom::validate()` takes an `open()` document too: the file is read once, record by record, and the report is that of the document `load()` would give (the `validate-indexed` check in the corpus). What the reference and plausibility checks keep for the end is packed: a few integers per link and per individual (64 MB for a 50 MB file, its index included).
+
 Validator quality control: its findings for 7.0 are checked against the expected results of the official test files and against the open-source validators in the [gedcom.io list](https://gedcom.io/tools/).
 
 ## 9. Security and performance

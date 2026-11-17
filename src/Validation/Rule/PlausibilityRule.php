@@ -8,6 +8,7 @@ use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Severity;
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Validation\Records\Records;
 
 /**
  * Level 5, optional: warnings about data that is valid but cannot be true. A birth after the
@@ -20,108 +21,167 @@ use Korin\Gedcom\Syntax\Document;
  */
 final class PlausibilityRule implements Rule
 {
-    public function check(Document $document, Profile $profile): array
+    private const PARTNERS = ['HUSB', 'WIFE'];
+
+    private Records $records;
+
+    // Packed for memory: the state of a file of any size, a few integers per individual.
+
+    /** @var array<int, int> individual => start of the range of the first BIRT date */
+    private array $bornFrom = [];
+
+    /** @var array<int, int> individual => end of that range */
+    private array $bornTo = [];
+
+    /** @var array<int, string> individual => parents, 32-bit keys */
+    private array $parents = [];
+
+    /** INDI.FAMC, 32-bit: individual, family; their parents are added at the end, when the families are known. */
+    private string $childOf = '';
+
+    /** @var array<int, string> family => the individuals HUSB and WIFE point to, 32-bit */
+    private array $spousesOf = [];
+
+    /** @var list<string> families, 32-bit: key, number of HUSB and WIFE, each (PARTNERS index, record), then each CHIL (node, individual) */
+    private array $families = [];
+
+    /** @var list<Diagnostic> */
+    private array $out = [];
+
+    public function begin(Records $records, Profile $profile): void
     {
-        $out = [];
-        /** @var array<string, int> $records xref => first record with it */
-        $records = [];
-        foreach ($document->childIds(0) as $id) {
-            $xref = $document->xrefOf($id);
-            if ($xref !== null && !isset($records[$xref]) && !$document->isInvalid($id)) {
-                $records[$xref] = $id;
+        $this->records = $records;
+        $this->reset();
+    }
+
+    public function record(Document $document, int $id, int $key): void
+    {
+        // The first record with an xref; the others are reported as duplicates (KV4002).
+        $xref = $document->xrefOf($id);
+        if ($xref === null || $document->isInvalid($id) || $this->records->find($xref) !== $key) {
+            return;
+        }
+        match ($document->tagOf($id)) {
+            'INDI' => $this->individual($document, $id, $key),
+            'FAM' => $this->family($document, $id, $key),
+            default => null,
+        };
+    }
+
+    public function end(): array
+    {
+        foreach ($this->families as $family) {
+            $this->childrenBornBeforeParents($this->ints($family));
+        }
+        $pairs = $this->ints($this->childOf);
+        for ($i = 0, $n = count($pairs); $i < $n; $i += 2) {
+            foreach ($this->ints($this->spousesOf[$pairs[$i + 1]] ?? '') as $parent) {
+                $this->addParent($pairs[$i], $parent);
             }
         }
-
-        /** @var array<int, array{int, array{int, int}}> $births individual => DATE line and its range */
-        $births = [];
-        /** @var array<int, list<int>> $parents individual => parents */
-        $parents = [];
-        foreach ($records as $id) {
-            match ($document->tagOf($id)) {
-                'INDI' => $this->individual($document, $id, $records, $births, $parents, $out),
-                'FAM' => $this->family($document, $id, $records, $parents),
-                default => null,
-            };
-        }
-
-        foreach ($records as $id) {
-            if ($document->tagOf($id) === 'FAM') {
-                $this->childrenBornBeforeParents($document, $id, $records, $births, $out);
-            }
-        }
-        $this->cycles($document, $parents, $out);
+        $this->cycles($this->out);
+        $out = $this->out;
+        $this->reset();
 
         return $out;
     }
 
-    /**
-     * @param array<string, int> $records
-     * @param array<int, array{int, array{int, int}}> $births
-     * @param array<int, list<int>> $parents
-     * @param list<Diagnostic> $out
-     */
-    private function individual(Document $document, int $id, array $records, array &$births, array &$parents, array &$out): void
+    private function reset(): void
     {
-        $death = null;
+        $this->bornFrom = $this->bornTo = $this->parents = $this->spousesOf = $this->families = $this->out = [];
+        $this->childOf = '';
+    }
+
+    private function individual(Document $document, int $id, int $key): void
+    {
+        $birth = $death = null;
         foreach ($document->childIds($id) as $child) {
             $tag = $document->tagOf($child);
-            if ($tag === 'BIRT' && !isset($births[$id])) {
-                $date = $this->date($document, $child);
-                if ($date !== null) {
-                    $births[$id] = $date;
-                }
+            if ($tag === 'BIRT' && $birth === null) {
+                $birth = $this->date($document, $child);
             } elseif ($tag === 'DEAT' && $death === null) {
                 $death = $this->date($document, $child);
             } elseif ($tag === 'FAMC') {
-                $family = $records[(string) $document->payloadOf($child)] ?? null;
-                if ($family !== null && $document->tagOf($family) === 'FAM') {
-                    foreach ($this->spouses($document, $family, $records) as $parent) {
-                        $parents[$id][] = $parent;
+                $family = $this->records->find((string) $document->payloadOf($child));
+                if ($family !== null && $this->records->tag($family) === 'FAM') {
+                    $this->childOf .= pack('NN', $key, $family);
+                }
+            }
+        }
+        if ($birth !== null) {
+            [$this->bornFrom[$key], $this->bornTo[$key]] = $birth[1];
+            if ($death !== null && $birth[1][0] > $death[1][1]) {
+                $this->out[] = $this->diagnostic($document, 'KV5001', 'Birth is after the death on line ' . $document->lineOf($death[0]), $birth[0]);
+            }
+        }
+    }
+
+    private function family(Document $document, int $id, int $key): void
+    {
+        $spouses = $this->spouses($document, $id);
+        $this->spousesOf[$key] = pack('N*', ...$spouses);
+        $partners = [];
+        $children = '';
+        foreach ($document->childIds($id) as $line) {
+            $tag = $document->tagOf($line);
+            if ($tag === 'HUSB' || $tag === 'WIFE') {
+                $record = $this->records->find((string) $document->payloadOf($line));
+                if ($record !== null) {
+                    $partners[] = $tag === 'HUSB' ? 0 : 1;
+                    $partners[] = $record;
+                }
+            } elseif ($tag === 'CHIL') {
+                $individual = $this->individualAt($document, $line);
+                if ($individual !== null) {
+                    $children .= pack('NN', $line, $individual);
+                    foreach ($spouses as $parent) {
+                        $this->addParent($individual, $parent);
                     }
                 }
             }
         }
-        if (isset($births[$id]) && $death !== null && $births[$id][1][0] > $death[1][1]) {
-            $out[] = $this->diagnostic($document, 'KV5001', 'Birth is after the death on line ' . $document->lineOf($death[0]), $births[$id][0]);
-        }
+        $this->families[] = pack('NN', $key, count($partners) >> 1) . pack('N*', ...$partners) . $children;
     }
 
-    /**
-     * @param array<string, int> $records
-     * @param array<int, list<int>> $parents
-     */
-    private function family(Document $document, int $id, array $records, array &$parents): void
+    /** @return list<int> */
+    private function ints(string $packed): array
     {
-        $spouses = $this->spouses($document, $id, $records);
-        foreach ($this->children($document, $id, $records) as $child) {
-            foreach ($spouses as $parent) {
-                $parents[$child[1]][] = $parent;
+        $ints = [];
+        foreach ($packed === '' ? [] : (array) unpack('N*', $packed) as $int) {
+            if (is_int($int)) {
+                $ints[] = $int;
             }
         }
+
+        return $ints;
     }
 
-    /**
-     * @param array<string, int> $records
-     * @param array<int, array{int, array{int, int}}> $births
-     * @param list<Diagnostic> $out
-     */
-    private function childrenBornBeforeParents(Document $document, int $family, array $records, array $births, array &$out): void
+    private function addParent(int $child, int $parent): void
     {
+        $this->parents[$child] = ($this->parents[$child] ?? '') . pack('N', $parent);
+    }
+
+    /** @param list<int> $family as packed in {@see self::$families} */
+    private function childrenBornBeforeParents(array $family): void
+    {
+        // The last HUSB and the last WIFE with a birth date, in the order the tags first occur.
         $spouses = [];
-        foreach ($document->childIds($family) as $line) {
-            $tag = $document->tagOf($line);
-            $parent = $records[(string) $document->payloadOf($line)] ?? null;
-            if (($tag === 'HUSB' || $tag === 'WIFE') && $parent !== null && isset($births[$parent])) {
-                $spouses[$tag] = $parent;
+        $end = 2 + 2 * $family[1];
+        for ($i = 2; $i < $end; $i += 2) {
+            if (isset($this->bornFrom[$family[$i + 1]])) {
+                $spouses[self::PARTNERS[$family[$i]]] = $family[$i + 1];
             }
         }
-        foreach ($this->children($document, $family, $records) as [$line, $child]) {
-            if (!isset($births[$child])) {
+        for ($i = $end, $n = count($family); $i < $n; $i += 2) {
+            $child = $family[$i + 1];
+            if (!isset($this->bornTo[$child])) {
                 continue;
             }
             foreach ($spouses as $tag => $parent) {
-                if ($births[$child][1][1] < $births[$parent][1][0]) {
-                    $out[] = $this->diagnostic($document, 'KV5002', "The child is born before {$tag} " . $document->xrefOf($parent), $line);
+                if ($this->bornTo[$child] < $this->bornFrom[$parent]) {
+                    [$document] = $this->records->get($family[0]);
+                    [$parentDocument, $parentId] = $this->records->get($parent);
+                    $this->out[] = $this->diagnostic($document, 'KV5002', "The child is born before {$tag} " . $parentDocument->xrefOf($parentId), $family[$i]);
                 }
             }
         }
@@ -132,17 +192,18 @@ final class PlausibilityRule implements Rule
      * child → parent (Tarjan's algorithm without recursion), each reported once, at its first
      * individual.
      *
-     * @param array<int, list<int>> $parents
      * @param list<Diagnostic> $out
      */
-    private function cycles(Document $document, array $parents, array &$out): void
+    private function cycles(array &$out): void
     {
         $index = [];
         $low = [];
         $onStack = [];
         $stack = [];
         $next = 0;
-        foreach (array_keys($parents) as $start) {
+        /** @var array<int, list<int>> $edgesOf parents of the individuals on the path */
+        $edgesOf = [];
+        foreach (array_keys($this->parents) as $start) {
             if (isset($index[$start])) {
                 continue;
             }
@@ -155,7 +216,7 @@ final class PlausibilityRule implements Rule
             $onStack[$start] = true;
             while ($work !== []) {
                 $node = $work[count($work) - 1];
-                $edges = $parents[$node] ?? [];
+                $edges = $edgesOf[$node] ??= $this->ints($this->parents[$node] ?? '');
                 $position = $visited[$node];
                 if ($position < count($edges)) {
                     $visited[$node] = $position + 1;
@@ -172,6 +233,7 @@ final class PlausibilityRule implements Rule
                     continue;
                 }
                 array_pop($work);
+                unset($edgesOf[$node]);
                 if ($work !== []) {
                     $caller = $work[count($work) - 1];
                     $low[$caller] = min($low[$caller], $low[$node]);
@@ -188,24 +250,21 @@ final class PlausibilityRule implements Rule
                     $first = min($first, $member);
                 } while ($member !== $node);
                 if ($size > 1 || in_array($node, $edges, true)) {
-                    $out[] = $this->diagnostic($document, 'KV5003', "The individual is their own ancestor (a cycle of {$size} individual" . ($size > 1 ? 's' : '') . ')', $first);
+                    [$document, $id] = $this->records->get($first);
+                    $out[] = $this->diagnostic($document, 'KV5003', "The individual is their own ancestor (a cycle of {$size} individual" . ($size > 1 ? 's' : '') . ')', $id);
                 }
             }
         }
     }
 
-    /**
-     * @param array<string, int> $records
-     *
-     * @return list<int> the individuals HUSB and WIFE of a family point to
-     */
-    private function spouses(Document $document, int $family, array $records): array
+    /** @return list<int> the individuals HUSB and WIFE of a family point to */
+    private function spouses(Document $document, int $family): array
     {
         $spouses = [];
         foreach ($document->childIds($family) as $line) {
             $tag = $document->tagOf($line);
             if ($tag === 'HUSB' || $tag === 'WIFE') {
-                $individual = $this->individualAt($document, $line, $records);
+                $individual = $this->individualAt($document, $line);
                 if ($individual !== null) {
                     $spouses[] = $individual;
                 }
@@ -215,32 +274,11 @@ final class PlausibilityRule implements Rule
         return $spouses;
     }
 
-    /**
-     * @param array<string, int> $records
-     *
-     * @return list<array{int, int}> CHIL lines and the individuals they point to
-     */
-    private function children(Document $document, int $family, array $records): array
+    private function individualAt(Document $document, int $line): ?int
     {
-        $children = [];
-        foreach ($document->childIds($family) as $line) {
-            if ($document->tagOf($line) === 'CHIL') {
-                $individual = $this->individualAt($document, $line, $records);
-                if ($individual !== null) {
-                    $children[] = [$line, $individual];
-                }
-            }
-        }
+        $record = $this->records->find((string) $document->payloadOf($line));
 
-        return $children;
-    }
-
-    /** @param array<string, int> $records */
-    private function individualAt(Document $document, int $line, array $records): ?int
-    {
-        $record = $records[(string) $document->payloadOf($line)] ?? null;
-
-        return $record !== null && $document->tagOf($record) === 'INDI' ? $record : null;
+        return $record !== null && $this->records->tag($record) === 'INDI' ? $record : null;
     }
 
     /** @return ?array{int, array{int, int}} the DATE line of an event and its range */

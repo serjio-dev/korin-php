@@ -10,6 +10,7 @@ use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Spec\Structure;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Syntax\Escaping;
+use Korin\Gedcom\Validation\Records\Records;
 use Korin\Gedcom\Version;
 
 /**
@@ -28,19 +29,32 @@ final class ValueRule implements Rule
     /** @var array<string, array{bool, bool, list<string>, ?string}> structure URI => payload alternatives, see shape() */
     private array $shapes = [];
 
-    public function check(Document $document, Profile $profile): array
+    private Profile $profile;
+
+    private PayloadTypes $types;
+
+    /** @var list<Diagnostic> */
+    private array $out = [];
+
+    public function begin(Records $records, Profile $profile): void
     {
         $this->shapes = [];
-        $types = $profile->version() === Version::V7_0 ? new Payloads7($profile) : new Payloads5($profile);
-        $out = [];
-        foreach ($document->childIds(0) as $id) {
-            $record = $profile->record($document->tagOf($id));
-            if ($record !== null && !$document->isInvalid($id)) {
-                $this->structure($document, $profile, $types, $id, $profile->structure($record->uri), $out);
-            }
-        }
+        $this->profile = $profile;
+        $this->types = $profile->version() === Version::V7_0 ? new Payloads7($profile) : new Payloads5($profile);
+        $this->out = [];
+    }
 
-        return $out;
+    public function record(Document $document, int $id, int $key): void
+    {
+        $record = $this->profile->record($document->tagOf($id));
+        if ($record !== null && !$document->isInvalid($id)) {
+            $this->structure($document, $this->profile, $this->types, $id, $this->profile->structure($record->uri), $this->out);
+        }
+    }
+
+    public function end(): array
+    {
+        return $this->out;
     }
 
     /** @param list<Diagnostic> $out */

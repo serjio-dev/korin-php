@@ -11,6 +11,7 @@ use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Severity;
 use Korin\Gedcom\Tests\Support\Fingerprint;
 use Korin\Gedcom\Tests\Support\Ops;
+use Korin\Gedcom\Validation\ValidationOptions;
 use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -24,7 +25,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class CorpusTest extends TestCase
 {
-    private const IMPLEMENTED = ['read', 'roundtrip-preserve', 'roundtrip-stream', 'fingerprint', 'validate', 'edit', 'convert', 'convert-stream'];
+    private const IMPLEMENTED = ['read', 'roundtrip-preserve', 'roundtrip-stream', 'fingerprint', 'validate', 'validate-indexed', 'edit', 'convert', 'convert-stream'];
 
     /** @return iterable<string, array{string, string, array<string, mixed>, ?array{to: string, expected: string, losses: string}}> */
     public static function cases(): iterable
@@ -79,6 +80,7 @@ final class CorpusTest extends TestCase
             'roundtrip-stream' => $this->checkStream($dir . '/' . $input['file'], $bytes, $document),
             'fingerprint' => self::assertEquals(json_decode((string) file_get_contents($dir . '/fingerprint.json'), true), Fingerprint::of($document)),
             'validate' => $this->checkValidate($document, $case),
+            'validate-indexed' => $this->checkValidateIndexed($document, $dir . '/' . $input['file']),
             'edit' => $this->checkEdit($document, $dir),
             'convert' => $this->checkConvert($document, $dir, $conversion ?? self::fail('No conversion')),
             'convert-stream' => $this->checkConvertStream($document, $dir . '/' . $input['file'], $conversion ?? self::fail('No conversion')),
@@ -149,6 +151,15 @@ final class CorpusTest extends TestCase
                 $codes = array_map(static fn(Diagnostic $x): string => $x->code, array_filter($diagnostics, static fn(Diagnostic $x): bool => $x->path === ($d['path'] ?? null)));
                 self::assertContains($d['code'], $codes, $summary);
             }
+        }
+    }
+
+    /** The file opened with an index gives the diagnostics of the document, plausibility checks included. */
+    private function checkValidateIndexed(\Korin\Gedcom\Syntax\Document $document, string $path): void
+    {
+        foreach ([new ValidationOptions(), (new ValidationOptions())->withPlausibility()] as $options) {
+            $expected = array_map(strval(...), Gedcom::validate($document, $options)->diagnostics());
+            self::assertSame($expected, array_map(strval(...), Gedcom::validate(Gedcom::open($path), $options)->diagnostics()));
         }
     }
 

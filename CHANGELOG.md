@@ -31,6 +31,11 @@ break the API; such changes are described in `UPGRADE.md`.
   and `convert()`). HEAD takes along the records its rules move (SUBN into `HEAD._SUBN`, the
   5.5.5 submitter after HEAD); the records a conversion adds wait in `php://temp` for `TRLR`. A
   file whose first record is not HEAD is converted whole.
+- `Gedcom::validate()` takes an `open()` document: the file is checked record by record, read
+  once, with the report of the whole document (the `validate-indexed` corpus
+  check): 64 MB and 10.7 s for 50 MB, plausibility checks included. The rules visit the
+  records in order and keep what the checks between records need packed; the validation of a
+  `Document` is as fast as before.
 
 ### Changed
 

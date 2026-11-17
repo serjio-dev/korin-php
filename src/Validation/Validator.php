@@ -7,6 +7,9 @@ namespace Korin\Gedcom\Validation;
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Syntax\IndexedDocument;
+use Korin\Gedcom\Validation\Records\DocumentRecords;
+use Korin\Gedcom\Validation\Records\IndexedRecords;
 use Korin\Gedcom\Validation\Rule\FileRule;
 use Korin\Gedcom\Validation\Rule\PlausibilityRule;
 use Korin\Gedcom\Validation\Rule\ReferenceRule;
@@ -15,7 +18,8 @@ use Korin\Gedcom\Validation\Rule\StructureRule;
 use Korin\Gedcom\Validation\Rule\ValueRule;
 
 /**
- * Checks a document against the profile of its version. The report starts with the syntax
+ * Checks a document, or an indexed file, against the profile of its version: every rule sees
+ * the records one at a time, in order. The report starts with the syntax
  * diagnostics found while reading (KV1xxx); the document itself is never changed. The
  * plausibility checks (KV5xxx) run only when the options ask for them.
  */
@@ -29,15 +33,23 @@ final readonly class Validator
         $this->rules = [new FileRule(), new StructureRule(), new ValueRule(), new ReferenceRule()];
     }
 
-    public function validate(Document $document, ValidationOptions $options = new ValidationOptions()): ValidationReport
+    /** An indexed file is read once, record by record; the records a check looks up are read from it again unless cached. */
+    public function validate(Document|IndexedDocument $document, ValidationOptions $options = new ValidationOptions()): ValidationReport
     {
-        $diagnostics = $document->diagnostics();
-        $profile = Profile::for($document->version());
+        $records = $document instanceof Document ? new DocumentRecords($document) : new IndexedRecords($document);
+        $profile = Profile::for($records->version());
         $rules = $options->plausibility ? [...$this->rules, new PlausibilityRule()] : $this->rules;
         foreach ($rules as $rule) {
-            foreach ($rule->check($document, $profile) as $diagnostic) {
-                $diagnostics[] = $diagnostic;
+            $rule->begin($records, $profile);
+        }
+        foreach ($records->all() as $key => [$recordDocument, $id]) {
+            foreach ($rules as $rule) {
+                $rule->record($recordDocument, $id, $key);
             }
+        }
+        $diagnostics = $records->diagnostics();
+        foreach ($rules as $rule) {
+            array_push($diagnostics, ...$rule->end());
         }
 
         $reported = [];

@@ -109,6 +109,7 @@ $doc = Gedcom::open('huge.ged');
 echo $doc->find('@I1@/NAME')?->value(), PHP_EOL;
 $family = $doc->record('@F1@');             // parsed from the file, the last 1000 records cached
 $copy = $family?->document()->copy();       // an editable copy of the record
+$report = Gedcom::validate($doc);           // record by record, the report of the whole document
 ```
 
 `Gedcom::convertFile()` converts record by record, with the output and loss report of `convert()`:
@@ -130,6 +131,8 @@ Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-ser
 | Streaming read, 10 MB / 50 MB UTF-8 | 2.3 MB | 0.58 s / 2.9 s |
 | `open()` index, 10 MB / 50 MB UTF-8; then an uncached record | 7.8 MB / 27 MB | 0.14 s / 0.72 s; 11 µs |
 | `convertFile()` to 7.0, 10 MB / 50 MB | 14 MB / 43 MB | 1.8 s / 9.0 s |
+| Validation of a document read, 10 MB, plausibility included (document included) | 76 MB | 1.3 s |
+| `open()` and validation, 10 MB / 50 MB, plausibility included | 15 MB / 64 MB | 2.2 s / 10.7 s |
 
 The 1.0 target for a full read of 50 MB is ≤ 512 MB and ≤ 20 s.
 Run the benchmarks with `composer bench`.

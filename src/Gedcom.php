@@ -81,8 +81,11 @@ final class Gedcom
         return (new Parser())->parse($bytes, $options);
     }
 
-    /** Checks the document against the profile of its version; the document is not changed. */
-    public static function validate(Document $document, ValidationOptions $options = new ValidationOptions()): ValidationReport
+    /**
+     * Checks the document against the profile of its version; the document is not changed. An
+     * indexed file ({@see self::open()}) is checked record by record, without its tree in memory.
+     */
+    public static function validate(Document|IndexedDocument $document, ValidationOptions $options = new ValidationOptions()): ValidationReport
     {
         return (new Validator())->validate($document, $options);
     }
