@@ -8,8 +8,8 @@ use Korin\Gedcom\Exception\InvalidValueException;
 use Korin\Gedcom\Version;
 
 /**
- * An age at an event: a duration in years, months, weeks and days, "<" or ">" before it, or a
- * 5.x word (CHILD, INFANT, STILLBORN), and a phrase. The same value object for every version:
+ * An age at an event: a duration in years, months, weeks and days, or a 5.x word (CHILD,
+ * INFANT, STILLBORN), with "<" or ">" before it, and a phrase. The same value object for every version:
  * {@see self::parse()} reads the grammar of a version, {@see self::toGedcom()} writes it. The
  * phrase is the 7.0 PHRASE substructure; 5.x has none.
  */
@@ -30,8 +30,8 @@ final readonly class Age implements \Stringable
     ) {
         $durations = array_filter([$years, $months, $weeks, $days], static fn(?int $n): bool => $n !== null);
         if (array_filter($durations, static fn(int $n): bool => $n < 0) !== [] || $phrase === ''
-            || ($word !== null && ($durations !== [] || $bound !== null || !in_array($word, [self::CHILD, self::INFANT, self::STILLBORN], true)))
-            || ($bound !== null && $durations === [])) {
+            || ($word !== null && ($durations !== [] || !in_array($word, [self::CHILD, self::INFANT, self::STILLBORN], true)))
+            || ($bound !== null && $durations === [] && $word === null)) {
             throw new InvalidValueException('Not an age: a duration with an optional bound, or one of CHILD, INFANT, STILLBORN');
         }
     }
@@ -47,16 +47,17 @@ final readonly class Age implements \Stringable
         if (!Grammars::isAge($version, $value)) {
             return null;
         }
-        $upper = strtoupper(trim($value));
+        $bound = preg_match('/^([<>])/', $value, $m) === 1 ? AgeBound::from($m[1]) : null;
+        // 5.x: "<CHILD" is in the grammar too.
+        $upper = strtoupper(ltrim($value, '<> '));
         if (in_array($upper, [self::CHILD, self::INFANT, self::STILLBORN], true)) {
-            return new self(word: $upper);
+            return new self(bound: $bound, word: $upper);
         }
         preg_match_all('/([0-9]+)([ymwd])/i', $value, $parts, PREG_SET_ORDER);
         $units = [];
         foreach ($parts as [, $number, $unit]) {
             $units[strtolower($unit)] = (int) $number;
         }
-        $bound = preg_match('/^([<>])/', $value, $m) === 1 ? AgeBound::from($m[1]) : null;
 
         return new self($units['y'] ?? null, $units['m'] ?? null, $units['w'] ?? null, $units['d'] ?? null, $bound);
     }
@@ -81,18 +82,14 @@ final readonly class Age implements \Stringable
      */
     public function toGedcom(Version $version = Version::V7_0): string
     {
-        if ($this->word !== null) {
-            $value = $this->word;
-        } else {
-            $parts = [];
-            foreach (['y' => $this->years, 'm' => $this->months, 'w' => $this->weeks, 'd' => $this->days] as $unit => $number) {
-                if ($number !== null) {
-                    $parts[] = $number . $unit;
-                }
+        $parts = $this->word === null ? [] : [$this->word];
+        foreach (['y' => $this->years, 'm' => $this->months, 'w' => $this->weeks, 'd' => $this->days] as $unit => $number) {
+            if ($number !== null) {
+                $parts[] = $number . $unit;
             }
-            $space = $version === Version::V5_5 || $version === Version::V5_5_1 ? '' : ' ';
-            $value = ($this->bound === null ? '' : $this->bound->value . $space) . implode(' ', $parts);
         }
+        $space = $version === Version::V5_5 || $version === Version::V5_5_1 ? '' : ' ';
+        $value = ($this->bound === null ? '' : $this->bound->value . $space) . implode(' ', $parts);
         if (!Grammars::isAge($version, $value)) {
             throw new InvalidValueException("The age cannot be written in GEDCOM {$version->value}");
         }

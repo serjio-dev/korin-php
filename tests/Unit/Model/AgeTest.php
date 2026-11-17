@@ -24,6 +24,8 @@ final class AgeTest extends TestCase
         yield 'uppercase units' => ['1Y 2M', Version::V5_5_1, new Age(1, 2), '1y 2m', '1y 2m'];
         yield 'word' => ['child', Version::V5_5_1, new Age(word: Age::CHILD), '!', 'CHILD'];
         yield 'empty, 7.0' => ['', Version::V7_0, new Age(), '', '!'];
+        yield 'word with a bound' => ['<CHILD', Version::V5_5_1, new Age(bound: AgeBound::Less, word: Age::CHILD), '!', '<CHILD'];
+        yield 'word with a bound, 5.5.5' => ['< INFANT', Version::V5_5_5, new Age(bound: AgeBound::Less, word: Age::INFANT), '!', '<INFANT'];
         yield '5.5.5' => ['< 8y', Version::V5_5_5, new Age(8, bound: AgeBound::Less), '< 8y', '<8y'];
     }
 

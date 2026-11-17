@@ -8,6 +8,7 @@ use Korin\Gedcom\Exception\InvalidValueException;
 use Korin\Gedcom\Model\Date;
 use Korin\Gedcom\Model\DateKind;
 use Korin\Gedcom\Model\GedcomDate;
+use Korin\Gedcom\Spec\JulianDays;
 use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -64,6 +65,8 @@ final class GedcomDateTest extends TestCase
         yield 'dual year not the next one' => ['1701/99', Version::V5_5_1];
         yield 'text' => ['spring 1900', Version::V5_5_1];
         yield '7.0 INT' => ['INT 1900 (x)', Version::V7_0];
+        yield 'Roman day 0, in the grammar' => ['@#DROMAN@ 0 IUL 753', Version::V5_5_1];
+        yield 'unknown calendar, dual year not after the year' => ['@#DUNKNOWN@ 1648/48', Version::V5_5_1];
     }
 
     #[Test]
@@ -110,18 +113,20 @@ final class GedcomDateTest extends TestCase
     #[Test]
     public function daysAreThoseTheDateCanMean(): void
     {
-        $first = Date::julianDay(1907, 1, 1, false);
+        $first = JulianDays::day(1907, 1, 1, false);
 
         self::assertSame([$first, $first + 364], GedcomDate::parse('1907')->days());
         self::assertSame([$first + 339, $first + 339], GedcomDate::parse('6 DEC 1907')->days());
         self::assertSame([PHP_INT_MIN, $first + 364], GedcomDate::parse('BEF 1907')->days());
         self::assertSame([$first, PHP_INT_MAX], GedcomDate::parse('FROM 1907')->days());
-        self::assertSame([$first, Date::julianDay(1909, 12, 31, false)], GedcomDate::parse('BET 1907 AND 1909')->days());
+        self::assertSame([$first, JulianDays::day(1909, 12, 31, false)], GedcomDate::parse('BET 1907 AND 1909')->days());
         self::assertSame([$first + 13, $first + 13], GedcomDate::parse('JULIAN 1 JAN 1907')->days(), 'Julian is 13 days behind');
         self::assertSame(GedcomDate::parse('1649')->days(), GedcomDate::parse('1648/49', Version::V5_5_1)->days());
         self::assertNull(GedcomDate::parse('ABT 1907')->days());
         self::assertNull(GedcomDate::parse('HEBREW 5700')->days());
         self::assertNull(GedcomDate::parse('')->days());
+        self::assertNull(GedcomDate::parse('99999999999999999999')->days(), 'Years beyond 9999 are not compared');
+        self::assertNull(GedcomDate::parse('5000 BCE')->days());
     }
 
     #[Test]

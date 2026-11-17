@@ -24,7 +24,8 @@ final readonly class DateGrammar
     /** No known calendar has a month longer than this (section 2.6). */
     private const MAX_DAY = 36;
 
-    private const DATE = '/^(?:(GREGORIAN|JULIAN|FRENCH_R|HEBREW|_[A-Z0-9_]+) )?(?:(?:([0-9]+) )?([A-Z][A-Z0-9_]*|_[A-Z0-9_]+) )?([0-9]+)(?: (BCE|_[A-Z0-9_]+))?$/';
+    /** One date: calendar, day, month, year, epoch; also read by {@see \Korin\Gedcom\Model\GedcomDate}. */
+    public const DATE = '/^(?:(GREGORIAN|JULIAN|FRENCH_R|HEBREW|_[A-Z0-9_]+) )?(?:(?:([0-9]+) )?([A-Z][A-Z0-9_]*|_[A-Z0-9_]+) )?([0-9]+)(?: (BCE|_[A-Z0-9_]+))?$/';
 
     /** Longest month lengths, in days; February is checked against the year. */
     private const MONTH_DAYS = [

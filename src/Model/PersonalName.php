@@ -31,6 +31,10 @@ final readonly class PersonalName implements \Stringable
         if ($surname === null && $suffix !== '') {
             throw new InvalidValueException('A name without a surname has no text after it');
         }
+        // The space between the parts and the surname is not part of them: the name reads back the same.
+        if ($surname !== null && (str_ends_with($given, ' ') || str_starts_with($suffix, ' '))) {
+            throw new InvalidValueException('The text before the surname does not end with a space, the text after it does not start with one');
+        }
     }
 
     /** "Анна", "Коваль": "Анна /Коваль/". */
@@ -77,7 +81,7 @@ final readonly class PersonalName implements \Stringable
             return $this->given;
         }
 
-        return ltrim($this->given . ' /') . $this->surname . rtrim('/ ' . $this->suffix);
+        return ($this->given === '' ? '/' : $this->given . ' /') . $this->surname . ($this->suffix === '' ? '/' : '/ ' . $this->suffix);
     }
 
     public function __toString(): string
