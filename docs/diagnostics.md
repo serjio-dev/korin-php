@@ -53,6 +53,7 @@ or for 5.x a place in the grammar of the specification such as
 | `KV2002` | error | A substructure occurs more often than allowed; reported once, at the first extra occurrence |
 | `KV2003` | error | A required substructure is missing; reported at the structure that lacks it. A missing required record (5.5.5: `SUBM`) is reported for the file, without a line |
 | `KV2004` | error | 5.5.5: the `SUBM` record does not directly follow `HEAD`; reported at the first `SUBM` record. Extension records do not count |
+| `KV2005` | warning | 7.0: a structure or value the specification deprecates: `ADR1`, `ADR2`, `ADR3`, `HEAD.SOUR.DATA`, `EXID` without `TYPE`, and the `STAT` values `COMPLETED`, `EXCLUDED`, `INFANT`, `PRE_1970`, `SUBMITTED`, `UNCLEARED`. The message says what to write instead where the specification does. The list is [spec/7.0/deprecations.yaml](https://github.com/serjio-dev/korin-php/blob/main/spec/7.0/deprecations.yaml) |
 
 Every code can be left out or reported with another severity:
 
@@ -69,7 +70,8 @@ quote a value, except an enumeration value shortened to 20 characters.
 
 - 7.0: the data types of specification chapter 2. Dates follow the `DateValue`, `DatePeriod`
   and `DateExact` grammars with the months and epochs of their calendar (`GREGORIAN` when none
-  is given; extension calendars must use extension months).
+  is given). The months, epochs and days of an extension calendar are not checked, nor extension
+  months and epochs in a standard calendar.
 - 5.5 and 5.5.1: the primitive elements of `spec/<version>/primitives.yaml`; other elements are text, and
   field sizes are recommendations, not checked. Enumerations, date keywords and months are
   case-insensitive. Dates are `DATE_VALUE`, `DATE_PERIOD` or `DATE_EXACT` with calendar escapes
@@ -102,6 +104,13 @@ quote a value, except an enumeration value shortened to 20 characters.
 
 Reported by `Gedcom::validate()` in every version; `KV4003` needs the version's profile. Xrefs are
 case-sensitive (`@test@` is not `@TEST@`). In 7.0 `@VOID@` is a null pointer and never dangles.
+
+**7.0 tag definitions.** A documented extension tag is an abbreviation for its URI (specification
+chapter 1, "Extension tags"). When `HEAD.SCHMA` gives an extension tag the URI of a standard
+record type, calendar or month, it is checked as that: after `2 TAG _USER
+https://gedcom.io/terms/v7/record-SUBM`, `SUBM @U1@` may point to `0 @U1@ _USER` (its contents
+are an extension's and are not checked), and after `2 TAG _CAL https://gedcom.io/terms/v7/cal-JULIAN`
+the date `_CAL 1 MAR 1700` is a Julian date.
 
 | Code | Severity | Meaning |
 | --- | --- | --- |

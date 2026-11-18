@@ -1,0 +1,29 @@
+# Structures and enumeration values GEDCOM 7.0 deprecates, reported as KV2005 (docs/diagnostics.md).
+# Our transcription: the term files in terms/ say it in prose only. Each entry names the term file
+# that says it (`source`); bin/generate-profiles.php fails when a term file marks a deprecation
+# ("deprecation" note or "Status: Deprecated") that no entry names, so a new 7.0.x release cannot
+# add one unnoticed. `use` is what the specification says to write instead.
+
+# Deprecated wherever they occur.
+structures:
+  https://gedcom.io/terms/v7/ADR1: { source: ADR1, use: the ADDR value }
+  https://gedcom.io/terms/v7/ADR2: { source: ADR2, use: the ADDR value }
+  https://gedcom.io/terms/v7/ADR3: { source: ADR3, use: the ADDR value }
+  https://gedcom.io/terms/v7/HEAD-SOUR-DATA: { source: HEAD, use: HEAD.SOUR.NAME }
+
+# Deprecated enumeration values.
+values:
+  https://gedcom.io/terms/v7/enum-COMPLETED: { source: enum-COMPLETED, use: DATE BEF date }
+  https://gedcom.io/terms/v7/enum-EXCLUDED: { source: enum-EXCLUDED }
+  https://gedcom.io/terms/v7/enum-INFANT: { source: enum-INFANT, use: CHILD }
+  https://gedcom.io/terms/v7/enum-PRE_1970: { source: enum-PRE_1970, use: DATE BEF 1970 }
+  https://gedcom.io/terms/v7/enum-SUBMITTED: { source: enum-SUBMITTED }
+  https://gedcom.io/terms/v7/enum-UNCLEARED: { source: enum-UNCLEARED }
+
+# Deprecated without this substructure. The note on EXID is in the PLAC term file of v7.0.18
+# (and in ADDR for ADR1–3): the extraction put it after the structure it follows in the specification.
+without:
+  https://gedcom.io/terms/v7/EXID: { source: PLAC, substructure: https://gedcom.io/terms/v7/EXID-TYPE }
+
+# Term files whose deprecation note is about other structures, listed above.
+about-others: [ADDR]

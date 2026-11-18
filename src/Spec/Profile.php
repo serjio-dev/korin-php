@@ -20,7 +20,9 @@ use Korin\Gedcom\Version;
  *     types: array<string, string>,
  *     sizes: array<string, array{int, int}>,
  *     listed?: array<string, list<string>>,
- *     calendars: array<string, array{uri: string, months: list<string>, epochs: list<string>}>
+ *     calendars: array<string, array{uri: string, months: list<string>, epochs: list<string>}>,
+ *     months?: array<string, string>,
+ *     deprecated?: array{structures: array<string, string>, values: array<string, array<string, string>>, without: array<string, string>}
  * }
  */
 final class Profile
@@ -160,6 +162,33 @@ final class Profile
     public function calendars(): array
     {
         return $this->data['calendars'];
+    }
+
+    /** @return array<string, string> 7.0: month URI => tag, of every calendar */
+    public function months(): array
+    {
+        return $this->data['months'] ?? [];
+    }
+
+    /**
+     * 7.0: what to write instead of a deprecated structure (spec/7.0/deprecations.yaml); '' when
+     * the specification names nothing, null when the structure is not deprecated.
+     */
+    public function deprecation(string $uri): ?string
+    {
+        return $this->data['deprecated']['structures'][$uri] ?? null;
+    }
+
+    /** 7.0: as deprecation(), for a value of an enumeration set. */
+    public function deprecatedValue(string $enumerationSet, string $value): ?string
+    {
+        return $this->data['deprecated']['values'][$enumerationSet][$value] ?? null;
+    }
+
+    /** 7.0: the tag of the substructure without which a structure is deprecated (EXID without TYPE). */
+    public function deprecatedWithout(string $uri): ?string
+    {
+        return $this->data['deprecated']['without'][$uri] ?? null;
     }
 
     /** @param array{string, int, int} $entry */

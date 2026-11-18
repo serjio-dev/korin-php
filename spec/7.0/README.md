@@ -7,3 +7,7 @@ specification repository: <https://github.com/FamilySearch/GEDCOM>, tag `v7.0.18
 
 To update, copy `extracted-files/tags/` of a newer 7.0.x tag over `terms/`, update the tag and
 commit above and in `bin/generate-profiles.php`, then run `php bin/generate-profiles.php`.
+
+`deprecations.yaml` is ours: the structures and values the specification deprecates (`KV2005`),
+which the term files say only in prose. The generator fails when a term file marks a deprecation
+that it does not list, so after an update, add what the new release deprecates there.

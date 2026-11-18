@@ -7,6 +7,25 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+### Added
+
+- `KV2005` (warning): 7.0 structures and values the specification deprecates (`ADR1`–`ADR3`,
+  `HEAD.SOUR.DATA`, `EXID` without `TYPE`, six `STAT` values), from `spec/7.0/deprecations.yaml`,
+  which `bin/generate-profiles.php` checks against the term files.
+- Validation of 7.0 reads `HEAD.SCHMA`: an extension tag defined with the URI of a standard
+  record type, calendar or month is checked as that (`_USER` for `record-SUBM` satisfies
+  `SUBM @U1@`, a date in `_CALENDRIER` for `cal-FRENCH_R` is a French Republican date).
+
+### Changed
+
+- 7.0 dates in an extension calendar may use any months and epochs (they were an error unless
+  extension tags, a rule the specification does not have).
+
+### Fixed
+
+- `maximal70.ged` and `extensions.ged` of gedcom.io are valid: `KV3005` and `KV4003` on their
+  documented extension tags are gone.
+
 ## [0.5.0] - 2026-11-18
 
 Old versions and tooling: GEDCOM 4.0 and the 5.0–5.4 drafts are read, documented mistakes of

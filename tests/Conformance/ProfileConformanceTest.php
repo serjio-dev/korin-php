@@ -39,7 +39,8 @@ final class ProfileConformanceTest extends TestCase
         $report = Gedcom::validate(Gedcom::parse($file, (new ReadOptions())->withVersion($version)));
         $actual = [];
         foreach ($report->diagnostics() as $diagnostic) {
-            if (preg_match('/^KV[234]/', $diagnostic->code) === 1 && $diagnostic->code !== 'KV4004') {
+            // Family links (KV4004) and deprecations (KV2005) are not what the cases are about.
+            if (preg_match('/^KV[234]/', $diagnostic->code) === 1 && !in_array($diagnostic->code, ['KV4004', 'KV2005'], true)) {
                 $actual[] = $diagnostic->code . ($diagnostic->line === null ? ' file' : " line {$diagnostic->line}");
             }
         }

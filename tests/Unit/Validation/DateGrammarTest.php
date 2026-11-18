@@ -53,7 +53,8 @@ final class DateGrammarTest extends TestCase
         yield 'period in a date value' => [$value, 'FROM 1670 TO JULIAN 1800', self::VALID];
         yield 'extension calendar' => [$value, '_ROMAN 18 _IDES 709', self::VALID];
         yield 'extension epoch' => [$value, '1200 _AH', self::VALID];
-        yield 'extension calendar with standard month' => [$value, '_ROMAN MAR 709', self::INVALID];
+        // Its months are not known: they are not checked (specification 1, "Extensions").
+        yield 'extension calendar with standard month' => [$value, '_ROMAN MAR 709', self::VALID];
         yield 'month of another calendar' => [$value, '1 TSH 1900', self::INVALID];
         yield 'epoch not in calendar' => [$value, 'HEBREW 100 BCE', self::INVALID];
         yield 'lower-case month' => [$value, '6 Dec 1907', self::INVALID];
@@ -101,5 +102,26 @@ final class DateGrammarTest extends TestCase
     public function grammar(string $type, string $value, int $expected): void
     {
         self::assertSame($expected, (new DateGrammar(Profile::for(Version::V7_0)->calendars()))->check($type, $value));
+    }
+
+    /** @return iterable<string, array{string, int}> */
+    public static function aliases(): iterable
+    {
+        yield 'calendar alias with its month' => ['_CALENDRIER 4 COMP 8', self::VALID];
+        yield 'calendar alias, day beyond its month' => ['_CALENDRIER 7 COMP 8', self::DAY];
+        yield 'calendar alias with a month of another calendar' => ['_CALENDRIER 4 JAN 8', self::INVALID];
+        yield 'month alias in its calendar' => ['FRENCH_R 2 _JOUR 8', self::VALID];
+        yield 'month alias in another calendar' => ['2 _JOUR 1900', self::INVALID];
+        yield 'both in a range' => ['BET FRENCH_R 2 _JOUR 8 AND _CALENDRIER 4 COMP 8', self::VALID];
+    }
+
+    /** Calendars and months that HEAD.SCHMA defines as standard ones (maximal70.ged of gedcom.io). */
+    #[Test]
+    #[DataProvider('aliases')]
+    public function documentedExtensionTagsAreTheirStandardTerms(string $value, int $expected): void
+    {
+        $grammar = new DateGrammar(Profile::for(Version::V7_0)->calendars(), ['_CALENDRIER' => 'FRENCH_R'], ['_JOUR' => 'COMP']);
+
+        self::assertSame($expected, $grammar->check('https://gedcom.io/terms/v7/type-Date', $value));
     }
 }
