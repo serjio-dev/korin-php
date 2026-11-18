@@ -6,12 +6,13 @@ without losing a single tag. Every unavoidable loss is reported.
 **Documentation:** [serjio-dev.github.io/korin-php](https://serjio-dev.github.io/korin-php/) —
 guides, reference and the [API](https://serjio-dev.github.io/korin-php/api/).
 
-> **Status: 0.4 — early development.** Reading, lossless writing, editing, validation and
+> **Status: 0.5 — early development.** Reading, lossless writing, editing, validation and
 > conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, also for files of any size (streaming
 > and indexed reading, streaming conversion), and the model: views of every record type with
-> dates, ages, names and places, and GEDZIP archives. Older versions (4.0, 5.0–5.4), vendor
-> dialects and a CLI come in 0.5 — see
-> [the specification](docs/SPEC.md) for the roadmap and [CHANGELOG.md](CHANGELOG.md) for releases.
+> dates, ages, names and places, and GEDZIP archives. GEDCOM 4.0 and the 5.0–5.4 drafts are read
+> too, and documented mistakes of vendor programs corrected. 1.0 follows once the acceptance
+> criteria of [the specification](docs/SPEC.md#14-milestones-and-acceptance-criteria) are met;
+> see [CHANGELOG.md](CHANGELOG.md) for releases.
 > Until 1.0 a minor release may break the API.
 
 ```php
@@ -208,6 +209,16 @@ $report = Gedcom::validate($doc);           // record by record, the report of t
 $losses = Gedcom::convertFile('huge.ged', 'huge-7.ged', Version::V7_0);
 ```
 
+## CLI
+
+[korin/gedcom-cli](https://github.com/serjio-dev/korin-cli) puts the library on the command
+line: `korin info`, `validate`, `convert` and `diff` ([guide](docs/guide/cli.md)).
+
+```bash
+composer global require korin/gedcom-cli
+korin validate family.ged --plausibility
+```
+
 ## Performance
 
 Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-series, no opcache):
@@ -217,13 +228,13 @@ Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-ser
 | Full read, 10 MB UTF-8 | 70 MB | 0.35 s |
 | Full read, 10 MB Windows-1251 | 105 MB | 0.52 s |
 | Full read, 50 MB UTF-8 (2.4 million lines) | 426 MB | 1.8 s |
-| Preserve-mode write of 10 MB, unchanged / 10% of surnames edited | 76 MB | 109 ms / 129 ms |
+| Preserve-mode write of 10 MB, unchanged / 10% of surnames edited | 76 MB | 112 ms / 130 ms |
 | Streaming read, 10 MB / 50 MB UTF-8 | 2.4 MB | 0.58 s / 2.9 s |
 | `open()` index, 10 MB / 50 MB UTF-8; then an uncached record | 7.8 MB / 27 MB | 0.14 s / 0.71 s; 10 µs |
 | `convert()` to 7.0 of a document read, 10 MB / 50 MB (memory with the document, time without the read) | 112 MB / 674 MB | 0.70 s / 3.6 s |
-| `convertFile()` to 7.0, 10 MB / 50 MB | 14 MB / 43 MB | 1.6 s / 8.2 s |
+| `convertFile()` to 7.0, 10 MB / 50 MB | 14 MB / 43 MB | 1.7 s / 8.4 s |
 | Validation of a document read, 10 MB, plausibility included (document included) | 76 MB | 1.3 s |
-| `open()` and validation, 10 MB / 50 MB, plausibility included | 15 MB / 64 MB | 2.1 s / 10.4 s |
+| `open()` and validation, 10 MB / 50 MB, plausibility included | 15 MB / 64 MB | 2.1 s / 10.6 s |
 
 The 1.0 target for a full read of 50 MB is ≤ 512 MB and ≤ 20 s.
 Run the benchmarks with `composer bench`.
