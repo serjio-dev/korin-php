@@ -3,6 +3,9 @@
 Read, validate, convert and write GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0 —
 without losing a single tag. Every unavoidable loss is reported.
 
+**Documentation:** [serjio-dev.github.io/korin-php](https://serjio-dev.github.io/korin-php/) —
+guides, reference and the [API](https://serjio-dev.github.io/korin-php/api/).
+
 > **Status: 0.4 — early development.** Reading, lossless writing, editing, validation and
 > conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, also for files of any size (streaming
 > and indexed reading, streaming conversion), and the model: views of every record type with
@@ -146,7 +149,8 @@ $archive->document();                    // gedcom.ged
 $archive->media('photos/anna%20k.jpg');  // a stream: FILE references are URIs, nothing goes to disk
 $archive->missing();                     // relative references with no entry (KV1204)
 
-Gedcom::writeGedzip($doc, 'family.gdz', ['photos/anna k.jpg' => '/path/to/anna.jpg']);
+$tree = Gedcom::convert($doc, Version::V7_0)->document();   // archives hold 7.0
+Gedcom::writeGedzip($tree, 'family-7.gdz', ['photos/anna k.jpg' => 'photos/anna k.jpg']);   // entry => file
 ```
 
 Archives are treated as hostile: entries with `..`, absolute paths, backslashes or drive
@@ -177,6 +181,7 @@ is a document of its own, with the lines and diagnostics `read()` would give it:
 
 ```php
 $stream = Gedcom::stream('huge.ged');       // a path or an open stream resource
+$out = fopen('copy.ged', 'wb');
 foreach ($stream as $record) {
     if ($record->tag() === 'INDI') {
         echo $record->xref(), ' ', $record->node()->first('NAME')?->value(), PHP_EOL;

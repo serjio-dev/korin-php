@@ -1,0 +1,59 @@
+site_name: Korin
+site_description: Lossless GEDCOM library for PHP
+site_url: https://serjio-dev.github.io/korin-php/
+repo_url: https://github.com/serjio-dev/korin-php
+repo_name: serjio-dev/korin-php
+edit_uri: edit/main/docs/
+docs_dir: docs
+site_dir: build/site
+strict: true
+validation:
+  anchors: warn
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+  palette:
+    - media: '(prefers-color-scheme: light)'
+      scheme: default
+      primary: brown
+      toggle: { icon: material/brightness-4, name: Dark mode }
+    - media: '(prefers-color-scheme: dark)'
+      scheme: slate
+      primary: brown
+      toggle: { icon: material/brightness-7, name: Light mode }
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  # Anchors as GitHub makes them, so links work in both ("4.0 → 5.5": #40--55).
+  - toc: { permalink: true, slugify: !!python/object/apply:pymdownx.slugs.slugify { kwds: { case: lower } } }
+  - pymdownx.highlight: { extend_pygments_lang: [{ name: php, lang: php, options: { startinline: true } }] }
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Guides:
+      - guide/reading.md
+      - guide/writing.md
+      - guide/validation.md
+      - guide/converting.md
+      - guide/model.md
+      - guide/large-files.md
+      - guide/gedzip.md
+      - guide/cli.md
+  - Reference:
+      - conversion.md
+      - losses.md
+      - diagnostics.md
+      - dialects.md
+      - API: https://serjio-dev.github.io/korin-php/api/
+  - Project:
+      - SPEC.md
+      - fuzzing.md
+      - comparison/liberu-php-gedcom.md
