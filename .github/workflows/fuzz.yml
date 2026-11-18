@@ -1,0 +1,54 @@
+name: fuzz
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: Minutes per target
+        default: '20'
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [read, values, decode, gedzip]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl, mbstring, zip
+          coverage: none
+          ini-values: memory_limit=4G
+      - uses: ramsey/composer-install@v3
+      # The corpus grows from night to night; seeds come from gedcom-corpus.
+      - uses: actions/cache@v4
+        with:
+          path: build/fuzz/${{ matrix.target }}
+          key: fuzz-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: fuzz-${{ matrix.target }}-
+      - run: php fuzz/seed.php
+      - name: Fuzz
+        run: |
+          mkdir -p build/fuzz/crashes && cd build/fuzz/crashes
+          timeout $(( ${MINUTES:-20} * 60 )) ../../../vendor/bin/php-fuzzer fuzz ../../../fuzz/${{ matrix.target }}.php ../${{ matrix.target }} > ../fuzz.log 2>&1 || true
+          grep -A3 CRASH ../fuzz.log | head -40 || true
+          ! ls crash-*.txt > /dev/null 2>&1
+        env:
+          MINUTES: ${{ inputs.minutes }}
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crashes-${{ matrix.target }}
+          path: |
+            build/fuzz/crashes
+            build/fuzz/fuzz.log

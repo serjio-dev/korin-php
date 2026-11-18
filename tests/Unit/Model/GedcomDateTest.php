@@ -125,7 +125,9 @@ final class GedcomDateTest extends TestCase
         self::assertNull(GedcomDate::parse('ABT 1907')->days());
         self::assertNull(GedcomDate::parse('HEBREW 5700')->days());
         self::assertNull(GedcomDate::parse('')->days());
-        self::assertNull(GedcomDate::parse('99999999999999999999')->days(), 'Years beyond 9999 are not compared');
+        self::assertNull(GedcomDate::parse('999999999')->days(), 'Years beyond 9999 are not compared');
+        self::assertNull(GedcomDate::tryParse('99999999999999999999'), 'A Date holds years up to Date::MAX_YEAR');
+        self::assertNull(GedcomDate::tryParse('1 JAN 99999999999999999998/99', Version::V5_5_1), 'Found by fuzzing: the dual year overflowed');
         self::assertNull(GedcomDate::parse('5000 BCE')->days());
     }
 

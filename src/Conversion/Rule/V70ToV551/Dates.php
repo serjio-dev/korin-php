@@ -107,10 +107,10 @@ final readonly class Dates implements NodeRule
         foreach ($date === '' ? [] : explode(' ', $date) as $word) {
             if (isset(self::CALENDARS[$word])) {
                 $words[] = '@#D' . self::CALENDARS[$word] . '@';
-                $extension = $word[0] === '_';
+                $extension = str_starts_with($word, '_');
             } elseif ($word === 'BCE') {
                 $words[] = 'B.C.';
-            } elseif ($word[0] === '_') {
+            } elseif (str_starts_with($word, '_')) {
                 if (!$extension) {
                     return null;
                 }

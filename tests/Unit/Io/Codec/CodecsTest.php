@@ -66,6 +66,17 @@ final class CodecsTest extends TestCase
         self::assertSame('ệ', $codec->decode($codec->encode('ệ')));
     }
 
+    /** Found by fuzzing: NFD splits Ơ, ơ, Ư, ư into a letter and a horn ANSEL has no mark for. */
+    #[Test]
+    public function anselLettersWithHornAreSpacingCharacters(): void
+    {
+        foreach ([Codecs::for(Encoding::Ansel), new AnselCodec(useIntl: false)] as $codec) {
+            self::assertSame("\xAC\xBC\xAD\xBD", $codec->encode('ƠơƯư'));
+            self::assertSame("Vi\xF2\xE3et \xE0\xBC \xF2\xBD", $codec->encode('Việt ở ự'));
+            self::assertSame('Việt ở ự', $codec->decode($codec->encode('Việt ở ự')));
+        }
+    }
+
     #[Test]
     public function invalidBytesAreRejectedOrReplaced(): void
     {

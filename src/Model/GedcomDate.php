@@ -146,7 +146,7 @@ final readonly class GedcomDate implements \Stringable
             throw new InvalidValueException('Not a 7.0 date');
         }
 
-        return new Date((int) $m[4], $m[3] === '' ? null : $m[3], $m[2] === '' ? null : (int) $m[2], $m[1] === '' ? Date::GREGORIAN : $m[1], ($m[5] ?? '') === '' ? null : $m[5]);
+        return new Date(Date::year($m[4]), $m[3] === '' ? null : $m[3], $m[2] === '' ? null : (int) $m[2], $m[1] === '' ? Date::GREGORIAN : $m[1], ($m[5] ?? '') === '' ? null : $m[5]);
     }
 
     private static function date5FromString(string $date): Date
@@ -161,7 +161,7 @@ final readonly class GedcomDate implements \Stringable
             // 5.5.5: a day and month without a year.
             return new Date(null, $m[3], (int) $m[2], $calendar);
         }
-        $year = (int) $m[6];
+        $year = Date::year($m[6]);
         $dual = null;
         if ($m[7] !== '') {
             $dual = $year - $year % 100 + (int) $m[7];

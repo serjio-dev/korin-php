@@ -58,6 +58,7 @@ final class DateGrammarTest extends TestCase
         yield 'epoch not in calendar' => [$value, 'HEBREW 100 BCE', self::INVALID];
         yield 'lower-case month' => [$value, '6 Dec 1907', self::INVALID];
         yield 'no year' => [$value, '6 DEC', self::INVALID];
+        yield 'a year longer than an int' => [$value, '29 FEB 99999999999999999996', self::VALID];
         yield 'dual year' => [$value, '30 JAN 1648/49', self::INVALID];
         yield 'phrase' => [$value, '(spring)', self::INVALID];
         yield 'two spaces' => [$value, '6  DEC 1907', self::INVALID];

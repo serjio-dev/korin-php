@@ -69,7 +69,7 @@ final class Structures implements NodeRule
             return true;
         }
         $above = $this->uris[$parent] ?? null;
-        if ($above === null || $tag[0] === '_' || $document->isInvalid($id)) {
+        if ($above === null || str_starts_with($tag, '_') || $document->isInvalid($id)) {
             $this->uris[$id] = null;
 
             return true;

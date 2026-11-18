@@ -79,6 +79,9 @@ final class Grammar5Test extends TestCase
         yield 'dual year over a century' => [$value, '1699/00', DateGrammar5::VALID];
         yield 'dual year not following' => [$value, '1701/99', DateGrammar5::BAD_DUAL_YEAR];
         yield 'one-digit dual year' => [$value, '1751/3', DateGrammar5::INVALID];
+        // Found by fuzzing: the year overflowed an int.
+        yield 'a year longer than an int' => [$value, '29 FEB 99999999999999999995/96', DateGrammar5::VALID];
+        yield 'a long year, not leap' => [$value, '29 FEB 99999999999999999900', DateGrammar5::DAY_OUT_OF_RANGE];
         yield 'dual julian year' => [$value, '@#DJULIAN@ 1648/49', DateGrammar5::INVALID];
         yield 'phrase' => [$value, '(spring, after the flood)', DateGrammar5::VALID];
         yield 'interpreted' => [$value, 'INT 1850 (about the time of the fire)', DateGrammar5::VALID];

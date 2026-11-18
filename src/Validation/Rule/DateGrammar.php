@@ -127,7 +127,16 @@ final readonly class DateGrammar
             return self::VALID;
         }
 
-        return (int) $day <= self::monthDays($calendar, $month, (int) $m[4], $epoch === 'BCE') ? self::VALID : self::DAY_OUT_OF_RANGE;
+        return (int) $day <= self::monthDays($calendar, $month, self::cycleYear($m[4]), $epoch === 'BCE') ? self::VALID : self::DAY_OUT_OF_RANGE;
+    }
+
+    /**
+     * A year of any length as the year of the same place in the 400-year cycle: the last four
+     * digits keep leap years (and dual years, modulo 100) and do not overflow an int.
+     */
+    public static function cycleYear(string $digits): int
+    {
+        return (int) substr($digits, -4);
     }
 
     /** Length of a month of GREGORIAN, JULIAN, HEBREW or FRENCH_R; also used for 5.x dates. */

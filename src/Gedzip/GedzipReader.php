@@ -41,6 +41,7 @@ final readonly class GedzipReader
         $entries = $ignored = $diagnostics = [];
         $total = 0;
         $documentSize = null;
+        $documentCrc = 0;
         for ($i = 0; $i < $zip->numFiles; ++$i) {
             $stat = $zip->statIndex($i);
             if ($stat === false) {
@@ -67,6 +68,7 @@ final readonly class GedzipReader
             }
             if ($name === EntryName::DOCUMENT) {
                 $documentSize = $stat['size'];
+                $documentCrc = $stat['crc'];
             } elseif (!str_ends_with($name, '/')) {
                 $entries[] = $name;
             }
@@ -75,7 +77,7 @@ final readonly class GedzipReader
             throw new GedzipException('The archive has no gedcom.ged');
         }
 
-        $document = $this->parser->parse($this->document($zip, $documentSize), $options);
+        $document = $this->parser->parse($this->document($zip, $documentSize, $documentCrc), $options);
         if ($document->version() !== Version::V7_0) {
             $diagnostics[] = new Diagnostic('KV1203', Severity::Warning, "gedcom.ged of a GEDZIP archive is GEDCOM 7.0, not {$document->version()->value}");
         }
@@ -93,14 +95,32 @@ final readonly class GedzipReader
         return new Archive($zip, $document, $entries, $ignored, $missing, $diagnostics);
     }
 
-    private function document(\ZipArchive $zip, int $size): string
+    private function document(\ZipArchive $zip, int $size, int $crc): string
     {
         $stream = $zip->getStream(EntryName::DOCUMENT);
         if ($stream === false) {
             throw new GedzipException('Cannot read gedcom.ged');
         }
-        $bytes = stream_get_contents($stream, $size + 1);
-        fclose($stream);
+        // Damaged deflate data makes the zip stream warn; a wrong CRC it reports only on a read
+        // after the end, so the CRC is checked here.
+        $damage = null;
+        set_error_handler(static function (int $level, string $message) use (&$damage): bool {
+            $damage = preg_replace('/^stream_get_contents\(\): (Zip stream error: )?/', '', $message);
+
+            return true;
+        });
+        try {
+            $bytes = stream_get_contents($stream, $size + 1);
+        } finally {
+            restore_error_handler();
+            fclose($stream);
+        }
+        if ($damage === null && is_string($bytes) && strlen($bytes) === $size && crc32($bytes) !== $crc) {
+            $damage = 'CRC error';
+        }
+        if ($damage !== null) {
+            throw new GedzipException("gedcom.ged is damaged: {$damage}");
+        }
         if ($bytes === false || strlen($bytes) !== $size) {
             throw new GedzipException('gedcom.ged is not the size the archive says');
         }

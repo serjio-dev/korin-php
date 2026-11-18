@@ -8,6 +8,7 @@ use Korin\Gedcom\Exception\ParseException;
 use Korin\Gedcom\Io\Codec\Codec;
 use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Detection;
+use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\Io\EncodingDetector;
 use Korin\Gedcom\Io\LineSplitter;
 use Korin\Gedcom\ReadOptions;
@@ -35,6 +36,11 @@ final class RecordReader
 
     /** @var array<string, int> line terminators (raw bytes) of the lines split so far, by count */
     private array $eolCounts = [];
+
+    /** Whether lines are matched decoded: UTF-16, and ANSEL lines with combining marks ({@see self::text()}). */
+    private bool $utf16 = false;
+
+    private bool $ansel = false;
 
     /**
      * @param resource $handle read from its current position
@@ -81,7 +87,8 @@ final class RecordReader
         $detection = $this->detection();
         $encoding = $detection->encoding;
         $codec = Codecs::for($encoding);
-        $utf16 = $encoding->codeUnitSize() === 2 ? $codec : null;
+        $this->utf16 = $encoding->codeUnitSize() === 2;
+        $this->ansel = $encoding === Encoding::Ansel;
         $cr = $encoding->ascii("\r");
         $pos = $detection->hasBom ? strlen($encoding->bom()) : 0;
         // File offset of the buffer's first byte.
@@ -108,7 +115,11 @@ final class RecordReader
                     throw new ParseException("Line {$line} exceeds the limit of {$this->options->maxLineLength} bytes");
                 }
                 $raw = substr($this->buffer, $offset, $length);
-                $match = $open ? $this->levelZero($raw, $utf16) : $this->match($raw, $utf16);
+                // Inlined text(): this runs for every line.
+                $text = $this->utf16 || ($this->ansel && preg_match('/[\xE0-\xFE]/', $raw) === 1) ? $this->text($raw, $codec) : $raw;
+                $match = $open
+                    ? (preg_match(self::LEVEL_ZERO, $text) === 1 && preg_match(Parser::LINE, $text, $m) === 1 ? $m : null)
+                    : (preg_match(Parser::LINE, $text, $m) === 1 ? $m : null);
                 if (!$open || $match !== null) {
                     if ($pending !== '') {
                         yield [$pending, $pendingOffset, $pendingLine, $pendingXref, $pendingTag];
@@ -116,8 +127,8 @@ final class RecordReader
                     $pending = '';
                     $pendingOffset = $base + $offset;
                     $pendingLine = $line;
-                    $pendingXref = $match === null || $match[2] === '' ? null : $this->decode($match[2], $codec);
-                    $pendingTag = $match === null ? '' : $this->decode($match[3], $codec);
+                    $pendingXref = $match === null || $match[2] === '' ? null : $this->decode($match[2], $codec, $text !== $raw);
+                    $pendingTag = $match === null ? '' : $this->decode($match[3], $codec, $text !== $raw);
                     $open = $open || $match !== null;
                 }
                 $pending .= substr($this->buffer, $offset, $end - $offset);
@@ -146,34 +157,24 @@ final class RecordReader
     }
 
     /**
-     * A line inside a record that starts the next one: a GEDCOM line of level 0.
-     *
-     * @return ?array<int, string> the match of {@see Parser::LINE}
+     * A line to match as the parser does, which decodes it first. ASCII-compatible encodings are
+     * matched on their bytes: delimiters, digits and "@" are the same bytes decoded or not, and
+     * so are other bytes, as far as the line is concerned. But an ANSEL combining mark goes with
+     * the character after it, which may be a delimiter ("0\xE9 @I1@": a mark on the space).
      */
-    private function levelZero(string $raw, ?Codec $utf16): ?array
+    private function text(string $raw, Codec $codec): string
     {
-        $text = $utf16?->decodeLossy($raw) ?? $raw;
-
-        return preg_match(self::LEVEL_ZERO, $text) === 1 && preg_match(Parser::LINE, $text, $m) === 1 ? $m : null;
+        return match (true) {
+            $this->utf16 => $codec->decodeLossy($raw),
+            $this->ansel && preg_match('/[\xE0-\xFE]/', $raw) === 1 => $codec->decode($raw) ?? $codec->decodeLossy($raw),
+            default => $raw,
+        };
     }
 
-    /**
-     * The match of a GEDCOM line. ASCII-compatible encodings are matched on their bytes:
-     * delimiters, digits and "@" are the same bytes decoded or not.
-     *
-     * @return ?array<int, string>
-     */
-    private function match(string $raw, ?Codec $utf16): ?array
+    /** An xref or tag of the line as the parser decodes it; $decoded when the line was matched decoded. */
+    private function decode(string $part, Codec $codec, bool $decoded): string
     {
-        return preg_match(Parser::LINE, $utf16?->decodeLossy($raw) ?? $raw, $m) === 1 ? $m : null;
-    }
-
-    /** An xref or tag of the line as the parser decodes it. */
-    private function decode(string $part, Codec $codec): string
-    {
-        return preg_match('/[\x80-\xFF]/', $part) === 1 && $this->detection()->encoding->codeUnitSize() === 1
-            ? ($codec->decode($part) ?? $codec->decodeLossy($part))
-            : $part;
+        return !$decoded && preg_match('/[\x80-\xFF]/', $part) === 1 ? ($codec->decode($part) ?? $codec->decodeLossy($part)) : $part;
     }
 
     private function read(): void

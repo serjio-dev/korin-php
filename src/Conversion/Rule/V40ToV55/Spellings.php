@@ -6,7 +6,7 @@ namespace Korin\Gedcom\Conversion\Rule\V40ToV55;
 
 use Korin\Gedcom\Conversion\Context;
 use Korin\Gedcom\Conversion\NodeRule;
-use Korin\Gedcom\Model\GedcomDate;
+use Korin\Gedcom\Model\Grammars;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Version;
 
@@ -65,7 +65,7 @@ final class Spellings implements NodeRule
     public static function date(string $value): ?string
     {
         $value = trim((string) preg_replace('/\s+/', ' ', $value));
-        if ($value === '' || GedcomDate::tryParse($value, Version::V5_5) !== null || strpbrk($value, '@()') !== false) {
+        if ($value === '' || Grammars::isDate(Version::V5_5, $value) || strpbrk($value, '@()') !== false) {
             return null;
         }
         $spelled = strtoupper($value);
@@ -78,6 +78,6 @@ final class Spellings implements NodeRule
         $spelled = (string) preg_replace(['/^(?:BETWEEN|BET)\b\.? (.+) AND (.+)$/', '/^FROM (.+) TO (.+)$/'], ['BET $1 AND $2', 'FROM $1 TO $2'], $spelled);
         $spelled = (string) preg_replace('/ ?, ?/', ' ', $spelled);
 
-        return GedcomDate::tryParse($spelled, Version::V5_5) !== null ? $spelled : "({$value})";
+        return Grammars::isDate(Version::V5_5, $spelled) ? $spelled : "({$value})";
     }
 }
