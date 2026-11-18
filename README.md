@@ -146,7 +146,8 @@ $archive->document();                    // gedcom.ged
 $archive->media('photos/anna%20k.jpg');  // a stream: FILE references are URIs, nothing goes to disk
 $archive->missing();                     // relative references with no entry (KV1204)
 
-Gedcom::writeGedzip($doc, 'family.gdz', ['photos/anna k.jpg' => '/path/to/anna.jpg']);
+$tree = Gedcom::convert($doc, Version::V7_0)->document();   // archives hold 7.0
+Gedcom::writeGedzip($tree, 'family-7.gdz', ['photos/anna k.jpg' => 'photos/anna k.jpg']);   // entry => file
 ```
 
 Archives are treated as hostile: entries with `..`, absolute paths, backslashes or drive
@@ -177,6 +178,7 @@ is a document of its own, with the lines and diagnostics `read()` would give it:
 
 ```php
 $stream = Gedcom::stream('huge.ged');       // a path or an open stream resource
+$out = fopen('copy.ged', 'wb');
 foreach ($stream as $record) {
     if ($record->tag() === 'INDI') {
         echo $record->xref(), ' ', $record->node()->first('NAME')?->value(), PHP_EOL;

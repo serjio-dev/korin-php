@@ -1,0 +1,50 @@
+0 HEAD
+1 SOUR Korin
+2 VERS 0.5
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR ANSI
+1 SUBM @U1@
+0 @U1@ SUBM
+1 NAME Олена Коваль
+0 @I1@ INDI
+1 NAME Анна /Коваль/
+1 SEX F
+1 BIRT
+2 DATE 12 MAR 1921
+2 PLAC Полтава, Україна
+1 FAMS @F1@
+1 OBJE @M1@
+0 @I2@ INDI
+1 NAME Петро /Коваль/
+1 SEX M
+1 BIRT
+2 DATE ABT 1918
+1 DEAT
+2 DATE 1985
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Іван /Коваль/
+1 SEX M
+1 BIRT
+2 DATE 3 JAN 1948
+2 PLAC Київ, Україна
+1 FAMC @F1@
+1 SOUR @S1@
+2 PAGE с. 12
+0 @F1@ FAM
+1 HUSB @I2@
+1 WIFE @I1@
+1 CHIL @I3@
+1 MARR
+2 DATE 1946
+0 @S1@ SOUR
+1 TITL Метрична книга
+1 REPO @R1@
+0 @R1@ REPO
+1 NAME Державний архів Полтавської області
+0 @M1@ OBJE
+1 FILE photos/anna k.jpg
+2 FORM jpg
+0 TRLR

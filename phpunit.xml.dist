@@ -21,6 +21,9 @@
         <testsuite name="conformance">
             <directory>tests/Conformance</directory>
         </testsuite>
+        <testsuite name="docs">
+            <directory>tests/Docs</directory>
+        </testsuite>
         <testsuite name="corpus">
             <directory>tests/Corpus</directory>
         </testsuite>

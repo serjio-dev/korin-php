@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<phpdocumentor configVersion="3" xmlns="https://www.phpdoc.org">
+    <title>Korin API</title>
+    <paths>
+        <output>build/site/api</output>
+        <cache>build/phpdoc-cache</cache>
+    </paths>
+    <version number="latest">
+        <api>
+            <source dsn=".">
+                <path>src</path>
+            </source>
+            <visibility>public</visibility>
+            <visibility>protected</visibility>
+            <ignore-tags>
+                <ignore-tag>internal</ignore-tag>
+            </ignore-tags>
+            <default-package-name>Korin</default-package-name>
+        </api>
+    </version>
+</phpdocumentor>
