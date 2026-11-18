@@ -7,6 +7,15 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-18
+
+Old versions and tooling: GEDCOM 4.0 and the 5.0–5.4 drafts are read, documented mistakes of
+vendor programs are corrected as a file is read, and the library has a command line
+([korin/gedcom-cli](https://github.com/serjio-dev/korin-cli)), a documentation site and nightly
+fuzzing, whose findings are fixed below. No breaking changes: `Version` gained the case `V4_0`
+(a `match` over every case needs it), `EncodingDetector::detect()` an optional parameter.
+Performance is that of 0.4.
+
 ### Added
 
 - GEDCOM 4.0, read only (best effort, SPEC section 3): `Version::V4_0` for `HEAD.GEDC.VERS`
@@ -26,6 +35,9 @@ break the API; such changes are described in `UPGRADE.md`.
   as Windows-1252, `CHAR ASCII` with `VERS MacOS Roman` (GEDitCOM) or `MACINTOSH`
   (MacFamilyTree) as MacRoman. `HEAD.CHAR` `MS-DOS`, `IBM DOS` (CP850), `OEM` (CP437),
   `WINDOWS`, `IBM WINDOWS` (Windows-1252) are read too.
+- Documentation site, [serjio-dev.github.io/korin-php](https://serjio-dev.github.io/korin-php/):
+  guides, reference and the API reference, built from `docs/` and deployed from `main`. The PHP
+  examples of the README and the guides run as the `docs` test suite.
 - Fuzzing with nikic/php-fuzzer: targets for reading, value grammars, codecs and GEDZIP in
   `fuzz/`, run nightly by the `fuzz` workflow ([docs/fuzzing.md](docs/fuzzing.md)).
 - `ParseException` is documented on `Gedcom::read()`, `parse()`, `open()` and `stream()`: outside
@@ -290,7 +302,8 @@ streaming and indexed reading follow in 0.2–0.4.
   gedcom7code test files; PHPBench benchmarks; a baseline comparison with
   liberu-genealogy/php-gedcom ([docs/comparison](docs/comparison/liberu-php-gedcom.md)).
 
-[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.5.0
 [0.4.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.4.0
 [0.3.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.3.0
 [0.2.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.2.0
