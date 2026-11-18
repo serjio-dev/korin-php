@@ -3,6 +3,9 @@
 Read, validate, convert and write GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0 —
 without losing a single tag. Every unavoidable loss is reported.
 
+**Documentation:** [serjio-dev.github.io/korin-php](https://serjio-dev.github.io/korin-php/) —
+guides, reference and the [API](https://serjio-dev.github.io/korin-php/api/).
+
 > **Status: 0.4 — early development.** Reading, lossless writing, editing, validation and
 > conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, also for files of any size (streaming
 > and indexed reading, streaming conversion), and the model: views of every record type with
