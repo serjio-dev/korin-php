@@ -9,6 +9,7 @@ use Korin\Gedcom\Conversion\Loss;
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Severity;
+use Korin\Gedcom\Tests\Support\Corpus;
 use Korin\Gedcom\Tests\Support\Fingerprint;
 use Korin\Gedcom\Tests\Support\Ops;
 use Korin\Gedcom\Validation\ValidationOptions;
@@ -16,7 +17,6 @@ use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Yaml\Yaml;
 
 /**
  * Runs gedcom-corpus cases. The corpus comes from vendor/korin/gedcom-corpus, or from
@@ -30,17 +30,7 @@ final class CorpusTest extends TestCase
     /** @return iterable<string, array{string, string, array<string, mixed>, ?array{to: string, expected: string, losses: string}}> */
     public static function cases(): iterable
     {
-        $root = getenv('KORIN_CORPUS');
-        if ($root === false || $root === '') {
-            $root = __DIR__ . '/../../vendor/korin/gedcom-corpus';
-        }
-        $dirs = glob($root . '/cases/*', GLOB_ONLYDIR);
-        if ($dirs === false || $dirs === []) {
-            throw new \RuntimeException("No corpus cases under {$root}; run composer install or set KORIN_CORPUS");
-        }
-        foreach ($dirs as $dir) {
-            /** @var array<string, mixed> $case */
-            $case = Yaml::parseFile($dir . '/case.yaml');
+        foreach (Corpus::cases() as $dir => $case) {
             /** @var list<string> $checks */
             $checks = $case['checks'];
             foreach (array_intersect($checks, self::IMPLEMENTED) as $check) {
@@ -59,6 +49,18 @@ final class CorpusTest extends TestCase
                 }
             }
         }
+    }
+
+    /** External cases are left out until their inputs are downloaded. */
+    #[Test]
+    public function externalInputsAreFetched(): void
+    {
+        $missing = Corpus::unfetched();
+        if ($missing !== []) {
+            $names = implode(', ', array_slice($missing, 0, 3)) . (count($missing) > 3 ? ', …' : '');
+            self::markTestSkipped(count($missing) . " external case(s) left out ({$names}): run python3 " . Corpus::root() . '/scripts/fetch-external.py');
+        }
+        $this->addToAssertionCount(1);
     }
 
     /**
