@@ -127,6 +127,28 @@ final class CodecsTest extends TestCase
     }
 
     #[Test]
+    public function utf16SurrogatesOnTheirBoundaries(): void
+    {
+        $chars = [
+            0xFFFF => "\xFF\xFF", 0x10000 => "\x00\xD8\x00\xDC", 0x103FF => "\x00\xD8\xFF\xDF",
+            0x10FC00 => "\xFF\xDB\x00\xDC", 0x10FFFF => "\xFF\xDB\xFF\xDF",
+        ];
+        foreach ($chars as $codePoint => $bytes) {
+            $char = Utf8::chr($codePoint);
+            self::assertSame($bytes, (new Utf16Codec(bigEndian: false, useMbstring: false))->encode($char), sprintf('U+%04X', $codePoint));
+            self::assertSame($char, (new Utf16Codec(bigEndian: false))->decode($bytes), sprintf('U+%04X', $codePoint));
+        }
+        $codec = new Utf16Codec(bigEndian: false);
+        // Lone surrogates: low first, high last, at either end of their ranges.
+        foreach (["\x00\xDCa\x00", "\xFF\xDFa\x00", "a\x00\x00\xD8", "a\x00\xFF\xDB", "\x00\xD8\xFF\xD7"] as $bytes) {
+            self::assertNull($codec->decode($bytes), bin2hex($bytes));
+        }
+        self::assertSame("\u{FFFD}a\u{FFFD}", $codec->decodeLossy("\x00\xDCa\x00\x00\xD8"));
+        self::assertSame("\u{FFFD}\u{D7FF}", $codec->decodeLossy("\x00\xD8\xFF\xD7"));
+        self::assertSame("ab\u{FFFD}", $codec->decodeLossy("a\x00b\x00c"));
+    }
+
+    #[Test]
     public function asciiHasNoBytesAbove127(): void
     {
         $codec = Codecs::for(Encoding::Ascii);

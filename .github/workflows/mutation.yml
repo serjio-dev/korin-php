@@ -32,11 +32,11 @@ jobs:
           tools: infection
       - uses: ramsey/composer-install@v4
       - name: Changed lines
-        if: false # measuring first (draft)
+        if: github.event_name == 'pull_request'
         run: infection --threads=max --git-diff-lines --git-diff-base=origin/${{ github.base_ref }} --min-msi=85 --min-covered-msi=85 --show-mutations --no-progress
       - name: Everything
-        if: true # measuring first (draft)
-        run: infection --threads=max --no-progress
+        if: github.event_name != 'pull_request'
+        run: infection --threads=max --min-msi=85 --no-progress
       - run: cat build/infection/summary.log >> "$GITHUB_STEP_SUMMARY"
         if: always()
       - uses: actions/upload-artifact@v7

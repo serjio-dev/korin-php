@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Korin\Gedcom\Tests\Unit\Writer;
 
 use Korin\Gedcom\Gedcom;
+use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\WriteOptions;
@@ -94,6 +95,19 @@ final class WriterTest extends TestCase
 
         // Each "é" is two ANSEL bytes: a combining acute accent and "e".
         self::assertStringContainsString("1 NOTE \xE2e\xE2e\n2 CONC \xE2e\xE2e\n2 CONC \xE2e\n", Gedcom::serialize($doc, (new WriteOptions())->withMaxLineLength(12)));
+    }
+
+    #[Test]
+    public function limitCountsCharactersInUtf8AndUtf16(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NOTE x\n0 TRLR\n");
+        $doc->find('@I1@/NOTE')?->setValue('ааааа');
+
+        self::assertStringContainsString("1 NOTE аааа\n2 CONC а\n", Gedcom::serialize($doc, (new WriteOptions())->withMaxLineLength(12)));
+        self::assertStringContainsString(
+            Codecs::for(Encoding::Utf16Le)->encode("1 NOTE аааа\n2 CONC а\n"),
+            Gedcom::serialize($doc, WriteOptions::normalize()->withEncoding(Encoding::Utf16Le)->withMaxLineLength(12)),
+        );
     }
 
     #[Test]
