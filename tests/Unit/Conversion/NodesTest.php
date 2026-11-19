@@ -44,12 +44,45 @@ final class NodesTest extends TestCase
         ], $seen);
     }
 
-    /** @param \Closure(Document, int): bool $apply */
-    private function rule(\Closure $apply): NodeRule
+    #[Test]
+    public function anExtensionARuleMakesAStructureAgainGoesToTheRulesOfItsTagItHasNotBeenGiven(): void
     {
-        return new class ($apply) implements NodeRule {
-            /** @param \Closure(Document, int): bool $apply */
-            public function __construct(private readonly \Closure $apply) {}
+        $doc = Gedcom::parse("0 HEAD\n0 @I1@ INDI\n1 _BIRT\n2 DATE 1900\n0 TRLR\n");
+        $seen = [];
+        $birt = $this->rule(static function (Document $d, int $id) use (&$seen): bool {
+            $seen[] = 'birt:' . $d->tagOf($id);
+
+            return true;
+        }, ['BIRT']);
+        $restore = $this->rule(static function (Document $d, int $id) use (&$seen): bool {
+            $seen[] = 'restore:' . $d->tagOf($id);
+            $d->setTag($id, 'BIRT');
+
+            return true;
+        }, ['_BIRT']);
+        $any = $this->rule(static function (Document $d, int $id) use (&$seen): bool {
+            $seen[] = 'any:' . $d->tagOf($id);
+
+            return true;
+        });
+
+        (new Nodes($birt, $restore, $any))->record($doc, $doc->childIds(0)[1], new Context($doc, $doc, new ConvertOptions(), null));
+
+        self::assertSame(['any:INDI', 'restore:_BIRT', 'birt:BIRT', 'any:BIRT', 'any:DATE'], $seen);
+    }
+
+    /**
+     * @param \Closure(Document, int): bool $apply
+     * @param ?list<string> $tags
+     */
+    private function rule(\Closure $apply, ?array $tags = null): NodeRule
+    {
+        return new class ($apply, $tags) implements NodeRule {
+            /**
+             * @param \Closure(Document, int): bool $apply
+             * @param ?list<string> $tags
+             */
+            public function __construct(private readonly \Closure $apply, private readonly ?array $tags) {}
 
             public function needsPrepass(): bool
             {
@@ -58,7 +91,7 @@ final class NodesTest extends TestCase
 
             public function tags(): ?array
             {
-                return null;
+                return $this->tags;
             }
 
             public function node(Document $document, int $id, Context $context): bool

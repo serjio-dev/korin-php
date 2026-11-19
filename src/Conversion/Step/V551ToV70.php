@@ -8,6 +8,7 @@ use Korin\Gedcom\Conversion\Rule\Extensions;
 use Korin\Gedcom\Conversion\Rule\Nodes;
 use Korin\Gedcom\Conversion\Rule\Structures;
 use Korin\Gedcom\Conversion\Rule\V551ToV70 as Rules;
+use Korin\Gedcom\Conversion\Rule\V55ToV551;
 use Korin\Gedcom\Conversion\Step;
 use Korin\Gedcom\Version;
 
@@ -40,6 +41,7 @@ final class V551ToV70 implements Step
                 new Rules\Xrefs(),
                 new Rules\Repositories(),
                 new Rules\NoteRecords(),
+                new V55ToV551\Media(restored: true),
                 new Rules\InlineRecords(),
                 new Rules\Identifiers(),
                 new Rules\Uids(),

@@ -242,6 +242,27 @@ final class V551ToV70Test extends TestCase
     }
 
     #[Test]
+    public function theValueOfAnExtensionMadeAStructureAgainIsConverted(): void
+    {
+        // As 7.0 → 5.5.1 writes a FAM.NCHI.DATE.
+        $input = self::HEAD . "0 @F1@ FAM\n1 NCHI 2\n2 _DATE INT 1900 (about then)\n0 TRLR\n";
+
+        self::assertSame(self::HEAD_70 . "0 @F1@ FAM\n1 NCHI 2\n2 DATE 1900\n3 PHRASE about then\n0 TRLR\n", $this->convert($input));
+    }
+
+    #[Test]
+    public function whatIsInsideAnExtensionTheStepBeforeMadeIsConvertedFromThatVersion(): void
+    {
+        // 5.5.1 has no NOTE.SOUR: 5.5 → 5.5.1 makes it _SOUR, with the 5.5 media link inside.
+        $input = "0 HEAD\n1 GEDC\n2 VERS 5.5\n0 @I1@ INDI\n1 NOTE Hi\n2 SOUR @S1@\n3 OBJE\n4 FORM jpeg\n4 FILE a b.jpg\n0 @S1@ SOUR\n0 TRLR\n";
+
+        $result = Gedcom::convert(Gedcom::parse($input), Version::V7_0);
+
+        self::assertSame("\u{FEFF}0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NOTE Hi\n2 SOUR @S1@\n3 OBJE @X1@\n0 @S1@ SOUR\n0 @X1@ OBJE\n1 FILE a%20b.jpg\n2 FORM image/jpeg\n0 TRLR\n", $result->output());
+        self::assertSame([], $result->losses()->entries());
+    }
+
+    #[Test]
     public function inlineMediaInsideAnExtensionStays(): void
     {
         $input = self::HEAD . "0 @I1@ INDI\n1 _MILT\n2 SOUR Papers\n3 OBJE\n4 FILE a.jpg\n5 FORM jpg\n0 TRLR\n";

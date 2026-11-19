@@ -26,8 +26,11 @@ use Korin\Gedcom\Syntax\Node;
  */
 final class Context
 {
-    /** @var list<Loss> */
+    /** @var array<int, Loss> */
     private array $losses = [];
+
+    /** @var array<int, int> structures unsupported() made extensions, and the index of their loss */
+    private array $made = [];
 
     /** @var array<string, true> xrefs handed out by newXref() */
     private array $allocated = [];
@@ -69,6 +72,12 @@ final class Context
 
     /** @var array<int, ?string> later steps: the structure URIs of the record as the step began */
     private array $stepUris = [];
+
+    /** @var array<int, string> structures of the current record restored(), by the URI of the source structure they are read as */
+    private array $restoredAs = [];
+
+    /** @var array<int, true> structures of the current record restored() that a step before made extensions */
+    private array $restored = [];
 
     /** The document whose HEAD rules read: the one being converted, or in convertFile() the converted HEAD. */
     private ?Document $headDocument = null;
@@ -258,6 +267,7 @@ final class Context
             return false;
         }
         $this->loss($code, Severity::Warning, $node, StoredAs::Extension, $message);
+        $this->made[$node] = (int) array_key_last($this->losses);
         $this->document->setTag($node, '_' . $this->document->tagOf($node));
         unset($this->extensions[$node]);
 
@@ -271,6 +281,9 @@ final class Context
      */
     public function sourceStructure(int $node): ?Structure
     {
+        if (isset($this->restoredAs[$node])) {
+            return $this->profile()->structure($this->restoredAs[$node]);
+        }
         if (!$this->first) {
             $uri = $this->stepUris[$node] ?? null;
 
@@ -282,6 +295,49 @@ final class Context
         $uri = $this->sourceUri($node);
 
         return $uri === null ? null : $this->profile()->structure($uri);
+    }
+
+    /**
+     * An extension made a structure again (Extensions) is read as the source structure of its tag that
+     * its value fits ($uri): the source has none there, but the rules after convert its value from it.
+     * What is inside an extension of the input is in the target's form already, as the conversion the
+     * other way writes it. What is inside one a step before made is in the form of the version before:
+     * read as the substructures of that structure, and converted (what the target does not list becomes
+     * an extension); its loss goes, as the output has the structure.
+     */
+    public function restored(int $node, string $uri): void
+    {
+        $this->restoredAs[$node] = $uri;
+        if (!isset($this->made[$node])) {
+            return;
+        }
+        unset($this->losses[$this->made[$node]], $this->made[$node], $this->extensions[$node]);
+        $this->restored[$node] = true;
+        // Looked up now, not when the rules ask: InlineRecords moves them to a new record.
+        $this->stepUris[$node] = $uri;
+        $stack = [$node];
+        while ($stack !== []) {
+            $id = array_pop($stack);
+            $structure = $this->stepUris[$id] === null ? null : $this->profile()->structure($this->stepUris[$id]);
+            foreach ($this->document->childIds($id) as $child) {
+                if ($child < $this->watermark) {
+                    $this->stepUris[$child] = $structure?->substructure($this->document->tagOf($child))?->uri;
+                    $stack[] = $child;
+                }
+            }
+        }
+    }
+
+    /** Whether a structure is one restored() that a step before made an extension or inside one: its value may be in the form of the version before the source. */
+    public function inRestored(int $node): bool
+    {
+        for (; $node !== 0 && $this->restored !== []; $node = $this->document->parentOf($node)) {
+            if (isset($this->restored[$node])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -311,7 +367,7 @@ final class Context
     /** @return list<Loss> */
     public function losses(): array
     {
-        return $this->losses;
+        return array_values($this->losses);
     }
 
     /** @internal for Converter: the step whose rules run now, and the record they convert */
@@ -319,7 +375,10 @@ final class Context
     {
         $this->step = $step;
         $this->first = $first;
+        $this->restored = $this->restoredAs = [];
         if ($first) {
+            // A record's steps run one after another: what an earlier record's made no longer counts.
+            $this->made = [];
             return;
         }
         $this->extensions = [];

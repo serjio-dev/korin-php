@@ -169,6 +169,18 @@ A conversion between 5.5 and 7.0 goes through 5.5.1: 7.0 → 5.5 is 7.0 → 5.5.
 and back gives the same fingerprint, except for `KL3` losses, as it does through 5.5.1 (tested
 on every 7.0 input of the corpus).
 
+A structure 5.5.1 does not have where it stands (5.5 and 7.0 `NOTE.SOUR`, 7.0 `FAM.NCHI.DATE`)
+goes through it as an extension, and the next step makes it the structure again. Its value and
+what is inside are still in the form of the version before 5.5.1. They are converted as the
+5.5.1 structure of that tag that the value fits (`_DATE INT 1900 (about then)` → `DATE 1900` +
+`PHRASE`), a 5.5 media link inside has its `FORM` moved into the `FILE`, and a value the target
+does not list becomes an extension (7.0 `ROLE NGHBR` → 5.5 `_ROLE`, `KL3001`). The `KL2001` of the
+intermediate extension is not reported: the output has the structure. Under `LossPolicy::Fail`
+the first step still stops at it.
+An extension of the input that a conversion makes the structure has its value converted so too
+(5.5.1 `FAM.NCHI._DATE INT 1900 (about then)`, as 7.0 → 5.5.1 writes it, → 7.0 `DATE 1900` +
+`PHRASE`). What is inside is in the target's form already.
+
 ## 4.0 → 5.5
 
 GEDCOM 4.0 (1989) has a dictionary of tags, but no grammar of where they go, and writes values
