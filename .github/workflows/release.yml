@@ -1,0 +1,49 @@
+name: release
+
+# Spec section 11: on a signed tag vX.Y.Z, a GitHub Release with the notes of that version from
+# CHANGELOG.md and the package archive with a build provenance attestation. Packagist picks the
+# tag up by its webhook.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            index($0, "## [" v "]") == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "CHANGELOG.md has no section for $version" >&2
+            exit 1
+          fi
+      # The archive Packagist installs: git archive honours export-ignore in .gitattributes.
+      - name: Package archive
+        run: git archive --format=zip --prefix="korin-gedcom-${GITHUB_REF_NAME#v}/" -o "korin-gedcom-${GITHUB_REF_NAME}.zip" "$GITHUB_REF_NAME"
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: korin-gedcom-${{ github.ref_name }}.zip
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive="korin-gedcom-${GITHUB_REF_NAME}.zip"
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$archive" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$archive" --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md
+          fi

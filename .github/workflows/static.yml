@@ -18,8 +18,12 @@ jobs:
           php-version: '8.4'
           extensions: intl, mbstring
           coverage: none
+          tools: composer-require-checker, composer-unused
       - uses: ramsey/composer-install@v3
       - run: vendor/bin/php-cs-fixer check --diff
       - run: vendor/bin/rector process --dry-run
       - run: vendor/bin/phpstan analyse --no-progress
       - run: php bin/generate-profiles.php --check
+      # No hidden dependencies: intl, mbstring and zip are optional (composer.json suggest), see composer-require-checker.json.
+      - run: composer-require-checker check composer.json
+      - run: composer-unused --no-progress

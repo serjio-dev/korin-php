@@ -18,6 +18,11 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ### Changed
 
+- CI per specification section 11: PHP 8.6 is a required version (Windows and macOS on 8.2 and
+  8.6), a non-blocking `php-nightly` workflow, `composer-require-checker` and `composer-unused`
+  in `static`, Dependabot for Composer and Actions, and a `release` workflow that publishes a
+  tag's GitHub Release with its CHANGELOG notes and an attested package archive.
+- The package no longer ships `mkdocs.yml` and `phpdoc.dist.xml`.
 - 7.0 dates in an extension calendar may use any months and epochs (they were an error unless
   extension tags, a rule the specification does not have).
 

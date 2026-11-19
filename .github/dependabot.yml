@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+    # Development tools only: the library has no runtime dependencies.
+    versioning-strategy: increase-if-necessary
+    groups:
+      dev-tools:
+        patterns: ['*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']

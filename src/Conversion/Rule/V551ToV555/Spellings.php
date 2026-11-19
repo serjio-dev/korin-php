@@ -54,7 +54,7 @@ final class Spellings
         }
         $tokens = explode(' ', trim($value));
         foreach ($tokens as $i => $token) {
-            if (!ctype_digit($token)) {
+            if (preg_match('/^[0-9]+$/', $token) !== 1) {
                 continue;
             }
             $next = $tokens[$i + 1] ?? null;
