@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: If you use Korin in research, please cite it as below.
+type: software
+title: "Korin: lossless GEDCOM for PHP"
+abstract: >-
+  A PHP library that reads, validates, converts and writes GEDCOM 5.5, 5.5.1, 5.5.5 and 7.0
+  without losing a tag, and reports every loss a conversion cannot avoid.
+authors:
+  - family-names: Tymtsunyk
+    given-names: Serhii
+repository-code: https://github.com/serjio-dev/korin-php
+url: https://serjio-dev.github.io/korin-php/
+license: Apache-2.0
+keywords:
+  - gedcom
+  - genealogy
+  - family tree
+  - php
+version: 0.5.0
+date-released: 2026-11-18
