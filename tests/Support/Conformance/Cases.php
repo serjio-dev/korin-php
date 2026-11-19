@@ -8,6 +8,8 @@ use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Spec\Structure;
 use Korin\Gedcom\Spec\Substructure;
 use Korin\Gedcom\Version;
+use Random\Engine\Mt19937;
+use Random\Randomizer;
 
 /**
  * Specification conformance cases generated from a profile (SPEC.md section 10, kind 2). Every
@@ -74,6 +76,28 @@ final class Cases
         'PRODUCT_VERSION_NUMBER' => ['1.0', ['1.0 beta', 'KV3005', '5.5.5']],
     ];
 
+    /**
+     * 5.x structures the specification gives in two forms, which the profile merges (spec/5.5.1/README.md):
+     * by version, the substructures of the pointer form and of the other one, with their minimum. A random
+     * file keeps to one form; "FILE/FORM" is a FORM required under each FILE.
+     */
+    private const FORMS_5 = [
+        '5.5' => [
+            'MULTIMEDIA_LINK/OBJE' => [[], ['FILE' => 1, 'FORM' => 1, 'TITL' => 0, 'NOTE' => 0]],
+            'SOURCE_CITATION/SOUR' => [['PAGE' => 0, 'EVEN' => 0, 'DATA' => 0, 'QUAY' => 0, 'OBJE' => 0, 'NOTE' => 0], ['TEXT' => 0, 'NOTE' => 0]],
+        ],
+        '5.5.1' => [
+            'MULTIMEDIA_LINK/OBJE' => [[], ['FILE' => 1, 'FILE/FORM' => 1, 'TITL' => 0]],
+            'SOURCE_CITATION/SOUR' => [['PAGE' => 0, 'EVEN' => 0, 'DATA' => 0, 'QUAY' => 0, 'OBJE' => 0, 'NOTE' => 0], ['TEXT' => 0, 'OBJE' => 0, 'NOTE' => 0, 'QUAY' => 0]],
+        ],
+    ];
+
+    /** 5.x elements the specification restricts in prose only, which the profile reads as free text. */
+    private const SAMPLES_5 = ['<EVENT_TYPE_CITED_FROM>' => 'BIRT', '<EVENTS_RECORDED>' => 'BIRT, DEAT'];
+
+    /** Free texts of a random file. */
+    private const TEXTS = ['text', 'Kyiv', 'one two  three', 'x', '50%', 'a@b.org'];
+
     /** Standard tags tried in turn as a substructure that the structure does not allow. */
     private const STRANGERS = ['DATE', 'PLAC', 'NAME', 'SEX', 'NOTE', 'TYPE'];
 
@@ -90,6 +114,12 @@ final class Cases
 
     /** @var array<string, list<string>> structure URI => shortest path of tags */
     private array $paths = [];
+
+    /** Set for random documents (SPEC.md section 10, kind 6): optional structures and values are drawn. */
+    private ?Randomizer $random = null;
+
+    /** @var array<string, list<string>> record URI => xrefs of its records in a random document */
+    private array $pool = [];
 
     private function __construct(private readonly Profile $profile)
     {
@@ -114,6 +144,88 @@ final class Cases
             yield from $cases->structureCases($uri, $path);
         }
         yield from $cases->rootCases();
+    }
+
+    /**
+     * A random valid file: the skeleton of the cases with more records and, at every level, optional
+     * substructures, each value drawn from the valid ones of its type. The same seed gives the same file.
+     */
+    public static function random(Profile $profile, int $seed): string
+    {
+        $cases = new self($profile);
+        $cases->random = $random = new Randomizer(new Mt19937($seed));
+        foreach ($profile->records() as $tag => $record) {
+            if (isset($cases->xrefs[$record->uri])) {
+                $count = $random->getInt(1, min(3, $record->cardinality->max ?? 3));
+                for ($i = 1; $i <= $count; ++$i) {
+                    $cases->pool[$record->uri][] = "@{$tag}{$i}@";
+                }
+            }
+        }
+        $file = [];
+        foreach ($profile->records() as $tag => $record) {
+            foreach ($cases->pool[$record->uri] ?? [null] as $xref) {
+                $file[] = $cases->instance($record, $tag === 'HEAD' ? 'HEAD' : null, $xref);
+            }
+        }
+
+        $cases->mirrorFamilyLinks($file);
+        // 5.5.5 requires a byte order mark (KV1104).
+        $bom = $profile->version() === Version::V5_5_5 ? "\u{FEFF}" : '';
+
+        return $bom . $cases->case($cases->trailerLast($file), [])[1];
+    }
+
+    /**
+     * Family links drawn at random point one way only (KV4004): every HUSB, WIFE and CHIL of a family gets
+     * its FAMS or FAMC, a FAMC its CHIL, and a FAMS no HUSB or WIFE points back to is left out.
+     *
+     * @param list<Line> $file
+     */
+    private function mirrorFamilyLinks(array $file): void
+    {
+        $records = [];
+        foreach ($file as $record) {
+            if ($record->xref !== null) {
+                $records[$record->xref] = $record;
+            }
+        }
+        $points = static fn(Line $from, string $tags, string $to): bool => array_filter($from->children, static fn(Line $l): bool => str_contains($tags, $l->tag) && $l->value === $to) !== [];
+        foreach ($file as $record) {
+            if ($record->tag === 'INDI' && $record->xref !== null) {
+                $record->children = array_values(array_filter($record->children, static fn(Line $l): bool => $l->tag !== 'FAMS' || $points($records[(string) $l->value], 'HUSB WIFE', $record->xref)));
+                foreach ($record->children as $link) {
+                    if ($link->tag === 'FAMC' && !$points($family = $records[(string) $link->value], 'CHIL', $record->xref)) {
+                        $family->children[] = $this->link('FAM', 'CHIL', $record->xref);
+                    }
+                }
+            }
+        }
+        foreach ($file as $family) {
+            if ($family->tag !== 'FAM' || $family->xref === null) {
+                continue;
+            }
+            foreach ($family->children as $link) {
+                $tag = match ($link->tag) {
+                    'HUSB', 'WIFE' => 'FAMS',
+                    'CHIL' => 'FAMC',
+                    default => null,
+                };
+                if ($tag !== null && !$points($individual = $records[(string) $link->value], $tag, $family->xref)) {
+                    $individual->children[] = $this->link('INDI', $tag, $family->xref);
+                }
+            }
+        }
+    }
+
+    /** A substructure of a record with its required substructures, pointing to a record. */
+    private function link(string $record, string $tag, string $xref): Line
+    {
+        $substructure = $this->structure((string) $this->profile->record($record)?->uri)->substructure($tag) ?? throw new \LogicException("{$record}.{$tag}");
+        $line = $this->instance($substructure);
+        $line->value = $xref;
+
+        return $line;
     }
 
     /**
@@ -278,14 +390,30 @@ final class Cases
      * The structure with a valid value and its required substructures; one optional
      * substructure when the version needs content and there would be none.
      */
-    private function instance(Substructure $substructure, ?string $path = null, ?string $xref = null, int $depth = 0): Line
+    /** @param array<string, int> $minimums substructures a random file needs here, with their minimum */
+    private function instance(Substructure $substructure, ?string $path = null, ?string $xref = null, int $depth = 0, array $minimums = []): Line
     {
         $structure = $this->structure($substructure->uri);
         $line = new Line($substructure->tag, $this->valid($structure, $path), $xref);
+        $form = $this->form($substructure, $line);
         foreach ($structure->substructures as $tag => $child) {
-            for ($i = 0; $i < $child->cardinality->min; ++$i) {
-                $line->children[] = $this->instance($child, $path === null ? null : "{$path}/{$tag}", null, $depth + 1);
+            if ($form !== null && !isset($form[$tag])) {
+                continue;
             }
+            $inner = [];
+            foreach ($form ?? [] as $key => $min) {
+                if (str_starts_with($key, "{$tag}/")) {
+                    $inner[substr($key, strlen($tag) + 1)] = $min;
+                }
+            }
+            $count = max($form[$tag] ?? 0, $minimums[$tag] ?? 0, $this->count($child, $path === null ? null : "{$path}/{$tag}", $depth));
+            for ($i = 0; $i < $count; ++$i) {
+                $line->children[] = $this->instance($child, $path === null ? null : "{$path}/{$tag}", null, $depth + 1, $inner);
+            }
+        }
+        // A 7.0 <<NOTE_STRUCTURE>> {0:1} is one NOTE or one SNOTE; the term files list both {0:1}.
+        if ($this->random !== null && $structure->substructure('NOTE')?->cardinality->max === 1 && $line->child('NOTE') !== null) {
+            $line->withoutChildren('SNOTE');
         }
         if ($this->requiresContent && $line->value === null && $line->children === [] && $substructure->tag !== 'TRLR' && $depth < 8) {
             $child = $this->filler($structure);
@@ -293,6 +421,38 @@ final class Cases
         }
 
         return $line;
+    }
+
+    /**
+     * In a random 5.x file, the form a structure of FORMS_5 keeps to, drawn: its substructures with their
+     * minimum. The value of the line follows the form: a pointer, or a description (SOUR) or none (OBJE).
+     *
+     * @return ?array<string, int>
+     */
+    private function form(Substructure $substructure, Line $line): ?array
+    {
+        $forms = self::FORMS_5[$this->profile->version()->value][substr((string) strrchr($substructure->uri, '#'), 1)] ?? null;
+        if ($this->random === null || $forms === null) {
+            return null;
+        }
+        if ($this->random->getInt(0, 1) === 1) {
+            return $forms[0];
+        }
+        $line->value = $line->tag === 'SOUR' ? $this->text() : null;
+
+        return $forms[1];
+    }
+
+    /** How many times a substructure is there: its minimum, and in a random file sometimes more, fewer the deeper. */
+    private function count(Substructure $substructure, ?string $path, int $depth): int
+    {
+        $cardinality = $substructure->cardinality;
+        if ($this->random === null || $depth >= 6 || str_starts_with((string) $path, 'HEAD/GEDC') || $path === 'HEAD/CHAR'
+            || $this->random->getInt(1, 2 * ($depth + 1)) > 1) {
+            return $cardinality->min;
+        }
+
+        return $this->random->getInt(max(1, $cardinality->min), min($cardinality->max ?? 3, max(1, $cardinality->min) + 2));
     }
 
     /** The substructure that gives content to an empty structure: one with a text value if there is one. */
@@ -331,7 +491,7 @@ final class Cases
         }
         $target = $structure->pointerTarget();
         if ($target !== null) {
-            return $this->xrefs[$target];
+            return $this->random === null ? $this->xrefs[$target] : $this->pick($this->pool[$target]);
         }
         foreach (explode('|', $structure->payload) as $alternative) {
             if ($alternative !== '<NULL>') {
@@ -347,17 +507,17 @@ final class Cases
         if ($this->profile->version() === Version::V7_0) {
             $sample = (self::TYPES_7[$type] ?? throw new \LogicException("No sample for {$type}"))[0];
             if ($sample === null) {
-                return $this->profile->enumeration((string) $structure->enumerationSet)[0];
+                return $this->pick($this->profile->enumeration((string) $structure->enumerationSet));
             }
 
-            return $sample;
+            return $type === 'http://www.w3.org/2001/XMLSchema#string' ? $this->text() : $sample;
         }
-        if (!str_starts_with($type, '<')) {
-            return $type;
+        if (!str_starts_with($type, '<') || isset(self::SAMPLES_5[$type])) {
+            return self::SAMPLES_5[$type] ?? $type;
         }
         $kind = $this->profile->type($type);
         if ($kind === 'ENUM') {
-            $first = $this->profile->enumeration($type)[0];
+            $first = $this->pick($this->profile->enumeration($type));
 
             return str_starts_with($first, '(') ? '(friend)' : $first;
         }
@@ -365,8 +525,26 @@ final class Cases
             return self::GRAMMARS_5[$kind][0];
         }
         $size = $this->profile->size($type);
+        if ($size === null) {
+            return $this->text();
+        }
+        $text = $this->text();
 
-        return $size === null ? 'text' : str_pad('', max($size[0], min(4, $size[1])), 'text');
+        return strlen($text) >= $size[0] && strlen($text) <= $size[1] ? $text : str_pad('', max($size[0], min(4, $size[1])), 'text');
+    }
+
+    /** A free text: "text", and in a random file also one of other texts. */
+    private function text(): string
+    {
+        return $this->random === null ? 'text' : $this->pick(self::TEXTS);
+    }
+
+    /**
+     * @param list<string> $values
+     */
+    private function pick(array $values): string
+    {
+        return $this->random === null ? $values[0] : $values[$this->random->getInt(0, count($values) - 1)];
     }
 
     /** @return ?array{string, string} an invalid value of the type and the code it gets */
