@@ -37,6 +37,12 @@ final class GedcomDateTest extends TestCase
         yield 'empty' => ['', Version::V7_0, new GedcomDate(DateKind::None), ''];
         yield 'Roman' => ['@#DROMAN@ 24 IUL 753', Version::V5_5_1, GedcomDate::of(Date::of(753, 'IUL', 24, Date::ROMAN)), '!'];
         yield '5.5.5 day and month' => ['23 AUG', Version::V5_5_5, GedcomDate::of(Date::of(null, 'AUG', 23)), '!'];
+        yield 'exact, 5.5.1' => ['6 DEC 1907', Version::V5_5_1, GedcomDate::of(Date::of(1907, 'DEC', 6)), '6 DEC 1907'];
+        yield 'between, 5.5.1' => ['BET 1900 AND MAR 1910', Version::V5_5_1, new GedcomDate(DateKind::Between, Date::of(1900), Date::of(1910, 'MAR')), 'BET 1900 AND MAR 1910'];
+        yield 'one-digit year' => ['5', Version::V7_0, GedcomDate::of(Date::of(5)), '5'];
+        yield 'one-digit year, 5.5.1' => ['AFT 5', Version::V5_5_1, new GedcomDate(DateKind::After, Date::of(5)), 'AFT 5'];
+        yield 'interpreted, lowercase' => ['int 6 dec 1907 (Xmas)', Version::V5_5_1, GedcomDate::of(Date::of(1907, 'DEC', 6))->withPhrase('Xmas'), '6 DEC 1907'];
+        yield 'Gregorian escape' => ['@#DGREGORIAN@ 1900', Version::V5_5_1, GedcomDate::of(Date::of(1900)), '1900'];
         yield 'extension calendar' => ['_MAYA _BAKTUN 13 _LC', Version::V7_0, GedcomDate::of(new Date(13, '_BAKTUN', calendar: '_MAYA', epoch: '_LC')), '_MAYA _BAKTUN 13 _LC'];
     }
 
@@ -98,6 +104,9 @@ final class GedcomDateTest extends TestCase
         yield 'an extension month in 5.x' => [GedcomDate::parse('JULIAN 1 _X 1650'), Version::V5_5_1];
         yield 'the 5.x Roman calendar in 7.0' => [GedcomDate::parse('@#DROMAN@ 753', Version::V5_5_1), Version::V7_0];
         yield 'a day the month does not have' => [GedcomDate::of(Date::of(1900, 'FEB', 30)), Version::V7_0];
+        yield 'the 5.x unknown calendar in 7.0' => [GedcomDate::parse('@#DUNKNOWN@ 1900', Version::V5_5_1), Version::V7_0];
+        yield 'an extension epoch in 5.x' => [GedcomDate::parse('13 _LC'), Version::V5_5_1];
+        yield 'an extension month, Gregorian, in 5.x' => [GedcomDate::parse('1 _X 1650'), Version::V5_5_1];
         yield 'BCE with a month in 5.5.5' => [GedcomDate::parse('MAR 1000 BCE'), Version::V5_5_5];
     }
 
@@ -119,6 +128,10 @@ final class GedcomDateTest extends TestCase
         self::assertSame([$first + 339, $first + 339], GedcomDate::parse('6 DEC 1907')->days());
         self::assertSame([PHP_INT_MIN, $first + 364], GedcomDate::parse('BEF 1907')->days());
         self::assertSame([$first, PHP_INT_MAX], GedcomDate::parse('FROM 1907')->days());
+        self::assertSame([$first, PHP_INT_MAX], GedcomDate::parse('AFT 1907')->days());
+        self::assertSame([PHP_INT_MIN, $first + 364], GedcomDate::parse('TO 1907')->days());
+        self::assertSame([$first, JulianDays::day(1909, 12, 31, false)], GedcomDate::parse('FROM 1907 TO 1909')->days());
+        self::assertNull(GedcomDate::parse('BET 1907 AND HEBREW 5700')->days());
         self::assertSame([$first, JulianDays::day(1909, 12, 31, false)], GedcomDate::parse('BET 1907 AND 1909')->days());
         self::assertSame([$first + 13, $first + 13], GedcomDate::parse('JULIAN 1 JAN 1907')->days(), 'Julian is 13 days behind');
         self::assertSame(GedcomDate::parse('1649')->days(), GedcomDate::parse('1648/49', Version::V5_5_1)->days());
@@ -129,6 +142,14 @@ final class GedcomDateTest extends TestCase
         self::assertNull(GedcomDate::tryParse('99999999999999999999'), 'A Date holds years up to Date::MAX_YEAR');
         self::assertNull(GedcomDate::tryParse('1 JAN 99999999999999999998/99', Version::V5_5_1), 'Found by fuzzing: the dual year overflowed');
         self::assertNull(GedcomDate::parse('5000 BCE')->days());
+    }
+
+    #[Test]
+    public function anEmptyPhraseIsRejected(): void
+    {
+        $this->expectException(InvalidValueException::class);
+
+        new GedcomDate(DateKind::Date, Date::of(1900), phrase: '');
     }
 
     #[Test]

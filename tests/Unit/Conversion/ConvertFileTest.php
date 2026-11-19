@@ -33,6 +33,12 @@ final class ConvertFileTest extends TestCase
         yield 'no TRLR, to 7.0' => [self::HEAD_551 . "0 @I1@ INDI\n1 SOUR Inline\n", Version::V7_0];
         yield 'HEAD not first, to 7.0' => ["0 @I1@ INDI\n1 SOUR Inline\n" . self::HEAD_551 . "0 TRLR\n", Version::V7_0];
         yield 'lines that are not GEDCOM lines, CRLF, to 5.5' => [str_replace("\n", "\r\n", self::HEAD_551 . "0 @I1@ INDI\nnot a line\n1 EMAIL a@b.c\n0 TRLR\n"), Version::V5_5];
+        yield 'SUBN right after HEAD, to 7.0' => [self::HEAD_551 . "0 @S1@ SUBN\n1 TEMP SLAKE\n0 @I1@ INDI\n0 TRLR\n", Version::V7_0];
+        yield 'SUBM right after HEAD, to 5.5.5' => [self::HEAD_551 . "0 @U1@ SUBM\n1 NAME One\n0 @I1@ INDI\n0 @U2@ SUBM\n1 NAME Two\n0 TRLR\n", Version::V5_5_5];
+        yield 'HEAD.SUBM to the third submitter, to 5.5.5' => [self::HEAD_551 . "1 SUBM @U3@\n0 @I1@ INDI\n0 @U1@ SUBM\n1 NAME One\n0 @U2@ SUBM\n1 NAME Two\n0 @U3@ SUBM\n1 NAME Three\n0 TRLR\n", Version::V5_5_5];
+        yield 'two SUBN and a SUBM, to 7.0' => [self::HEAD_551 . "1 SUBM @U1@\n0 @U1@ SUBM\n1 NAME U\n0 @S1@ SUBN\n1 TEMP SLAKE\n0 @I1@ INDI\n0 @S2@ SUBN\n1 FAMF y\n0 TRLR\n", Version::V7_0];
+        yield 'LANG of HEAD and SUBM, to 7.0' => [self::HEAD_551 . "1 LANG Ukrainian\n1 SUBM @U1@\n0 @I1@ INDI\n1 NAME A\n0 @U1@ SUBM\n1 NAME U\n1 LANG English\n1 LANG Klingon\n0 TRLR\n", Version::V7_0];
+        yield 'extensions with a schema, to 5.5.1' => ["0 HEAD\n1 GEDC\n2 VERS 7.0\n1 SCHMA\n2 TAG _SKYPEID http://xmlns.com/foaf/0.1/skypeID\n0 @I1@ INDI\n1 _SKYPEID x\n1 _UID y\n1 SEX X\n0 @F1@ FAM\n1 _STAT z\n0 TRLR\n", Version::V5_5_1];
         yield 'same version' => ["\xEF\xBB\xBF0 HEAD\n1 GEDC\n2 VERS 7.0\n0 TRLR", Version::V7_0];
     }
 

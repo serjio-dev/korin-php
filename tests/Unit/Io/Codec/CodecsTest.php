@@ -169,6 +169,21 @@ final class CodecsTest extends TestCase
     }
 
     #[Test]
+    public function utf8OrdAndChrOnEveryLengthBoundary(): void
+    {
+        $chars = [
+            0x00 => "\x00", 0x7F => "\x7F", 0x80 => "\xC2\x80", 0x7FF => "\xDF\xBF", 0x800 => "\xE0\xA0\x80",
+            0x0490 => "\xD2\x90", 0x20AC => "\xE2\x82\xAC", 0xFFFF => "\xEF\xBF\xBF", 0x10000 => "\xF0\x90\x80\x80",
+            0x1F46A => "\xF0\x9F\x91\xAA", 0x10FFFF => "\xF4\x8F\xBF\xBF",
+        ];
+        foreach ($chars as $codePoint => $bytes) {
+            self::assertSame($bytes, Utf8::chr($codePoint), sprintf('U+%04X', $codePoint));
+            self::assertSame($codePoint, Utf8::ord($bytes), sprintf('U+%04X', $codePoint));
+        }
+        self::assertSame("a\u{FFFD}", Utf8::scrub("a\u{FFFD}"));
+    }
+
+    #[Test]
     public function utf8EncodesOnlyValidUtf8(): void
     {
         self::assertSame('Ґ', Codecs::for(Encoding::Utf8)->encode('Ґ'));
