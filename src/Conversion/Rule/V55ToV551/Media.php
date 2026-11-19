@@ -17,14 +17,14 @@ use Korin\Gedcom\Syntax\Document;
  *   with _FILE, or with a FILE as some programs write in 5.5, gets them back in a FILE. A
  *   record without either keeps them, as extensions (Structures).
  *
- * 5.5.1 → 7.0 runs it on links inside an extension made a structure again ($restored): 5.5 NOTE.SOUR,
- * 5.5.1 _SOUR, keeps the 5.5 link.
+ * 5.5.1 → 7.0 runs it on links ($links): a 5.5 NOTE.SOUR, which 5.5.1 makes _SOUR and 7.0 SOUR again,
+ * keeps the 5.5 link, as do 5.5.1 files of programs that write it so.
  *
  * @internal
  */
 final readonly class Media implements NodeRule
 {
-    public function __construct(private bool $restored = false) {}
+    public function __construct(private bool $links = false) {}
 
     public function needsPrepass(): bool
     {
@@ -39,7 +39,10 @@ final readonly class Media implements NodeRule
     public function node(Document $document, int $id, Context $context): bool
     {
         $record = $document->parentOf($id) === 0;
-        if ((!$record && $document->payloadOf($id) !== null) || $context->inExtension($id) || ($this->restored && ($record || !$context->inRestored($id)))) {
+        if ($this->links && $record) {
+            return true;
+        }
+        if ((!$record && $document->payloadOf($id) !== null) || $context->inExtension($id)) {
             return true;
         }
         $file = null;

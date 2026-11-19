@@ -30,7 +30,7 @@ break the API; such changes are described in `UPGRADE.md`.
   7.0 `FAM.NCHI.DATE` through 5.5.1) has its value and substructures converted: the date and its
   phrase, a 5.5 media link, a 7.0 `ROLE` 5.5 does not list (`_ROLE`, `KL3001`). Before, they kept
   the form of the version before, which the output did not allow. Its intermediate `KL2001` is no
-  longer reported.
+  longer reported. 5.5.1 → 7.0 moves a `FORM` beside its `FILE` into it, as 5.5 → 5.5.1 does.
 - 7.0 → 5.x keeps `HEAD.SNOTE` as `_SNOTE` (`KL2001`) instead of writing `HEAD.NOTE @N1@`,
   which 5.x does not allow: its `HEAD.NOTE` is text. Converting up makes it `SNOTE` again.
 - 5.x → 7.0 keeps the `NOTE` and `SOUR` of a `FONE` or `ROMN` as `_NOTE` and `_SOUR` (`KL2001`)

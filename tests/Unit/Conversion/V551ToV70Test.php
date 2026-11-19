@@ -263,6 +263,13 @@ final class V551ToV70Test extends TestCase
     }
 
     #[Test]
+    public function aFormBesideItsFileMovesIntoIt(): void
+    {
+        // As 5.5 writes a link, and some programs in 5.5.1.
+        self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 OBJE @X1@\n0 @X1@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n0 TRLR\n", $this->convert(self::HEAD . "0 @I1@ INDI\n1 OBJE\n2 FORM jpg\n2 FILE a.jpg\n0 TRLR\n"));
+    }
+
+    #[Test]
     public function inlineMediaInsideAnExtensionStays(): void
     {
         $input = self::HEAD . "0 @I1@ INDI\n1 _MILT\n2 SOUR Papers\n3 OBJE\n4 FILE a.jpg\n5 FORM jpg\n0 TRLR\n";

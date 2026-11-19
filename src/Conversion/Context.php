@@ -26,8 +26,11 @@ use Korin\Gedcom\Syntax\Node;
  */
 final class Context
 {
-    /** @var array<int, Loss> */
+    /** @var list<Loss> */
     private array $losses = [];
+
+    /** @var array<int, true> indexes of losses of $losses that a later step made good */
+    private array $withdrawn = [];
 
     /** @var array<int, int> structures unsupported() made extensions, and the index of their loss */
     private array $made = [];
@@ -76,7 +79,7 @@ final class Context
     /** @var array<int, string> structures of the current record restored(), by the URI of the source structure they are read as */
     private array $restoredAs = [];
 
-    /** @var array<int, true> structures of the current record restored() that a step before made extensions */
+    /** @var list<int> structures of the current record restored() that a step before made extensions */
     private array $restored = [];
 
     /** The document whose HEAD rules read: the one being converted, or in convertFile() the converted HEAD. */
@@ -267,7 +270,7 @@ final class Context
             return false;
         }
         $this->loss($code, Severity::Warning, $node, StoredAs::Extension, $message);
-        $this->made[$node] = (int) array_key_last($this->losses);
+        $this->made[$node] = count($this->losses) - 1;
         $this->document->setTag($node, '_' . $this->document->tagOf($node));
         unset($this->extensions[$node]);
 
@@ -311,8 +314,9 @@ final class Context
         if (!isset($this->made[$node])) {
             return;
         }
-        unset($this->losses[$this->made[$node]], $this->made[$node], $this->extensions[$node]);
-        $this->restored[$node] = true;
+        $this->withdrawn[$this->made[$node]] = true;
+        unset($this->made[$node], $this->extensions[$node]);
+        $this->restored[] = $node;
         // Looked up now, not when the rules ask: InlineRecords moves them to a new record.
         $this->stepUris[$node] = $uri;
         $stack = [$node];
@@ -320,10 +324,8 @@ final class Context
             $id = array_pop($stack);
             $structure = $this->stepUris[$id] === null ? null : $this->profile()->structure($this->stepUris[$id]);
             foreach ($this->document->childIds($id) as $child) {
-                if ($child < $this->watermark) {
-                    $this->stepUris[$child] = $structure?->substructure($this->document->tagOf($child))?->uri;
-                    $stack[] = $child;
-                }
+                $this->stepUris[$child] = $structure?->substructure($this->document->tagOf($child))?->uri;
+                $stack[] = $child;
             }
         }
     }
@@ -331,8 +333,11 @@ final class Context
     /** Whether a structure is one restored() that a step before made an extension or inside one: its value may be in the form of the version before the source. */
     public function inRestored(int $node): bool
     {
-        for (; $node !== 0 && $this->restored !== []; $node = $this->document->parentOf($node)) {
-            if (isset($this->restored[$node])) {
+        if ($this->restored === []) {
+            return false;
+        }
+        for ($above = $node; $above !== 0; $above = $this->document->parentOf($above)) {
+            if (in_array($above, $this->restored, true)) {
                 return true;
             }
         }
@@ -367,7 +372,7 @@ final class Context
     /** @return list<Loss> */
     public function losses(): array
     {
-        return array_values($this->losses);
+        return array_values(array_diff_key($this->losses, $this->withdrawn));
     }
 
     /** @internal for Converter: the step whose rules run now, and the record they convert */

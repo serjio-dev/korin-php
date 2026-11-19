@@ -7,6 +7,7 @@ namespace Korin\Gedcom\Conversion\Rule;
 use Korin\Gedcom\Conversion\Context;
 use Korin\Gedcom\Conversion\NodeRule;
 use Korin\Gedcom\Spec\Profile;
+use Korin\Gedcom\Spec\Structure;
 use Korin\Gedcom\Spec\Substructure;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Version;
@@ -29,10 +30,10 @@ use Korin\Gedcom\Version;
  */
 final class Extensions implements NodeRule
 {
-    /** @var ?array<string, true> the tags of the target's structures */
+    /** @var ?array<string, list<string>> the tags of the target's structures */
     private ?array $standard = null;
 
-    /** @var ?array<string, list<string>> the URIs of the source's structures by tag, in the order of its grammar */
+    /** @var ?array<string, array<string, Structure>> the source's structures by tag and URI, in the order of its grammar */
     private ?array $sources = null;
 
     /** @param bool $grammars whether a value fits a grammar only when it matches it (to and from 5.5.5: dates, ages) */
@@ -81,10 +82,8 @@ final class Extensions implements NodeRule
         $document->setTag($id, $standard);
         // Its value is in the source's form (7.0 FAM.NCHI.DATE, 5.5.1 _DATE INT 1900 (about then)): the rules of
         // the walk that have not seen it read it as the first source structure of its tag that it fits.
-        $from = Profile::for($this->from);
-        foreach ($this->sources()[$standard] ?? [] as $uri) {
-            $structure = $from->structure($uri);
-            if ($structure !== null && Payloads::fits($from, $structure, $payload, $this->grammars)) {
+        foreach ($this->sources()[$standard] ?? [] as $uri => $structure) {
+            if (Payloads::fits(Profile::for($this->from), $structure, $payload, $this->grammars)) {
                 $context->restored($id, $uri);
                 break;
             }
@@ -122,7 +121,7 @@ final class Extensions implements NodeRule
         return $count >= $max && ($target->cardinality->max === null || $count < $target->cardinality->max);
     }
 
-    /** @return array<string, true> */
+    /** @return array<string, list<string>> the URIs of the target's structures by tag */
     private function standard(): array
     {
         if ($this->standard === null) {
@@ -132,13 +131,13 @@ final class Extensions implements NodeRule
                 $tags[$tag] = [];
                 $this->collect($profile, $record->uri, $tags, $seen);
             }
-            $this->standard = array_map(static fn(): bool => true, $tags);
+            $this->standard = $tags;
         }
 
         return $this->standard;
     }
 
-    /** @return array<string, list<string>> */
+    /** @return array<string, array<string, Structure>> */
     private function sources(): array
     {
         if ($this->sources === null) {
@@ -147,14 +146,22 @@ final class Extensions implements NodeRule
             foreach ($profile->records() as $record) {
                 $this->collect($profile, $record->uri, $tags, $seen);
             }
-            $this->sources = array_map(array_keys(...), $tags);
+            $this->sources = [];
+            foreach ($tags as $tag => $uris) {
+                foreach ($uris as $uri) {
+                    $structure = $profile->structure($uri);
+                    if ($structure !== null) {
+                        $this->sources[$tag][$uri] = $structure;
+                    }
+                }
+            }
         }
 
         return $this->sources;
     }
 
     /**
-     * @param array<string, array<string, true>> $tags the URIs of the structures by tag
+     * @param array<string, list<string>> $tags the URIs of the structures by tag
      * @param array<string, true> $seen
      */
     private function collect(Profile $profile, string $uri, array &$tags, array &$seen): void
@@ -164,7 +171,7 @@ final class Extensions implements NodeRule
         }
         $seen[$uri] = true;
         foreach ($profile->structure($uri)->substructures ?? [] as $tag => $substructure) {
-            $tags[$tag][$substructure->uri] = true;
+            $tags[$tag][] = $substructure->uri;
             $this->collect($profile, $substructure->uri, $tags, $seen);
         }
     }

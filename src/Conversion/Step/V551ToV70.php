@@ -41,7 +41,7 @@ final class V551ToV70 implements Step
                 new Rules\Xrefs(),
                 new Rules\Repositories(),
                 new Rules\NoteRecords(),
-                new V55ToV551\Media(restored: true),
+                new V55ToV551\Media(links: true),
                 new Rules\InlineRecords(),
                 new Rules\Identifiers(),
                 new Rules\Uids(),

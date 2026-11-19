@@ -45,6 +45,7 @@ Implemented so far:
 | `AGE` | 7.0 form: `<0Y` → `< 0y`, `11m 99y` → `99y 11m`, a bare number is years; `CHILD`, `INFANT`, `STILLBORN` → `< 8y`, `< 1y`, `0y` + `PHRASE`; anything else `PHRASE` of an empty `AGE` |
 | `LANG` name (`Ukrainian`, any case) | BCP 47 (`uk`); a value that is already a tag stays; anything else `und` + `_PHRASE` (7.0 `LANG` has no `PHRASE`) |
 | Media `FORM` (`jpg`) | Media type (`image/jpeg`); an unknown extension `application/x-<ext>` |
+| Media link with `FORM` beside `FILE`, as 5.5 writes it (and some 5.5.1 programs) | `FORM` moves into the `FILE`, as 5.5 → 5.5.1 does |
 | `FORM.TYPE` (medium of a file) | `FORM.MEDI` |
 | `FILE` | URL or relative path: `/x` → `file:///x`, `c:\x` → `file:///c:/x`, `\\server\x` → `file://server/x`, `\` → `/`; spaces, `%`, `?`, `#`, `[`, `]` percent-encoded. A URI with a scheme (`https://…`, `urn:isbn:…`) only has spaces and such encoded, `file://C:\x` → `file:///C:/x`. `..` stays, though 7.0 does not allow it |
 | Enumerations (`PEDI birth`, `SEX f`, `STAT PRE-1970`, `DNS/CAN`) | 7.0 values (`BIRTH`, `F`, `PRE_1970`, `DNS_CAN`); a value 7.0 does not have becomes `OTHER` + `PHRASE` where 7.0 has both (`NAME.TYPE Screen`, `MEDI document`, `ROLE (midwife)`), and stays otherwise. `SOUR.DATA.EVEN birt,deat` → `BIRT, DEAT` |
