@@ -245,6 +245,32 @@ final class ValidatorTest extends TestCase
     }
 
     #[Test]
+    public function schemaDefinesExtensionTagsAsStandardTerms(): void
+    {
+        $head = "0 HEAD\n1 GEDC\n2 VERS 7.0\n1 SCHMA\n2 TAG _USER https://gedcom.io/terms/v7/record-SUBM\n2 TAG _CAL https://gedcom.io/terms/v7/cal-JULIAN\n2 TAG _SPRING https://gedcom.io/terms/v7/month-MAR\n";
+        $report = Gedcom::validate(Gedcom::parse($head . "0 @U1@ _USER\n1 NAME Anna\n0 @I1@ INDI\n1 SUBM @U1@\n1 BIRT\n2 DATE _CAL 1 MAR 1700\n1 DEAT\n2 DATE 1 _SPRING 1760\n0 @I2@ INDI\n1 SUBM @I1@\n0 TRLR\n"));
+
+        self::assertSame(['KV4003 error line 17 (@I2@/SUBM): SUBM must point to a SUBM record, not INDI'], self::lines($report->diagnostics()));
+    }
+
+    #[Test]
+    public function deprecatedStructuresAndValuesAreWarnings(): void
+    {
+        $doc = Gedcom::parse(self::HEAD_70 . "1 SOUR Korin\n2 DATA Source\n0 @I1@ INDI\n1 EXID 123\n1 EXID 456\n2 TYPE https://example.com\n1 RESI\n2 ADDR Kyiv\n3 ADR1 Kyiv\n1 BAPL\n2 STAT INFANT\n3 DATE 1 JAN 2000\n0 TRLR\n");
+        $report = Gedcom::validate($doc);
+
+        self::assertTrue($report->isValid());
+        self::assertSame([
+            'KV2005 warning line 5 (HEAD/SOUR/DATA): DATA is deprecated; use HEAD.SOUR.NAME instead',
+            'KV2005 warning line 7 (@I1@/EXID[0]): EXID without TYPE is deprecated',
+            'KV2005 warning line 12 (@I1@/RESI/ADDR/ADR1): ADR1 is deprecated; use the ADDR value instead',
+            'KV2005 warning line 14 (@I1@/BAPL/STAT): STAT has the deprecated value "INFANT"; use CHILD instead',
+        ], self::lines($report->diagnostics()));
+        self::assertSame([], Gedcom::validate($doc, (new ValidationOptions())->withDisabled('KV2005'))->diagnostics());
+        self::assertSame([], Gedcom::validate(Gedcom::parse("0 HEAD\n1 SOUR Korin\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n1 SUBM @U1@\n0 @U1@ SUBM\n1 NAME A\n1 ADDR Kyiv\n2 ADR1 Kyiv\n0 TRLR\n"))->diagnostics(), '5.5.1 deprecates nothing');
+    }
+
+    #[Test]
     public function familyLinksMustBeMutual(): void
     {
         $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 FAMS @F1@\n1 FAMC @F2@\n0 @I2@ INDI\n0 @F1@ FAM\n1 HUSB @I1@\n1 CHIL @I2@\n0 @F2@ FAM\n1 WIFE @I2@\n0 TRLR\n");

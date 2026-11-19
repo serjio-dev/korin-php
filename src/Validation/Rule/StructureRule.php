@@ -14,7 +14,8 @@ use Korin\Gedcom\Validation\Records\Records;
 
 /**
  * Level 2: every standard tag is allowed where it stands, and substructures occur as often as
- * the profile says (KV2001–KV2003). Extension tags ("_X") and everything under them are not
+ * the profile says (KV2001–KV2003); 7.0 structures the specification deprecates are warnings
+ * (KV2005, values in {@see Payloads7}). Extension tags ("_X") and everything under them are not
  * checked; HEAD first and TRLR last are syntax checks (KV1004–KV1006).
  *
  * @internal
@@ -98,6 +99,7 @@ final class StructureRule implements Rule
             if ($max !== null && $counts[$tag] === $max + 1) {
                 $out[] = $this->diagnostic($document, 'KV2002', "{$tag} occurs more than {$max} time(s) in {$structure->tag}", $child, $structure->uri);
             }
+            $this->deprecations($document, $profile, $child, $tag, $substructure->uri, $out);
             $definition = $profile->structure($substructure->uri);
             if ($definition !== null) {
                 $this->children($document, $profile, $child, $definition, $definition->substructures, $out);
@@ -110,10 +112,28 @@ final class StructureRule implements Rule
         }
     }
 
-    private function diagnostic(Document $document, string $code, string $message, int $id, ?string $reference): Diagnostic
+    /** @param list<Diagnostic> $out */
+    private function deprecations(Document $document, Profile $profile, int $id, string $tag, string $uri, array &$out): void
+    {
+        $use = $profile->deprecation($uri);
+        if ($use !== null) {
+            $out[] = $this->diagnostic($document, 'KV2005', "{$tag} is deprecated" . ($use === '' ? '' : "; use {$use} instead"), $id, $uri, Severity::Warning);
+        }
+        $required = $profile->deprecatedWithout($uri);
+        if ($required !== null) {
+            foreach ($document->childIds($id) as $child) {
+                if ($document->tagOf($child) === $required) {
+                    return;
+                }
+            }
+            $out[] = $this->diagnostic($document, 'KV2005', "{$tag} without {$required} is deprecated", $id, $uri, Severity::Warning);
+        }
+    }
+
+    private function diagnostic(Document $document, string $code, string $message, int $id, ?string $reference, Severity $severity = Severity::Error): Diagnostic
     {
         $line = $document->lineOf($id);
 
-        return new Diagnostic($code, Severity::Error, $message, $line > 0 ? $line : null, $document->node($id)->path(), $reference);
+        return new Diagnostic($code, $severity, $message, $line > 0 ? $line : null, $document->node($id)->path(), $reference);
     }
 }

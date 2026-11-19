@@ -36,7 +36,7 @@ php fuzz/seed.php ../gedcom-corpus && (mkdir -p build/fuzz/crashes && cd build/f
 - Preserve mode must reproduce unmodified lines byte for byte. Any change to Io/Syntax/Writer
   must keep every `roundtrip-preserve` corpus case green.
 
-- Version rules live in `spec/` as data (7.0: unmodified FamilySearch term files, see
+- Version rules live in `spec/` as data (7.0: unmodified FamilySearch term files plus our `deprecations.yaml`, see
   `spec/7.0/README.md`; 5.x: our transcriptions of the specification grammars, see
   `spec/5.5.1/README.md` and `spec/5.5.5/README.md`) and are compiled to PHP arrays; never edit `resources/profiles/*.php` by hand.
 

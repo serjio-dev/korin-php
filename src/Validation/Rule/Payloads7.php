@@ -17,9 +17,9 @@ final readonly class Payloads7 implements PayloadTypes
 {
     private DateGrammar $dates;
 
-    public function __construct(private Profile $profile)
+    public function __construct(private Profile $profile, Schema $schema = new Schema())
     {
-        $this->dates = new DateGrammar($profile->calendars());
+        $this->dates = new DateGrammar($profile->calendars(), $schema->calendars, $schema->months);
     }
 
     public function requiresContent(): bool
@@ -43,6 +43,8 @@ final readonly class Payloads7 implements PayloadTypes
             foreach ($type === PayloadGrammar::ENUM ? [$value] : PayloadGrammar::listItems($value) as $item) {
                 if (!PayloadGrammar::isEnumValue($item, $permitted)) {
                     $problems[] = ['KV3006', Severity::Error, 'does not permit "' . PayloadGrammar::fragment($item) . '"; expected one of ' . implode(', ', $permitted) . ' or an extension value'];
+                } elseif (($use = $this->profile->deprecatedValue((string) $structure->enumerationSet, $item)) !== null) {
+                    $problems[] = ['KV2005', Severity::Warning, "has the deprecated value \"{$item}\"" . ($use === '' ? '' : "; use {$use} instead")];
                 }
             }
 

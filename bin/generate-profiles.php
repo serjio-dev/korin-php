@@ -37,6 +37,7 @@ const PROFILES = [
     ],
     '7.0' => [
         'terms' => 'spec/7.0/terms',
+        'deprecations' => 'spec/7.0/deprecations.yaml',
         'source' => 'FamilySearch GEDCOM v7.0.18 (2f0b863b5a42275bd2b3ca315900cf779e42f28b)',
     ],
 ];
@@ -56,7 +57,7 @@ foreach (PROFILES as $version => $config) {
     $target = "{$root}/resources/profiles/{$version}.php";
     $profile = isset($config['grammar'])
         ? (new Grammar("{$root}/{$config['grammar']}", $config['uri'], $config['root'] ?? 'LINEAGE_LINKED_GEDCOM'))->compile() + primitives("{$root}/{$config['primitives']}")
-        : compile("{$root}/{$config['terms']}");
+        : compile("{$root}/{$config['terms']}", "{$root}/{$config['deprecations']}");
     $code = render($version, $config['source'], $profile);
     if ($check) {
         if (!is_file($target) || file_get_contents($target) !== $code) {
@@ -76,7 +77,7 @@ if ($stale !== []) {
 /**
  * @return array<string, mixed>
  */
-function compile(string $dir): array
+function compile(string $dir, string $deprecations): array
 {
     $files = glob($dir . '/*');
     if ($files === false || $files === []) {
@@ -126,8 +127,92 @@ function compile(string $dir): array
     }
     ksort($root);
     ksort($calendars);
+    $months = [];
+    foreach ($terms as $uri => $term) {
+        if ($term->type === 'month') {
+            $months[$uri] = $tagOf($uri);
+        }
+    }
 
-    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'types' => [], 'sizes' => [], 'listed' => [], 'calendars' => $calendars];
+    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'types' => [], 'sizes' => [], 'listed' => [], 'calendars' => $calendars, 'months' => $months, 'deprecated' => deprecations($deprecations, $terms)];
+}
+
+/**
+ * spec/7.0/deprecations.yaml, checked against the term files: every listed term exists, and every
+ * term file that marks a deprecation is the source of an entry or listed in about-others.
+ *
+ * @param array<string, Term> $terms
+ *
+ * @return array{structures: array<string, string>, values: array<string, array<string, string>>, without: array<string, string>}
+ */
+function deprecations(string $file, array $terms): array
+{
+    $yaml = Yaml::parseFile($file);
+    if (!is_array($yaml) || array_diff(array_keys($yaml), ['structures', 'values', 'without', 'about-others']) !== []) {
+        throw new RuntimeException("{$file}: only structures, values, without and about-others are allowed");
+    }
+    $byTag = [];
+    foreach ($terms as $term) {
+        $byTag[basename($term->uri)] = $term;
+    }
+    $sources = [];
+    /** @return array<string, string> */
+    $entry = static function (string $uri, mixed $value, string ...$keys) use ($terms, $file, &$sources): array {
+        $out = [];
+        foreach (is_array($value) ? $value : [] as $key => $text) {
+            if (!in_array($key, $keys, true) || !is_string($text)) {
+                throw new RuntimeException("{$file}: {$uri}: only " . implode(', ', $keys) . ' are allowed, as strings');
+            }
+            $out[$key] = $text;
+        }
+        if (!isset($terms[$uri], $out['source'])) {
+            throw new RuntimeException("{$file}: {$uri} is not a term, or has no source");
+        }
+        $sources[$out['source']] = true;
+
+        return $out;
+    };
+    /** @return array<string, mixed> */
+    $section = static function (string $name) use ($yaml, $file): array {
+        $out = [];
+        foreach (is_array($yaml[$name] ?? []) ? ($yaml[$name] ?? []) : throw new RuntimeException("{$file}: {$name} is not a map") as $key => $value) {
+            $out[(string) $key] = $value;
+        }
+
+        return $out;
+    };
+    $out = ['structures' => [], 'values' => [], 'without' => []];
+    foreach ($section('structures') as $uri => $value) {
+        $out['structures'][$uri] = $entry($uri, $value, 'source', 'use')['use'] ?? '';
+    }
+    foreach ($section('values') as $uri => $value) {
+        $use = $entry($uri, $value, 'source', 'use')['use'] ?? '';
+        foreach ($terms[$uri]->valueOf as $set) {
+            $out['values'][$set][(string) $terms[$uri]->tag] = $use;
+        }
+    }
+    foreach ($section('without') as $uri => $value) {
+        $child = $entry($uri, $value, 'source', 'substructure')['substructure'] ?? '';
+        if (!isset($terms[$uri]->substructures[$child], $terms[$child])) {
+            throw new RuntimeException("{$file}: {$uri}: substructure is not one of its substructures");
+        }
+        $out['without'][$uri] = (string) $terms[$child]->tag;
+    }
+    foreach ($section('about-others') as $name) {
+        $sources[is_string($name) ? $name : throw new RuntimeException("{$file}: about-others lists term file names")] = true;
+    }
+    foreach ($byTag as $name => $term) {
+        if ($term->deprecation !== isset($sources[$name])) {
+            throw new RuntimeException($term->deprecation
+                ? "{$file}: the term file {$name} marks a deprecation that no entry names"
+                : "{$file}: {$name} is named as a source, but its term file marks no deprecation");
+        }
+    }
+    ksort($out['structures']);
+    ksort($out['values']);
+    ksort($out['without']);
+
+    return $out;
 }
 
 /** The fields of a term file (https://gedcom.io/terms/format) that profiles use. */
@@ -139,6 +224,8 @@ final readonly class Term
      * @param list<string> $values
      * @param list<string> $months
      * @param list<string> $epochs
+     * @param list<string> $valueOf enumeration sets of a value
+     * @param bool $deprecation whether the specification text has a deprecation note or status
      */
     private function __construct(
         public string $uri,
@@ -151,6 +238,8 @@ final readonly class Term
         public array $values,
         public array $months,
         public array $epochs,
+        public array $valueOf,
+        public bool $deprecation,
     ) {}
 
     public static function load(string $file): self
@@ -193,6 +282,8 @@ final readonly class Term
             $strings('enumeration values'),
             $strings('months'),
             $strings('epochs'),
+            $strings('value of'),
+            array_filter($strings('specification'), static fn(string $s): bool => str_contains($s, 'class="deprecation"') || str_starts_with($s, 'Status: Deprecated')) !== [],
         );
     }
 }
