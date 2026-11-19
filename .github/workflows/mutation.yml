@@ -38,7 +38,8 @@ jobs:
         if: github.event_name != 'pull_request'
         run: infection --threads=max --min-msi=85 --no-progress
       # No summary when no line of src changed: there were no mutants.
-      - run: cat build/infection/summary.log >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo 'No mutants: no line of src changed.' >> "$GITHUB_STEP_SUMMARY"
+      - run: |
+          cat build/infection/summary.log >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo 'No mutants, no line of src changed.' >> "$GITHUB_STEP_SUMMARY"
         if: always()
       - uses: actions/upload-artifact@v7
         if: always()
