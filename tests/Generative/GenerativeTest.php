@@ -32,8 +32,6 @@ final class GenerativeTest extends TestCase
      * its bug is fixed.
      */
     private const KNOWN = [
-        // 7.0 HEAD.SNOTE becomes a HEAD.NOTE pointer, which 5.x does not allow.
-        [['7.0'], self::V5, 'KV3004', '/^NOTE must have a value, not a pointer$/'],
         // FONE and ROMN with a NOTE or a SOUR become a TRAN, which has neither.
         [self::V5, ['7.0'], 'KV2001', '/^(SNOTE|SOUR) is not allowed in TRAN$/'],
         // A structure with neither a value nor substructures that is not an event (BAPL, SOUR.DATA) stays empty.

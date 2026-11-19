@@ -83,7 +83,7 @@ back, except for what the loss report lists. Implemented so far:
 | No `HEAD.SOUR` | `1 SOUR Korin` first in `HEAD`: 5.x requires the system that wrote the file (as in every conversion to 5.x) |
 | Text with `@` | Every `@` doubled: `a@b` → `a@@b`. `@#DJULIAN@` in a 7.0 text is text, written `@#DJULIAN@` again (converting up reads it as text too) |
 | Lines of any length | Split into `CONC` at 255 bytes, between characters, never before a space |
-| `SNOTE` record, `SNOTE` pointer | `NOTE` |
+| `SNOTE` record, `SNOTE` pointer | `NOTE`; `HEAD.SNOTE` stays as `_SNOTE` (`KL2001`): 5.5.1 `HEAD.NOTE` is text, never a pointer |
 | `HEAD._SUBN` | A `SUBN` record `@X<n>@` before `TRLR` with its substructures; `HEAD.SUBN` points to the first in its place |
 | `UID` | `_UID` |
 | `EXID` + `TYPE https://gedcom.io/terms/v7/AFN` | `AFN` |

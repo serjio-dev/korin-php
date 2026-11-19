@@ -53,6 +53,17 @@ final class V70ToV551Test extends TestCase
     }
 
     #[Test]
+    public function aSharedNoteOfTheHeaderStaysAnExtension(): void
+    {
+        $result = Gedcom::convert(Gedcom::parse(self::HEAD . "1 SNOTE @N1@\n0 @N1@ SNOTE Shared\n0 TRLR\n"), Version::V5_5_1);
+
+        // 5.5.1 HEAD.NOTE is text, never a pointer.
+        self::assertSame(substr(self::HEAD_551, 0, -13) . "1 _SNOTE @N1@\n1 CHAR UTF-8\n0 @N1@ NOTE Shared\n0 TRLR\n", $result->output());
+        self::assertSame(['KL2001 warning line 6 (HEAD/SNOTE), extension: 5.5.1 has no SNOTE here'], array_map(strval(...), $result->losses()->entries()));
+        self::assertStringContainsString("\n1 SNOTE @N1@\n", Gedcom::convert($result->document(), Version::V7_0)->output());
+    }
+
+    #[Test]
     public function identifiersGoBackToTheirFiveFiveOneTags(): void
     {
         $result = Gedcom::convert(Gedcom::parse("0 HEAD\n1 SOUR My App\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 UID 1234-abcd\n"
