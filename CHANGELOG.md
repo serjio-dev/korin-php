@@ -7,6 +7,14 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+### Added
+
+- Line coverage in CI (pcov, `Coverage` job, report as an artifact and to Codecov). The 1.0
+  criterion is line coverage ≥ 95% for `Io`, `Syntax`, `Conversion` and `Writer` with MSI ≥ 85%;
+  branch coverage is no longer one: Xdebug's path coverage crashes on this code base.
+- `Utf16Codec` takes `useMbstring: false` to force the pure-PHP encoder, like
+  `AnselCodec(useIntl: false)`, so that tests cover the path without the extension.
+
 ## [0.6.0] - 2026-11-19
 
 The official GEDCOM 7 test files: the 25 files of gedcom.io are in the corpus (downloaded by

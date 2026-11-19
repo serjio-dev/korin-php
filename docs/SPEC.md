@@ -402,7 +402,7 @@ Every corpus file goes through the whole matrix: reading, writing to the same ve
 9. **Mutation** — Infection checks that the tests actually catch bugs rather than just executing code.
 10. **Benchmarks** — PHPBench, targets from section 9.
 
-**Quality thresholds:** line coverage ≥ 95%, branch coverage ≥ 90% for `Io`, `Syntax`, `Conversion`, `Writer`; MSI (Infection) ≥ 85%.
+**Quality thresholds:** line coverage ≥ 95% for `Io`, `Syntax`, `Conversion`, `Writer` (pcov); MSI (Infection) ≥ 85%. Branch coverage is not a threshold: Xdebug's path coverage, the only measure of it for PHP, crashes on this code base (Xdebug 3.5, PHP 8.3–8.5), and mutation testing checks conditions more strictly than branch counts do.
 
 **Corpus** — a separate `gedcom-corpus` repository, included as a dev dependency:
 
@@ -531,7 +531,7 @@ After 1.0: GEDCOM 7.1 after its official release, `korin/gedcomx`, a Symfony bun
 - [ ] Byte-for-byte round-trip in `preserve` mode for the whole corpus
 - [ ] The whole conversion matrix is green: output is valid, `LossReport` matches the golden files
 - [ ] Up-down-up invariants hold for the corpus and the generative tests
-- [ ] Line coverage ≥ 95%, branch coverage ≥ 90%, MSI ≥ 85%
+- [ ] Line coverage ≥ 95% (`Io`, `Syntax`, `Conversion`, `Writer`), MSI ≥ 85%
 - [ ] PHPStan `max` without errors; CI green on PHP 8.2–8.6 and three operating systems
 - [ ] 24 hours of fuzzing without new crashes
 - [ ] Performance targets from section 9 met

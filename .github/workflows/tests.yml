@@ -45,6 +45,36 @@ jobs:
         run: "$(command -v python3 || command -v python) vendor/korin/gedcom-corpus/scripts/fetch-external.py"
       - run: vendor/bin/phpunit
 
+  # Spec section 11: coverage to Codecov. pcov measures lines; Xdebug's path coverage, the only
+  # branch measure, crashes on this suite (PHP 8.3-8.5, Xdebug 3.5); spec section 10 sets MSI instead.
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: intl, mbstring, zip
+          coverage: pcov
+      - uses: ramsey/composer-install@v4
+      - name: Fetch external corpus inputs
+        run: python3 vendor/korin/gedcom-corpus/scripts/fetch-external.py
+      - run: vendor/bin/phpunit --coverage-clover build/coverage/clover.xml --coverage-html build/coverage/html --coverage-text=build/coverage/summary.txt
+      - run: cat build/coverage/summary.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: build/coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/coverage/clover.xml
+          fail_ci_if_error: false
+      # Spec section 10: line coverage of Io, Syntax, Conversion and Writer; after the uploads, so a failure still has its report.
+      - run: php bin/check-coverage.php build/coverage/clover.xml
+
   without-intl:
     name: PHP 8.2 without intl and zip
     runs-on: ubuntu-latest
