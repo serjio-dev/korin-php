@@ -267,6 +267,21 @@ final class V551ToV70Test extends TestCase
     {
         // As 5.5 writes a link, and some programs in 5.5.1.
         self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 OBJE @X1@\n0 @X1@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n0 TRLR\n", $this->convert(self::HEAD . "0 @I1@ INDI\n1 OBJE\n2 FORM jpg\n2 FILE a.jpg\n0 TRLR\n"));
+        // Not when the link has several files, or its file has a FORM: the one beside is not that file's.
+        self::assertSame(
+            self::HEAD_70 . "0 @I1@ INDI\n1 OBJE @X1@\n1 OBJE @X2@\n0 @X1@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n1 FILE b.png\n2 FORM image/png\n1 _FORM image/bmp\n"
+                . "0 @X2@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n1 _FORM image/png\n0 TRLR\n",
+            $this->convert(self::HEAD . "0 @I1@ INDI\n1 OBJE\n2 FILE a.jpg\n3 FORM jpg\n2 FILE b.png\n3 FORM png\n2 FORM bmp\n1 OBJE\n2 FILE a.jpg\n3 FORM jpg\n2 FORM png\n0 TRLR\n"),
+        );
+    }
+
+    #[Test]
+    public function aPointerOfAnExtensionTheStepBeforeMadeFollowsTheXrefs(): void
+    {
+        // 5.5 NOTE.SOUR, 5.5.1 _SOUR: a pointer to no record is @VOID@ in 7.0, one to a renamed record follows it.
+        $input = "0 HEAD\n1 GEDC\n2 VERS 5.5\n0 @I1@ INDI\n1 NOTE Hi\n2 SOUR @S9@\n2 SOUR @s 1@\n0 @s 1@ SOUR\n1 TITL T\n0 TRLR\n";
+
+        self::assertSame("\u{FEFF}0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NOTE Hi\n2 SOUR @VOID@\n2 SOUR @X1@\n0 @X1@ SOUR\n1 TITL T\n0 TRLR\n", Gedcom::convert(Gedcom::parse($input), Version::V7_0)->output());
     }
 
     #[Test]

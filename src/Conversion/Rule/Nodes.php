@@ -13,7 +13,8 @@ use Korin\Gedcom\Syntax\Document;
  * Walks a record once, in document order, and gives every structure to each of its rules for
  * that tag in turn; CONC/CONT lines are part of their structure's value and are not visited. A structure
  * a rule removes is not given to the rules after it, nor are its substructures. An extension a rule
- * makes a structure again goes on to the rules of its new tag that it has not been given.
+ * makes a structure again is given to the rules of its new tag, that rule but, from the first: those that
+ * saw it as an extension passed it by, so a rule for every tag sees it twice.
  *
  * @internal
  */
@@ -59,23 +60,19 @@ final readonly class Nodes implements Rule
             $id = array_pop($stack);
             $tag = $document->tagOf($id);
             $extension = str_starts_with($tag, '_');
-            $done = [];
             foreach ($this->byTag[$tag] ?? $this->any as $rule) {
                 if (!$rule->node($document, $id, $context)) {
                     continue 2;
                 }
-                $done[] = $rule;
+                // An extension a rule made a standard structure again (Extensions: _DATE under NCHI) is given to
+                // the rules of its new tag, but that one: the rules before saw an extension, and passed it by.
                 if ($extension && !str_starts_with($document->tagOf($id), '_')) {
-                    break;
-                }
-            }
-            // An extension a rule made a standard structure again (Extensions: _DATE under NCHI) is given to the
-            // rules of its tag it has not been given yet, so that its value is converted too.
-            if ($extension && !str_starts_with($document->tagOf($id), '_')) {
-                foreach ($this->byTag[$document->tagOf($id)] ?? $this->any as $rule) {
-                    if (!in_array($rule, $done, true) && !$rule->node($document, $id, $context)) {
-                        continue 2;
+                    foreach ($this->byTag[$document->tagOf($id)] ?? $this->any as $next) {
+                        if ($next !== $rule && !$next->node($document, $id, $context)) {
+                            continue 3;
+                        }
                     }
+                    break;
                 }
             }
             if (!$document->hasChildren($id)) {

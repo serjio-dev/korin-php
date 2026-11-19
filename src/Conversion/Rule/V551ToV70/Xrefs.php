@@ -69,7 +69,8 @@ final class Xrefs implements NodeRule
         }
         if (isset($this->renamed[$payload])) {
             $document->setPayload($id, $this->renamed[$payload]);
-        } elseif (!isset($this->xrefs[$payload])) {
+        } elseif (!isset($this->xrefs[$payload]) && !in_array($payload, $this->renamed, true)) {
+            // Not one it renamed: an extension a rule makes a structure again is given to this rule twice (Nodes).
             if ($document->tagOf($id) === 'NOTE') {
                 $context->setValue($id, $payload);
             } elseif ($payload !== self::VOID && !str_starts_with($document->tagOf($id), '_') && !$context->inExtension($id)) {

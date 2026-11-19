@@ -79,7 +79,7 @@ final class Context
     /** @var array<int, string> structures of the current record restored(), by the URI of the source structure they are read as */
     private array $restoredAs = [];
 
-    /** @var list<int> structures of the current record restored() that a step before made extensions */
+    /** @var array<int, int> structures of the current record restored() that a step before made extensions, by themselves */
     private array $restored = [];
 
     /** The document whose HEAD rules read: the one being converted, or in convertFile() the converted HEAD. */
@@ -311,12 +311,13 @@ final class Context
     public function restored(int $node, string $uri): void
     {
         $this->restoredAs[$node] = $uri;
+        unset($this->extensions[$node]);
         if (!isset($this->made[$node])) {
             return;
         }
         $this->withdrawn[$this->made[$node]] = true;
-        unset($this->made[$node], $this->extensions[$node]);
-        $this->restored[] = $node;
+        $this->restored[$node] = $node;
+        unset($this->made[$node]);
         // Looked up now, not when the rules ask: InlineRecords moves them to a new record.
         $this->stepUris[$node] = $uri;
         $stack = [$node];
@@ -337,7 +338,7 @@ final class Context
             return false;
         }
         for ($above = $node; $above !== 0; $above = $this->document->parentOf($above)) {
-            if (in_array($above, $this->restored, true)) {
+            if (isset($this->restored[$above])) {
                 return true;
             }
         }

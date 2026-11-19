@@ -18,7 +18,8 @@ use Korin\Gedcom\Syntax\Document;
  *   record without either keeps them, as extensions (Structures).
  *
  * 5.5.1 → 7.0 runs it on links ($links): a 5.5 NOTE.SOUR, which 5.5.1 makes _SOUR and 7.0 SOUR again,
- * keeps the 5.5 link, as do 5.5.1 files of programs that write it so.
+ * keeps the 5.5 link, as do 5.5.1 files of programs that write it so; one with several FILE, or with a FILE
+ * that has its FORM, is a 5.5.1 link with a FORM out of place (an extension, Structures).
  *
  * @internal
  */
@@ -49,6 +50,10 @@ final readonly class Media implements NodeRule
         $moved = [];
         foreach ($document->childIds($id) as $child) {
             $tag = $document->tagOf($child);
+            if ($this->links && $tag === 'FILE' && ($file !== null || $document->node($child)->first('FORM') !== null)) {
+                // A 5.5.1 link with several files, or a file with its FORM: the FORM beside is not that file's.
+                return true;
+            }
             if ($file === null && ($tag === 'FILE' || ($record && $tag === '_FILE'))) {
                 $file = $child;
             } elseif ($tag === 'FORM' || ($record && $tag === 'TITL')) {
