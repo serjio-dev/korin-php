@@ -7,6 +7,15 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-19
+
+The official GEDCOM 7 test files: the 25 files of gedcom.io are in the corpus (downloaded by
+its script, as they come without a license), read and validated as expected, and converted to
+every 5.x version and back without errors or unreported changes. CI follows specification
+section 11 (PHP 8.6 required, nightly PHP, dependency checks, release workflow), and the root
+files of section 13 are in place. No breaking changes ([UPGRADE.md](UPGRADE.md)); valid 7.0
+files can now have `KV2005` warnings. Performance is that of 0.5.
+
 ### Added
 
 - `KV2005` (warning): 7.0 structures and values the specification deprecates (`ADR1`–`ADR3`,
@@ -15,6 +24,8 @@ break the API; such changes are described in `UPGRADE.md`.
 - Validation of 7.0 reads `HEAD.SCHMA`: an extension tag defined with the URI of a standard
   record type, calendar or month is checked as that (`_USER` for `record-SUBM` satisfies
   `SUBM @U1@`, a date in `_CALENDRIER` for `cal-FRENCH_R` is a French Republican date).
+- The corpus runs the 25 GEDCOM 7.0 test files of gedcom.io as external cases; the suites
+  leave them out, and say so, until `fetch-external.py` of the corpus has downloaded them.
 
 ### Changed
 
@@ -42,6 +53,8 @@ break the API; such changes are described in `UPGRADE.md`.
   `SUBM.LANG` keeps its tag; 5.x → 7.0 no longer encodes the `%` of a percent-encoding
   (`%C3%AB` became `%25C3%25AB`) and keeps a pointer of an extension to no record (`_IN @B1@`
   became `@VOID@`).
+- `ext-ctype` is no longer needed (`ctype_digit` in the 5.5.5 date spelling was a hidden
+  dependency).
 
 ## [0.5.0] - 2026-11-18
 
@@ -338,7 +351,8 @@ streaming and indexed reading follow in 0.2–0.4.
   gedcom7code test files; PHPBench benchmarks; a baseline comparison with
   liberu-genealogy/php-gedcom ([docs/comparison](docs/comparison/liberu-php-gedcom.md)).
 
-[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.6.0
 [0.5.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.5.0
 [0.4.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.4.0
 [0.3.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.3.0
