@@ -28,6 +28,10 @@ break the API; such changes are described in `UPGRADE.md`.
 
 - 7.0 → 5.x keeps `HEAD.SNOTE` as `_SNOTE` (`KL2001`) instead of writing `HEAD.NOTE @N1@`,
   which 5.x does not allow: its `HEAD.NOTE` is text. Converting up makes it `SNOTE` again.
+- 5.x → 7.0 keeps the `NOTE` and `SOUR` of a `FONE` or `ROMN` as `_NOTE` and `_SOUR` (`KL2001`)
+  under the `TRAN`, which has neither; 7.0 → 5.x makes them `NOTE` and `SOUR` again. A 5.5.1
+  `NOTE` pointer becomes `SNOTE` only where 7.0 has `SNOTE`. Before, the output had `SOUR` and
+  `SNOTE` under `TRAN` (`KV2001`).
 
 ## [0.6.0] - 2026-11-19
 

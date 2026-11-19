@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Tests\Unit\Conversion;
 
+use Korin\Gedcom\Conversion\Loss;
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Severity;
@@ -206,6 +207,24 @@ final class V551ToV70Test extends TestCase
 
         self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 NAME A\n2 TRAN a\n3 LANG und\n2 TRAN b\n3 LANG und\n3 _TYPE romaji\n"
             . "2 TRAN c\n3 LANG und-Latn\n3 _TYPE Kana\n0 TRLR\n", $output);
+    }
+
+    #[Test]
+    public function notesAndSourcesOfATranslationStayExtensionsAndComeBack(): void
+    {
+        $input = self::HEAD . "0 @S1@ SOUR\n1 TITL Register\n0 @N1@ NOTE Shared\n0 @I1@ INDI\n1 NAME A\n2 ROMN a\n3 TYPE romaji\n"
+            . "3 NOTE Clerk\n3 NOTE @N1@\n3 SOUR @S1@\n4 PAGE 12\n2 NOTE @N1@\n0 TRLR\n";
+        $result = Gedcom::convert(Gedcom::parse($input), Version::V7_0);
+
+        // A NOTE pointer is SNOTE only where 7.0 has SNOTE: under NAME, not under TRAN.
+        self::assertSame(self::HEAD_70 . "0 @S1@ SOUR\n1 TITL Register\n0 @N1@ SNOTE Shared\n0 @I1@ INDI\n1 NAME A\n2 TRAN a\n3 LANG ja-Latn\n"
+            . "3 _NOTE Clerk\n3 _NOTE @N1@\n3 _SOUR @S1@\n4 PAGE 12\n2 SNOTE @N1@\n0 TRLR\n", Gedcom::serialize($result->document()));
+        self::assertSame(['KL2001', 'KL2001', 'KL2001'], array_map(static fn(Loss $loss): string => $loss->code, $result->losses()->entries()));
+        self::assertSame([], Gedcom::validate($result->document())->errors());
+        self::assertStringContainsString(
+            "2 ROMN a\n3 TYPE romaji\n3 NOTE Clerk\n3 NOTE @N1@\n3 SOUR @S1@\n4 PAGE 12\n2 NOTE @N1@\n",
+            Gedcom::convert($result->document(), Version::V5_5_1)->output(),
+        );
     }
 
     #[Test]

@@ -26,7 +26,8 @@ Implemented so far:
 | Xref with anything but `A–Z`, `0–9`, `_`, or `@VOID@` (`@fam 1@`, `@note@`) | `@X<n>@`, the next free `n` in record order; every pointer follows. Valid xrefs (`@1@`, `@I1@`) are kept |
 | Pointer to a record that does not exist, compared case-sensitively (`@test@` ≠ `@TEST@`) | `@VOID@`, without a loss entry: the source already has `KV4001` and the name of a missing record is not data |
 | `NOTE` whose pointer leads nowhere (`NOTE @Smith family@`: text written without `@@`) | Text: `NOTE @@Smith family@` |
-| `NOTE` record, `NOTE` pointer | `SNOTE` |
+| `NOTE` record, `NOTE` pointer | `SNOTE`; a pointer where 7.0 has no `SNOTE` (under `FONE`, `ROMN`) stays `NOTE`, made `_NOTE` below |
+| A structure 7.0 does not have where it stands: `NOTE`, `SOUR` of a `FONE` or `ROMN` (a 7.0 `TRAN` has neither) | An extension with its tag and substructures (`_NOTE`, `_SOUR`), `KL2001`; converting down gives the structure back |
 | `SUBN` record, `HEAD.SUBN` | `HEAD._SUBN` with the record's substructures, one per `SUBN`; the record and the pointer are removed |
 | `REPO` of a source without a pointer (`1 REPO` + `CALN`) | `REPO @VOID@`: 7.0 requires the pointer |
 | `EVEN Moved to Osaka` of an individual or family without `TYPE` | `TYPE Moved to Osaka` added first: 7.0 requires `TYPE`, and the value describes the event. `FACT` and `IDNO` without `TYPE` stay so (`KV2003` in the output): nothing names their type |
@@ -111,6 +112,7 @@ back, except for what the loss report lists. Implemented so far:
 | `TRAN` of a name or place | `FONE`/`ROMN` with `TYPE` where 5.5.1 has the type: `ko-Hang` → `FONE hangul`, `ja-Kana` → `FONE kana`, `ja-Latn` → `ROMN romaji`, `zh-Latn-pinyin` → `ROMN pinyin`, `zh-Latn-wadegile` → `ROMN wadegiles`; `und`/`und-Latn` + `_TYPE x` → `FONE`/`ROMN` + `TYPE x`. Another language → `_TRAN`, `KL2001` |
 | `SEX X` | `SEX U` + `_SEX X`, `KL3002` |
 | A structure 5.5.1 does not have where it stands: `NO`, `SDATE`, `CREA`, `INIL`, `CROP`, `HEAD.SCHMA`, `MIME`/`LANG` of a note, `ASSO` of an event, a `PHRASE` no value could take | An extension with its tag and substructures (`_NO`, `_SDATE`, `_SCHMA`), `KL2001`; converting up gives the structure back |
+| `_NOTE`, `_SOUR` and other extensions named after a 5.5.1 structure, where 5.5.1 has it and 7.0 does not (under `TRAN`) | The 5.5.1 structure: how the conversion to 7.0 writes it. An extension 7.0 has the structure for stays |
 | More of a structure than 5.5.1 allows (a second `RFN` of a record) | The extra ones as extensions, `KL2002` (an `EXID` that would be a second `RFN` stays `_EXID`, `KL2001`) |
 | `Y` of an event 5.5.1 writes without a value (`BURI Y`, `CREM Y`) | No value: an event without substructures means the same, and converting up gives `Y` back; one with substructures is reported, `KL3003` |
 

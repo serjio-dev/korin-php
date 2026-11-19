@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Conversion\Step;
 
+use Korin\Gedcom\Conversion\Rule\Extensions;
 use Korin\Gedcom\Conversion\Rule\Nodes;
 use Korin\Gedcom\Conversion\Rule\Structures;
 use Korin\Gedcom\Conversion\Rule\V70ToV551 as Rules;
@@ -51,6 +52,7 @@ final class V70ToV551 implements Step
                 new Rules\Enumerations(),
                 new Rules\Translations(),
                 new Rules\Sexes(),
+                new Extensions(Version::V7_0, Version::V5_5_1),
                 new Structures(Version::V5_5_1),
             ),
         ];
