@@ -10,6 +10,7 @@ use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\Syntax\Node;
+use Korin\Gedcom\Syntax\RecordReader;
 use Korin\Gedcom\Syntax\RecordStream;
 use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -35,6 +36,8 @@ final class RecordStreamTest extends TestCase
         yield 'invalid UTF-8 after the sample' => ["0 HEAD\n1 CHAR UTF-8\n" . str_repeat("0 @N1@ NOTE x\n", 6000) . "0 @N2@ NOTE \xC3\x28\n0 TRLR\n"];
         yield 'no HEAD, unknown version' => ["0 @I1@ INDI\n0 HEAD\n1 GEDC\n2 VERS 9.9\n"];
         yield 'empty' => [''];
+        yield 'mixed terminators, CRLF the most' => ["0 HEAD\n1 GEDC\r\n2 VERS 7.0\r\n0 @I1@ INDI\r\n0 TRLR\n"];
+        yield 'CR, then LF the most' => ["0 HEAD\r1 GEDC\n2 VERS 7.0\n0 TRLR\n"];
     }
 
     #[Test]
@@ -67,6 +70,28 @@ final class RecordStreamTest extends TestCase
             self::assertSame($diagnostics, $streamed, "Chunks of {$chunkSize}: diagnostics");
             self::assertSame($document->encoding(), $stream->encoding());
             self::assertSame($document->hasBom(), $stream->hasBom());
+        }
+    }
+
+    #[Test]
+    #[DataProvider('files')]
+    public function readerSplitsRecordsAtTheSameBytesWhateverTheChunks(string $bytes): void
+    {
+        $document = Gedcom::parse($bytes);
+        $lines = array_map(static fn(Node $record): ?int => $record->line(), $document->records());
+
+        foreach ([1, 2, 3, 7, 65536] as $chunkSize) {
+            $reader = new RecordReader($this->handle($bytes), new ReadOptions(), $chunkSize);
+            $records = iterator_to_array($reader->records(), false);
+            $offset = $reader->detection()->hasBom ? strlen($reader->detection()->encoding->bom()) : 0;
+            foreach ($records as [$record, $start]) {
+                self::assertSame($offset, $start, "Chunks of {$chunkSize}: offset");
+                $offset += strlen($record);
+            }
+
+            self::assertSame($bytes, ($reader->detection()->hasBom ? $reader->detection()->encoding->bom() : '') . implode('', array_column($records, 0)), "Chunks of {$chunkSize}: bytes");
+            self::assertSame($lines, array_slice(array_column($records, 2), count($records) - count($lines)), "Chunks of {$chunkSize}: lines");
+            self::assertSame($document->lineEnding(), $reader->lineEnding(), "Chunks of {$chunkSize}: line ending");
         }
     }
 

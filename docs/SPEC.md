@@ -105,7 +105,7 @@ Dates follow the [PHP support schedule](https://endoflife.ai/article-php-eol.htm
 - `ext-mbstring` / `ext-iconv` — optional, speed up UTF-16 and CP125x;
 - `ext-zip` — in `suggest`, needed only for GEDZIP.
 
-**Dev dependencies:** PHPUnit `^11.5 || ^12.5 || ^13`. Composer picks the version for the PHP in use: [11 works with 8.2, 12 with 8.3, 13 with 8.4](https://phpunit.de/supported-versions.html). Also PHPStan 2.x, PHP-CS-Fixer, Rector, Infection, PHPBench and `nikic/php-fuzzer`.
+**Dev dependencies:** PHPUnit `^11.5 || ^12.5 || ^13`. Composer picks the version for the PHP in use: [11 works with 8.2, 12 with 8.3, 13 with 8.4](https://phpunit.de/supported-versions.html). Also PHPStan 2.x, PHP-CS-Fixer, Rector, PHPBench and `nikic/php-fuzzer`; Infection is a tool outside `composer.json` (it needs PHP 8.3+), installed by the `mutation` workflow.
 
 ## 5. Architecture
 
@@ -445,7 +445,7 @@ Every PR runs the tests on PHP 8.2–8.6, on three operating systems, with lowes
 | `tests` | Every push and PR | PHP 8.2, 8.3, 8.4, 8.5, 8.6 × `lowest`/`highest` on Ubuntu; Windows and macOS on 8.2 and 8.6; coverage → Codecov |
 | `php-nightly` | Nightly | PHP nightly build, failures do not block |
 | `static` | Every PR | PHPStan, PHP-CS-Fixer, Rector, composer checks |
-| `mutation` | PR (changed files) + weekly (everything) | Infection, MSI threshold |
+| `mutation` | PR (changed lines) + weekly (everything) | Infection on the unit and conformance suites, MSI ≥ 85% |
 | `fuzz` | Nightly | Fuzzing; inputs found are added to the corpus |
 | `bench` | PR | Comparison with `main`, blocks on a regression > 10% |
 | `release` | Tag `v*` | Release build, notes from CHANGELOG, artifact attestation |

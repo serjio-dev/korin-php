@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Korin\Gedcom\Tests\Unit\Writer;
 
 use Korin\Gedcom\Gedcom;
+use Korin\Gedcom\Io\Codec\Codecs;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\WriteOptions;
@@ -97,6 +98,19 @@ final class WriterTest extends TestCase
     }
 
     #[Test]
+    public function limitCountsCharactersInUtf8AndUtf16(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NOTE x\n0 TRLR\n");
+        $doc->find('@I1@/NOTE')?->setValue('ааааа');
+
+        self::assertStringContainsString("1 NOTE аааа\n2 CONC а\n", Gedcom::serialize($doc, (new WriteOptions())->withMaxLineLength(12)));
+        self::assertStringContainsString(
+            Codecs::for(Encoding::Utf16Le)->encode("1 NOTE аааа\n2 CONC а\n"),
+            Gedcom::serialize($doc, WriteOptions::normalize()->withEncoding(Encoding::Utf16Le)->withMaxLineLength(12)),
+        );
+    }
+
+    #[Test]
     public function version7IsNeverSplit(): void
     {
         $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NOTE x\n0 TRLR\n");
@@ -126,6 +140,29 @@ final class WriterTest extends TestCase
             "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n",
             substr(Gedcom::serialize($doc, WriteOptions::normalize()->withLineEnding("\n")), 0, 27),
         );
+    }
+
+    #[Test]
+    public function normalizeKeepsOnlyLinesAlreadyInTheirNormalForm(): void
+    {
+        $long = str_repeat('z', 260);
+        $bytes = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0  @I1@ INDI\n1  SEX F\n1 NAME Ann\xFF\n1 NOTE {$long}\r\n1 _X\n1 _Y v\n0 @I2@   INDI\n0 TRLR\n";
+        $doc = Gedcom::parse($bytes, new ReadOptions(encoding: Encoding::Utf8));
+
+        self::assertSame(
+            "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I1@ INDI\n1 SEX F\n1 NAME Ann\u{FFFD}\n1 NOTE " . substr($long, 0, 247)
+                . "\n2 CONC " . substr($long, 247) . "\n1 _X\n1 _Y v\n0 @I2@ INDI\n0 TRLR\n",
+            Gedcom::serialize($doc, WriteOptions::normalize()),
+        );
+        self::assertStringStartsWith(
+            "0 HEAD\r\n1 GEDC\r\n2 VERS 5.5.1\r\n1 CHAR UTF-8\r\n0 @I1@ INDI\r\n1 SEX F\r\n",
+            Gedcom::serialize($doc, WriteOptions::normalize()->withLineEnding("\r\n")),
+        );
+        // A line of exactly the limit is kept; 7.0 has no limit.
+        $exact = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @N1@ NOTE " . str_repeat('y', 242) . "\n0 TRLR\n");
+        self::assertSame(Gedcom::serialize($exact), Gedcom::serialize($exact, WriteOptions::normalize()));
+        $seven = "\xEF\xBB\xBF0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NOTE " . str_repeat('z', 300) . "\n0 TRLR\n";
+        self::assertSame($seven, Gedcom::serialize(Gedcom::parse($seven), WriteOptions::normalize()));
     }
 
     #[Test]

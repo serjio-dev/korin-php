@@ -1,0 +1,19 @@
+{
+    // Spec section 10: MSI >= 85 (mutation workflow). The corpus suite covers the code as a
+    // whole and is too slow to run per mutant; unit and conformance tests target it.
+    "source": {
+        "directories": ["src"]
+    },
+    "testFrameworkOptions": "--testsuite=unit,conformance",
+    "timeout": 30,
+    "logs": {
+        "text": "build/infection/infection.log",
+        "summary": "build/infection/summary.log",
+        "html": "build/infection/infection.html",
+        "github": true
+    },
+    "tmpDir": "build/infection/tmp",
+    "mutators": {
+        "@default": true
+    }
+}

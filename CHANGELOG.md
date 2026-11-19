@@ -12,6 +12,9 @@ break the API; such changes are described in `UPGRADE.md`.
 - Line coverage in CI (pcov, `Coverage` job, report as an artifact and to Codecov). The 1.0
   criterion is line coverage ≥ 95% for `Io`, `Syntax`, `Conversion` and `Writer` with MSI ≥ 85%;
   branch coverage is no longer one: Xdebug's path coverage crashes on this code base.
+- Mutation testing (Infection, `mutation` workflow): MSI ≥ 85% on the lines a pull request
+  changes and on the whole code weekly; 82.2% → 85%+ with new unit tests, among them the
+  file checks of the parser, which only the corpus suite had covered.
 - `Utf16Codec` takes `useMbstring: false` to force the pure-PHP encoder, like
   `AnselCodec(useIntl: false)`, so that tests cover the path without the extension.
 

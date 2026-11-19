@@ -42,6 +42,18 @@ final class PlausibilityTest extends TestCase
         yield 'other calendar' => ['HEBREW 5760', null];
         yield 'unknown month' => ['1 XYZ 2000', null];
         yield 'not a date' => ['yesterday', null];
+        yield 'spaces around' => ['  2000 ', [2451545, 2451910]];
+        yield 'text before INT' => ['X INT 2000 (then)', null];
+        yield 'interpreted, phrase of two lines' => ["INT 2000 (a\nb)", [2451545, 2451910]];
+        yield 'text before BET' => ['XBET 1999 AND 2000', null];
+        yield 'text before BEF' => ['XBEF 2000', null];
+        yield 'between with an end of another calendar' => ['BET 1999 AND HEBREW 5760', null];
+        yield 'between with a start of another calendar' => ['BET HEBREW 5760 AND 2000', null];
+        yield 'from, to' => ['TO 2000', [PHP_INT_MIN, 2451910]];
+        yield 'from' => ['FROM 2000', [2451545, PHP_INT_MAX]];
+        yield 'before another calendar' => ['BEF HEBREW 5760', null];
+        yield 'Julian with a 5.x escape and year' => ['@#DJULIAN@ 1582', [2298884, 2299248]];
+        yield 'dual year in the same century' => ['1 JAN 1648/49', [2323346, 2323346]];
     }
 
     /** @param ?array{int, int} $expected */
@@ -115,6 +127,26 @@ final class PlausibilityTest extends TestCase
             'KV5003 warning line 8 (@I3@): The individual is their own ancestor (a cycle of 2 individuals)',
             'KV5003 warning line 14 (@I5@): The individual is their own ancestor (a cycle of 1 individual)',
         ], $this->lines($doc));
+    }
+
+    #[Test]
+    public function boundariesAndLinksOnlyOneSideHas(): void
+    {
+        $doc = Gedcom::parse(self::HEAD_70
+            . "0 @I1@ INDI\n1 BIRT\n2 DATE 31 DEC 1900\n1 DEAT\n2 DATE 1900\n"   // the last day the death can be
+            . "0 @I2@ INDI\n1 BIRT\n2 DATE 1 JAN 1950\n"
+            . "0 @I3@ INDI\n1 BIRT\n2 DATE 1 JAN 1950\n"
+            . "0 @F1@ FAM\n1 HUSB @I2@\n1 CHIL @I3@\n"                              // born the same day
+            // A cycle of CHIL lines only, through the second family of @I4@.
+            . "0 @I4@ INDI\n0 @I5@ INDI\n0 @I6@ INDI\n"
+            . "0 @F2@ FAM\n1 HUSB @I5@\n1 CHIL @I4@\n"
+            . "0 @F3@ FAM\n1 WIFE @I6@\n1 CHIL @I4@\n"
+            . "0 @F4@ FAM\n1 HUSB @I4@\n1 CHIL @I6@\n"
+            // A second record with the xref of the first is not read.
+            . "0 @I1@ INDI\n1 BIRT\n2 DATE 2000\n1 DEAT\n2 DATE 1990\n"
+            . "0 TRLR\n");
+
+        self::assertSame(['KV5003 warning line 18 (@I4@): The individual is their own ancestor (a cycle of 2 individuals)'], $this->lines($doc));
     }
 
     #[Test]

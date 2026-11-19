@@ -7,10 +7,15 @@ namespace Korin\Gedcom\Tests\Unit\Syntax;
 use Korin\Gedcom\Exception\DetachedNodeException;
 use Korin\Gedcom\Exception\InvalidPathException;
 use Korin\Gedcom\Exception\ParseException;
+use Korin\Gedcom\Exception\ReadOnlyException;
 use Korin\Gedcom\Gedcom;
+use Korin\Gedcom\Model\Family;
+use Korin\Gedcom\Model\Individual;
 use Korin\Gedcom\ReadOptions;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Syntax\Node;
 use Korin\Gedcom\Version;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -276,5 +281,120 @@ final class DocumentTest extends TestCase
 
         self::assertSame('far value', $doc->find("HEAD/{$tag}")?->value());
         self::assertSame($bytes, Gedcom::serialize($doc));
+    }
+    /** @return iterable<string, array{\Closure(Document): mixed}> */
+    public static function changes(): iterable
+    {
+        yield 'addIndividual' => [static fn(Document $d): Individual => $d->addIndividual()];
+        yield 'addFamily' => [static fn(Document $d): Family => $d->addFamily()];
+        yield 'addRecord' => [static fn(Document $d): Node => $d->addRecord('_X')];
+        yield 'removeRecord' => [static fn(Document $d) => $d->removeRecord('@I1@')];
+        yield 'renameXref' => [static fn(Document $d) => $d->renameXref('@I1@', '@I9@')];
+        yield 'createNode' => [static fn(Document $d): int => $d->createNode(0, null, '_X', null)];
+        yield 'removeNode' => [static fn(Document $d) => $d->removeNode(self::id($d, '@I1@/NOTE'))];
+        yield 'setPayload' => [static fn(Document $d) => $d->setPayload(self::id($d, '@I1@/NOTE'), 'x')];
+        yield 'moveNode' => [static fn(Document $d) => $d->moveNode(self::id($d, '@I1@/NOTE'), self::id($d, '@F1@'))];
+        yield 'setTag' => [static fn(Document $d) => $d->setTag(self::id($d, '@I1@/NOTE'), '_NOTE')];
+        yield 'setXref' => [static fn(Document $d) => $d->setXref(self::id($d, '@I1@'), '@I9@')];
+    }
+
+    #[Test]
+    #[DataProvider('changes')]
+    public function aFrozenDocumentRejectsEveryChange(\Closure $change): void
+    {
+        $doc = Gedcom::parse(self::FILE);
+        $doc->freeze();
+
+        $this->expectException(ReadOnlyException::class);
+        $change($doc);
+    }
+
+    /** @return iterable<string, array{\Closure(Document, int): mixed}> */
+    public static function nodeChanges(): iterable
+    {
+        yield 'removeNode' => [static fn(Document $d, int $id) => $d->removeNode($id)];
+        yield 'setPayload' => [static fn(Document $d, int $id) => $d->setPayload($id, 'x')];
+        yield 'moveNode' => [static fn(Document $d, int $id) => $d->moveNode($id, self::id($d, '@F1@'))];
+        yield 'moveNode under it' => [static fn(Document $d, int $id) => $d->moveNode(self::id($d, '@I1@/NAME[0]'), $id)];
+        yield 'setTag' => [static fn(Document $d, int $id) => $d->setTag($id, '_NOTE')];
+        yield 'setXref' => [static fn(Document $d, int $id) => $d->setXref($id, '@N1@')];
+    }
+
+    #[Test]
+    #[DataProvider('nodeChanges')]
+    public function aRemovedNodeCannotBeChanged(\Closure $change): void
+    {
+        $doc = Gedcom::parse(self::FILE);
+        $id = self::id($doc, '@I1@/NOTE');
+        $doc->removeNode($id);
+
+        $this->expectException(DetachedNodeException::class);
+        $this->expectExceptionMessage("Node {$id} was removed from the document");
+        $change($doc, $id);
+    }
+
+    #[Test]
+    public function newRecordsTakeTheGivenXrefOrAFreeOne(): void
+    {
+        $doc = Gedcom::parse(self::FILE);
+
+        self::assertSame('@X7@', $doc->addIndividual('@X7@')->xref());
+        self::assertSame('@X8@', $doc->addFamily('@X8@')->xref());
+        self::assertNotSame('@I1@', $doc->addIndividual()->xref());
+        self::assertNotSame('@F1@', $doc->addFamily()->xref());
+
+        // Without a trailer a record goes last.
+        $doc->removeNode(self::id($doc, 'TRLR'));
+        $doc->addRecord('_X');
+        self::assertSame('_X', $doc->records()[count($doc->records()) - 1]->tag());
+
+        // An unknown xref removes nothing.
+        $doc->removeRecord('@NONE@');
+        self::assertNotNull($doc->record('@I1@'));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Xref @I1@ is already used');
+        $doc->addRecord('INDI', '@I1@');
+    }
+
+    #[Test]
+    public function renameXrefSkipsRemovedPointersAndFindsAddedOnes(): void
+    {
+        $doc = Gedcom::parse(self::FILE);
+        $wife = self::id($doc, '@F1@/WIFE');
+        $doc->removeNode($wife);
+        $doc->addRecord('_LINK', '@L1@')->addChild('_PTR', '@F1@');
+
+        $doc->renameXref('@F1@', '@F2@');
+
+        self::assertSame('@F2@', $doc->find('@I1@/FAMS')?->pointer());
+        self::assertSame('@F2@', $doc->find('@L1@/_PTR')?->pointer());
+        self::assertTrue($doc->isRemoved($wife));
+    }
+
+    #[Test]
+    public function ambiguousPathNamesTheCount(): void
+    {
+        $this->expectExceptionMessage('Path @I1@/NAME is ambiguous: NAME occurs 2 times');
+
+        Gedcom::parse(self::FILE)->find('@I1@/NAME');
+    }
+
+    #[Test]
+    public function newDocumentsHaveABomFor70And555Only(): void
+    {
+        self::assertTrue(Document::create(Version::V7_0)->hasBom());
+        self::assertTrue(Document::create(Version::V5_5_5)->hasBom());
+        self::assertFalse(Document::create(Version::V5_5_1)->hasBom());
+        self::assertSame("\xEF\xBB\xBF0 HEAD\n1 GEDC\n2 VERS 7.0\n0 TRLR\n", Gedcom::serialize(Document::create(Version::V7_0)));
+        self::assertSame("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 TRLR\n", Gedcom::serialize(Document::create(Version::V5_5_1)));
+    }
+
+    private static function id(Document $doc, string $path): int
+    {
+        $node = $doc->find($path);
+        self::assertNotNull($node);
+
+        return $node->id();
     }
 }

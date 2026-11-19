@@ -73,6 +73,18 @@ final class DateGrammarTest extends TestCase
         yield 'Julian 29 February 1900' => [$value, 'JULIAN 29 FEB 1900', self::VALID];
         yield '29 February 1 BCE' => [$value, '29 FEB 1 BCE', self::VALID];
         yield '29 February 2 BCE' => [$value, 'JULIAN 29 FEB 2 BCE', self::DAY];
+        yield 'day 36' => [$value, '_X 36 _M 12', self::VALID];
+        yield 'day 1 of a standard month' => [$value, '1 JAN 1900', self::VALID];
+        yield '29 February 1600, a century leap year' => [$value, '29 FEB 1600', self::VALID];
+        yield '29 February 1600 of a year of five digits' => [$value, '29 FEB 11600', self::VALID];
+        yield 'Julian 29 February 1905' => [$value, 'JULIAN 29 FEB 1905', self::DAY];
+        yield 'Julian 29 February 1904' => [$value, 'JULIAN 29 FEB 1904', self::VALID];
+        yield '30 February 2000' => [$value, '30 FEB 2000', self::DAY];
+        yield 'Hebrew 30 February-like month' => [$value, 'HEBREW 29 SHV 5600', self::VALID];
+        yield 'text before BET' => [$value, 'XBET 1900 AND 1910', self::INVALID];
+        yield 'text before AFT' => [$value, 'XAFT 1900', self::INVALID];
+        yield 'BET with a bad first date' => [$value, 'BET 31 NOV 1900 AND 1901', self::DAY];
+        yield 'ABT with a bad date' => [$value, 'ABT 31 NOV 1900', self::DAY];
         yield 'complementary days' => [$value, 'FRENCH_R 6 COMP 11', self::VALID];
         yield 'too many complementary days' => [$value, 'FRENCH_R 7 COMP 11', self::DAY];
         yield 'Hebrew 30 Tevet' => [$value, 'HEBREW 30 TVT 5600', self::DAY];
@@ -86,6 +98,8 @@ final class DateGrammarTest extends TestCase
         yield 'empty period' => [$period, '', self::VALID];
         yield 'period bound day' => [$period, 'TO 30 FEB 1850', self::DAY];
         yield 'single date' => [$period, '1900', self::INVALID];
+        yield 'text before FROM' => [$period, 'XFROM 1900', self::INVALID];
+        yield 'period with a bad start' => [$period, 'FROM 31 NOV 1900 TO 1910', self::DAY];
         yield 'reversed period' => [$period, 'TO 1910 FROM 1900', self::INVALID];
 
         $exact = PayloadGrammar::DATE_EXACT;

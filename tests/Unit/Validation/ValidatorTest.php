@@ -282,6 +282,19 @@ final class ValidatorTest extends TestCase
         ], self::lines(Gedcom::validate($doc)->warnings()));
     }
 
+    #[Test]
+    public function familyLinksOfTheWrongKindAreNoMirror(): void
+    {
+        // Families first; HUSB is mirrored only by FAMS, CHIL only by FAMC.
+        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @F1@ FAM\n1 HUSB @I1@\n1 CHIL @I2@\n1 WIFE @I3@\n0 @I1@ INDI\n1 FAMC @F1@\n0 @I2@ INDI\n1 FAMC @F1@\n0 @I3@ INDI\n1 FAMS @F1@\n1 FAMS @F1@\n0 @F2@ FAM\n1 CHIL @F1@\n0 TRLR\n");
+
+        self::assertSame([
+            'KV4004 warning line 5 (@F1@/HUSB): @I1@ has no FAMS pointing back to @F1@',
+            'KV4004 warning line 9 (@I1@/FAMC): @F1@ has no CHIL pointing back to @I1@',
+        ], self::lines(Gedcom::validate($doc)->warnings()));
+        self::assertSame(['KV4003 error line 16 (@F2@/CHIL): CHIL must point to a INDI record, not FAM'], array_values(array_filter(self::lines(Gedcom::validate($doc)->errors()), static fn(string $line): bool => str_starts_with($line, 'KV4'))));
+    }
+
     /**
      * @param list<Diagnostic> $diagnostics
      *

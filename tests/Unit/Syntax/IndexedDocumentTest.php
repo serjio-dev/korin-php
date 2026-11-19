@@ -107,6 +107,46 @@ final class IndexedDocumentTest extends TestCase
         self::assertSame('Anna /Koval/', $indexed->find('@I1@/NAME')?->value());
         self::assertSame(self::FILE, Gedcom::serialize($indexed->load()));
         self::assertSame(Version::V7_0, $indexed->version());
+        $out = $this->handle('');
+        $indexed->copyTo($out);
+        rewind($out);
+        self::assertSame(self::FILE, stream_get_contents($out));
+    }
+
+    #[Test]
+    public function recordNumbersOutsideTheIndexThrow(): void
+    {
+        $indexed = Gedcom::open($this->handle(self::FILE));
+        $count = count($indexed);
+        self::assertSame('TRLR', $indexed->tagAt($count - 1));
+
+        foreach ([-1, $count] as $i) {
+            try {
+                $indexed->recordAt($i);
+                self::fail("Record {$i}");
+            } catch (\OutOfRangeException $e) {
+                self::assertSame("No record {$i}", $e->getMessage());
+            }
+        }
+    }
+
+    #[Test]
+    public function theVersionOfTheOptionsWins(): void
+    {
+        $options = (new ReadOptions())->withVersion(Version::V5_5);
+
+        self::assertSame(Version::V5_5, Gedcom::open($this->handle(self::FILE), $options)->version());
+        self::assertSame(Version::V5_5, Gedcom::open($this->handle("0 @I1@ INDI\n0 TRLR\n"), $options)->version());
+        self::assertSame(Version::V5_5_1, Gedcom::open($this->handle("0 @I1@ INDI\n0 TRLR\n"))->version());
+    }
+
+    #[Test]
+    public function trlrIsTheFirstTrailerAsInADocument(): void
+    {
+        $bytes = "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 TRLR\n0 @I1@ INDI\n0 TRLR\n";
+
+        self::assertSame(4, Gedcom::open($this->handle($bytes))->find('TRLR')?->line());
+        self::assertSame(4, Gedcom::parse($bytes)->find('TRLR')?->line());
     }
 
     #[Test]

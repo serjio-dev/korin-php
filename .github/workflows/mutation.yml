@@ -1,0 +1,48 @@
+name: mutation
+
+# Spec section 11: Infection on the lines a pull request changes, and on everything weekly.
+on:
+  pull_request:
+    paths: ['src/**', 'tests/**', 'infection.json5']
+  schedule:
+    - cron: '23 4 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  infection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: intl, mbstring, zip
+          coverage: pcov
+          # A tool, not a dev dependency: Infection needs PHP 8.3+, the library supports 8.2.
+          tools: infection
+      - uses: ramsey/composer-install@v4
+      - name: Changed lines
+        if: github.event_name == 'pull_request'
+        run: infection --threads=max --git-diff-lines --git-diff-base=origin/${{ github.base_ref }} --min-msi=85 --min-covered-msi=85 --show-mutations --no-progress
+      - name: Everything
+        if: github.event_name != 'pull_request'
+        run: infection --threads=max --min-msi=85 --no-progress
+      # No summary when no line of src changed: there were no mutants.
+      - run: cat build/infection/summary.log >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo 'No mutants: no line of src changed.' >> "$GITHUB_STEP_SUMMARY"
+        if: always()
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: infection
+          path: build/infection
+          if-no-files-found: ignore
