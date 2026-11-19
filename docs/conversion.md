@@ -31,7 +31,7 @@ Implemented so far:
 | `SUBN` record, `HEAD.SUBN` | `HEAD._SUBN` with the record's substructures, one per `SUBN`; the record and the pointer are removed |
 | `REPO` of a source without a pointer (`1 REPO` + `CALN`) | `REPO @VOID@`: 7.0 requires the pointer |
 | `EVEN Moved to Osaka` of an individual or family without `TYPE` | `TYPE Moved to Osaka` added first: 7.0 requires `TYPE`, and the value describes the event. `FACT` and `IDNO` without `TYPE` stay so (`KV2003` in the output): nothing names their type |
-| `OBJE` without a pointer | A new `OBJE` record `@X<n>@` (before `TRLR`, in order of appearance) with its substructures; the link keeps `TITL` |
+| `OBJE` without a pointer | A new `OBJE` record `@X<n>@` (before `TRLR`, in order of appearance) with its substructures; the link keeps `TITL`. Not inside an extension, at any depth (`_MILT.SOUR.OBJE`) |
 | `SOUR` with a description instead of a pointer | A new `SOUR` record `@X<n>@` with the description as `NOTE`; `TEXT` moves under a new `DATA` of the citation, `NOTE`, `QUAY` and the rest stay on it |
 | `AFN x` | `EXID x` + `TYPE https://gedcom.io/terms/v7/AFN` |
 | `RFN xyz:123abc`, `RFN x` | `EXID xyz` + `TYPE https://gedcom.io/terms/v7/RFN#123abc` (the conversion the 7.0 term file recommends), `EXID x` + `TYPE https://gedcom.io/terms/v7/RFN` |
@@ -206,7 +206,7 @@ the inline sources and media (records in 5.5.5), new `ADR` lines and respelled v
 | `HEAD.SUBM` and the `SUBM` records | The record `HEAD.SUBM` points to (or else the first; a missing `HEAD.SUBM` then points to it, unless `HEAD` has `_SUBM`, a pointer to no record) moves directly after `HEAD`; any other `SUBM` record → `_SUBM`, `KL2002`. A file without a `SUBM` record keeps none |
 | `SUBN` record, `HEAD.SUBN` | `HEAD._SUBN` with the record's substructures, as 5.5.1 → 7.0 |
 | Inline `SOUR Family Bible` + `TEXT` | A `SOUR` record `@X<n>@` with `TITL Family Bible`; the citation points to it, its `TEXT` under a new `DATA` |
-| Inline `OBJE` + `FILE` + `FORM` + `MEDI` + `TITL` | An `OBJE` record `@X<n>@` with the `FILE`, `TITL` under the first `FILE`, `MEDI` as `FORM.TYPE`; a `FORM` beside `FILE` moves into it |
+| Inline `OBJE` + `FILE` + `FORM` + `MEDI` + `TITL` | An `OBJE` record `@X<n>@` with the `FILE`, `TITL` under the first `FILE`, `MEDI` as `FORM.TYPE`; a `FORM` beside `FILE` moves into it. A `FORM` 5.5.5 does not list (`ole`) stays (`KV3006`, see the matrix limits) |
 | `ADDR 12 Main St` + `CONT apt. 4` | 5.5.5 `ADDR` has no value: its lines are `ADR1`–`ADR3`. Lines an `ADR` line repeats are dropped, missing `ADR` lines added. A value made of `CITY`, `STAE` `POST` and `CTRY` is dropped. Any other value (more than three lines, an empty line, a line other than its `ADR`) → a first substructure `_ADDR`, `KL3001` |
 | A structure with neither a value nor substructures (`BURI`, `BIRT Y`: 5.5.5 has `Y` only for `MARR`, `CHR`, `DEAT`) | An extension (`_BURI`, `_BIRT Y`), `KL3001` |
 | `SEX U` + `_SEX X` (7.0 → 5.5.1 writes it for `SEX X`) | `SEX X` |

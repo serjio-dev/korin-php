@@ -242,6 +242,14 @@ final class V551ToV70Test extends TestCase
     }
 
     #[Test]
+    public function inlineMediaInsideAnExtensionStays(): void
+    {
+        $input = self::HEAD . "0 @I1@ INDI\n1 _MILT\n2 SOUR Papers\n3 OBJE\n4 FILE a.jpg\n5 FORM jpg\n0 TRLR\n";
+
+        self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 _MILT\n2 SOUR Papers\n3 OBJE\n4 FILE a.jpg\n5 FORM jpg\n0 TRLR\n", $this->convert($input));
+    }
+
+    #[Test]
     public function schemaIsAddedToAnExistingOneOrANewHead(): void
     {
         self::assertSame(

@@ -45,7 +45,7 @@ final class V551ToV555 implements Step
                 new Rules\InlineRecords(),
                 new Rules\Addresses(),
                 new Sexes(['X', 'N']),
-                new Values(Version::V5_5_1, Version::V5_5_5, grammars: true, respell: Rules\Spellings::respell(...), kept: ['<PLACE_NAME>']),
+                new Values(Version::V5_5_1, Version::V5_5_5, grammars: true, respell: Rules\Spellings::respell(...), kept: ['<PLACE_NAME>', '<MULTIMEDIA_FORMAT>']),
                 new Extensions(Version::V5_5_1, Version::V5_5_5, true),
                 new Structures(Version::V5_5_5),
             ),
