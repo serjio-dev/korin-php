@@ -91,17 +91,22 @@ back, except for what the loss report lists. Implemented so far:
 | `EXID` + `TYPE https://gedcom.io/terms/v7/RIN#<HEAD.SOUR>` | `RIN` |
 | Any other `EXID`, or one on a record without that tag in 5.5.1 | `_EXID` with its `TYPE`, `KL2001`. Not `REFN`: a number the user assigned is another kind of identifier, and it would stay `REFN` when converted up |
 | A pointer to `@VOID@` (`FAMC @VOID@` + `PHRASE`) | An extension with its tag and substructures (`_FAMC @VOID@`), `KL4001` |
+| `SLGC` with `FAMC @VOID@` (5.5.1 requires the family) | `_SLGC` with its substructures in their 7.0 form, `KL4001` |
+| A record `HEAD.SCHMA` defines as a standard one (`TAG _USER https://gedcom.io/terms/v7/record-SUBM`) | That record: `0 @U1@ _USER` → `0 @U1@ SUBM` |
+| `RESI Kyiv` (5.5.1 `RESI` has no value) | `RESI` + `NOTE Kyiv`, `KL3005` |
 | `REPO @VOID@` of a source (a repository known by its call numbers) | `REPO` without a pointer, which 5.5.1 allows |
 | `EVEN` with a `TYPE` equal to its value (how 5.5.1 → 7.0 writes an `EVEN` without `TYPE`) | The `TYPE` removed |
 | Calendar names in `DATE` (`JULIAN`, `FRENCH_R`, `_ROMAN 24 _IUL 15`) | Escapes (`@#DJULIAN@`, `@#DFRENCH R@`, `@#DROMAN@ 24 IUL 15`); `BCE` → `B.C.` |
 | `DATE` + `PHRASE` | One 5.5.1 date: the `PHRASE` when it is the date it came from (`30 JAN 1649` + `PHRASE 30 JAN 1648/49` → `30 JAN 1648/49`), otherwise `INT 5 MAR 1900 (phrase)`, or `(phrase)` without a date. A `PHRASE` of an approximate date or a range stays |
 | A date 5.5.1 cannot write (an extension calendar) | `_DATE`, `KL3001` |
-| `AGE` | `< 8y` → `<8y`; `< 8y` + `PHRASE CHILD` → `CHILD`. An age in weeks → `_AGE`, `KL3001` |
-| `HEAD.LANG`, `SUBM.LANG` | 5.5.1 names: `uk` → `Ukrainian`, `und` + `_PHRASE Hmong` → `Hmong`. A tag without a 5.5.1 name (`en-GB`) → `_LANG`, `KL3001` |
+| `TIME 15:43:20Z` (5.5.1 times have no time zone) | `_TIME`, `KL3001` |
+| `AGE` | `< 8y` → `<8y`; `< 8y` + `PHRASE CHILD` → `CHILD`. An age in weeks, or a `PHRASE` alone that is no 5.5.1 age (`AGE` + `PHRASE Zero`) → `_AGE`, `KL3001` |
+| `HEAD.LANG`, `SUBM.LANG` | 5.5.1 names: `uk` → `Ukrainian`, `und` + `_PHRASE Hmong` → `Hmong`. A tag without a 5.5.1 name (`en-GB`) → `_LANG`, `KL3001`. A `SUBM.LANG` after the three 5.5.1 allows keeps its tag (`_LANG fr`, `KL2002`) |
 | Media `FORM` | A file extension: one 5.5.1 lists (`image/jpeg` → `jpg`, `image/tiff` → `tif`), another known one (`image/png` → `png`), `application/x-x` → `x`; others stay |
 | `FORM.MEDI` | `FORM.TYPE` |
 | `FILE` | A path: `file:///c:/My%20Photos/a.jpg` → `c:\My Photos\a.jpg`, `file:///x` → `/x`, `file://server/x` → `\\server\x`, a relative path without percent-encoding. Other URLs stay |
 | Enumerations | 5.5.1 case and spelling (`BIRTH` → `birth`, `PRE_1970` → `PRE-1970`, `DNS_CAN` → `DNS/CAN`); `OTHER` + `PHRASE` → the phrase (`(midwife)` for a role in an event) |
+| A value a closed 5.5.1 list does not have (`MEDI OTHER` + `PHRASE Portrait`: `FORM.TYPE` lists `photo`, `book`…; `STAT INFANT`) | The 7.0 structure as an extension (`_MEDI OTHER` + `PHRASE Portrait`, `_STAT INFANT`), `KL3001` |
 | `ASSO.ROLE` | `RELA`: `GODP` + `PHRASE godmother` → `godmother`, `FRIEND` → `Friend`, `OTHER` + `PHRASE land-lord` → `land-lord` |
 | `TRAN` of a name or place | `FONE`/`ROMN` with `TYPE` where 5.5.1 has the type: `ko-Hang` → `FONE hangul`, `ja-Kana` → `FONE kana`, `ja-Latn` → `ROMN romaji`, `zh-Latn-pinyin` → `ROMN pinyin`, `zh-Latn-wadegile` → `ROMN wadegiles`; `und`/`und-Latn` + `_TYPE x` → `FONE`/`ROMN` + `TYPE x`. Another language → `_TRAN`, `KL2001` |
 | `SEX X` | `SEX U` + `_SEX X`, `KL3002` |
@@ -230,7 +235,10 @@ requires get none: there is nothing to name it by.
 | `_BURI`, `_BIRT Y`, `_DATE` and other extensions 5.5.1 could write as the structure it has there | The structure |
 
 5.5.5 ↔ 7.0 goes through 5.5.1. A 7.0 file converted to 5.5.5 and back has the same
-fingerprint, except for `KL3` losses (tested on every 7.0 input of the corpus).
+fingerprint, except for `KL3` losses and what 5.5.5 writes its own way: the `SUBM` records
+directly after `HEAD` (with `HEAD.SUBM`), `ADR1`–`ADR3` lines that repeat the `ADDR` value, and
+times without a leading zero (`8:56`) or with a two-digit fraction (`.50`), the same times in
+7.0 (tested on every 7.0 input of the corpus).
 
 ## Conversion matrix
 
@@ -243,5 +251,7 @@ limits of the target versions:
 | --- | --- | --- |
 | 5.x | `HEAD requires SUBM` (`KV2003`; 5.5.5: the file requires a `SUBM` record) | 7.0 does not require a submitter, and the conversion does not invent one |
 | 5.x | `FORM does not permit …` (`KV3006`) on a media `FORM` | 5.x lists a few formats from the 1990s; others (`png`, `pdf`) stay, as programs write them |
+| 5.5, 5.5.1 | `RESN does not permit "confidential, locked"` (`KV3006`) | 5.x has one restriction; programs write the 7.0 list, and keeping one of them would lift a restriction |
 | 5.5 | `OBJE requires BLOB` (`KV2003`) | A 5.5 media record holds the object itself; a file reference is `_FILE` (`KL2001`) |
+| 5.5.5 | `… is longer than 248 characters` (`KV3010`) | Lengths are not converted: a 7.0 text has no limit, and cutting it would lose it |
 | 7.0, 5.5.5 | `FACT requires TYPE`, `IDNO requires TYPE` (`KV2003`) | 5.5.1 does not require `TYPE`, and nothing names it |

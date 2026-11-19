@@ -18,8 +18,9 @@ use Korin\Gedcom\Version;
  * pointer the target requires (5.5.1 REPO without one → 5.5), makes the structure an extension
  * with its tag and value (5.5.1 SEX U → 5.5 _SEX U), or drops it under
  * LossPolicy::DropWithReport (KL3001); converting back gives the structure back (Extensions).
- * A value that does not fit the source version either stays as it is. The Y of an event is
- * left to Structures.
+ * A value that does not fit the source version either stays as it is; a RESN list that 7.0 wrote
+ * ("confidential, locked", kept in 5.5.1) fits while the version lists every item (Payloads).
+ * The Y of an event is left to Structures.
  *
  * @internal
  */

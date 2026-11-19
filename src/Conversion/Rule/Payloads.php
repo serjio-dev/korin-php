@@ -49,7 +49,10 @@ final class Payloads
                 return $payload === 'Y';
             }
             if ($structure->enumerationSet !== null) {
-                return str_starts_with($payload, '_') || in_array($payload, $profile->enumeration($structure->enumerationSet), true);
+                $listed = $profile->enumeration($structure->enumerationSet);
+                $items = str_ends_with($type, 'type-List#Enum') ? array_map(trim(...), explode(',', $payload)) : [$payload];
+
+                return array_filter($items, static fn(string $item): bool => !str_starts_with($item, '_') && !in_array($item, $listed, true)) === [];
             }
 
             return $structure->pointerTarget() === null || str_contains($type, '|');
@@ -65,7 +68,9 @@ final class Payloads
                 continue;
             }
             $type = $profile->type($alternative);
-            if ($type === 'ENUM' ? self::listed($profile->enumeration($alternative), $payload) : !$grammars || self::valid($profile, $structure, $alternative, $payload)) {
+            // A RESN list, as 7.0 writes it and 5.x programs keep it ("confidential, locked").
+            $items = $alternative === '<RESTRICTION_NOTICE>' ? array_map(trim(...), explode(',', $payload)) : [$payload];
+            if ($type === 'ENUM' ? array_filter($items, static fn(string $item): bool => !self::listed($profile->enumeration($alternative), $item)) === [] : !$grammars || self::valid($profile, $structure, $alternative, $payload)) {
                 return true;
             }
         }

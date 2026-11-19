@@ -20,7 +20,7 @@ use Korin\Gedcom\Version;
  * form. The source could not write it so when it has no such structure there, the value does
  * not fit the source's (an enumeration value it does not list) but fits the target's, the
  * source allows no more of them there, it is empty (5.5.5 has no empty structure), or (to
- * 7.0) it points to @VOID@; and its value fits the
+ * 7.0) it points to @VOID@ or names its family so (_SLGC with FAMC @VOID@); and its value fits the
  * target's (a 5.5 _SOUR with a text under NOTE stays: 7.0 NOTE.SOUR is a pointer). Any other extension
  * (_DATE under BIRT) stays: a program wrote it so on purpose. The last rule of the walk but
  * Structures: it sees the tags the other rules wrote.
@@ -71,7 +71,7 @@ final class Extensions implements NodeRule
             return true;
         }
         $source = $context->isFromSource($parent) ? $context->sourceStructure($parent)?->substructure($standard) : null;
-        if ($source !== null && ($this->to !== Version::V7_0 || $payload !== '@VOID@')
+        if ($source !== null && ($this->to !== Version::V7_0 || ($payload !== '@VOID@' && $document->node($id)->first('FAMC')?->pointer() !== '@VOID@'))
             && !$this->notWritable($document, $id, $parent, $standard, $source, $target, $payload)) {
             return true;
         }

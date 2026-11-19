@@ -87,6 +87,8 @@ final class V551ToV70ValuesTest extends TestCase
         yield 'drive with two slashes' => ['C://photos/a.jpg', 'file:///C:/photos/a.jpg'];
         yield 'unc' => ['\\\\server\share\a.jpg', 'file://server/share/a.jpg'];
         yield 'encoded' => ['most/paths?get#escaped[like]this 100%', 'most/paths%3Fget%23escaped%5Blike%5Dthis%20100%25'];
+        yield 'percent-encoding' => ['media/Bront%C3%AB.jpg', 'media/Bront%C3%AB.jpg'];
+        yield 'percent-encoding of not a url' => ['https%3a//not.a.url', 'https%3a//not.a.url'];
         yield 'not quite a url' => ['https:/not.a.url', 'https%3A/not.a.url'];
         yield 'url' => ['https://example.com/a b.jpg?x=1#y', 'https://example.com/a%20b.jpg?x=1#y'];
         yield 'uri without authority' => ['urn:isbn:123', 'urn:isbn:123'];

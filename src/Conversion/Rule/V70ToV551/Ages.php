@@ -13,7 +13,8 @@ use Korin\Gedcom\Syntax\Document;
  * Ages by the 5.5.1 grammar: no space after "<" or ">" ("< 8y" → "<8y"); a PHRASE that is the
  * 5.5.1 age it came from replaces the value ("< 8y" + PHRASE CHILD → CHILD). Every value is one
  * that converts up to the same age and PHRASE again: another PHRASE stays for the structures
- * rule, and an age 5.5.1 cannot write (weeks: "2w") is kept as an extension, _AGE (KL3001).
+ * rule, and an age 5.5.1 cannot write is kept as an extension, _AGE (KL3001): weeks ("2w"), and
+ * a PHRASE alone that is no age ("AGE" + PHRASE Zero; "AGE Zero" is not a 5.5.1 age).
  *
  * @internal
  */
@@ -51,6 +52,9 @@ final readonly class Ages implements NodeRule
         }
         $text = $phrase === null ? null : (string) $context->value($phrase);
         if ($text !== null && $this->up($text) === [$age, $text]) {
+            if ($age === '') {
+                return $context->unsupported($id, 'KL3001', 'The age has no 5.5.1 form');
+            }
             $document->removeNode($phrase);
             $context->setValue($id, $text);
 

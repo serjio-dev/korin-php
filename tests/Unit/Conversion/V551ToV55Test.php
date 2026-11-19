@@ -61,6 +61,15 @@ final class V551ToV55Test extends TestCase
     }
 
     #[Test]
+    public function aRestrictionListStaysWhileFiveFiveListsEveryItem(): void
+    {
+        $result = $this->down(self::HEAD . "0 @I1@ INDI\n1 RESN locked, privacy\n0 @I2@ INDI\n1 RESN confidential, locked\n0 TRLR\n");
+
+        self::assertSame(self::HEAD_55 . "0 @I1@ INDI\n1 RESN locked, privacy\n0 @I2@ INDI\n1 _RESN confidential, locked\n0 TRLR\n", $this->text($result));
+        self::assertSame(['KL3001 warning line 10 (@I2@/RESN)'], $this->where($result));
+    }
+
+    #[Test]
     public function theValueOfEvenIsItsTypeOrANote(): void
     {
         $result = $this->down(self::HEAD . "0 @I1@ INDI\n1 EVEN Moved to Osaka\n2 DATE 1950\n1 EVEN Served in the navy\n2 TYPE Military\n0 @F1@ FAM\n1 EVEN\n2 TYPE Feud\n0 TRLR\n");

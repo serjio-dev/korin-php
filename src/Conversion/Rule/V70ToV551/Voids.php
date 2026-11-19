@@ -13,7 +13,8 @@ use Korin\Gedcom\Syntax\Document;
  * parents were), points to no record in 5.5.1, where it would be a dangling pointer: the
  * structure becomes an extension with its 7.0 tag and its substructures (_FAMC @VOID@), or is
  * dropped under LossPolicy::DropWithReport (KL4001). Extensions are left alone. REPO @VOID@ of
- * a source, a repository with only its call numbers, is 5.5.1 REPO without a pointer.
+ * a source, a repository with only its call numbers, is 5.5.1 REPO without a pointer. FAMC
+ * @VOID@ of an SLGC, which 5.5.1 requires to name the family, makes the SLGC the extension.
  *
  * @internal
  */
@@ -33,6 +34,10 @@ final class Voids implements NodeRule
 
     public function node(Document $document, int $id, Context $context): bool
     {
+        // Before its substructures are converted: an extension keeps them in their 7.0 form.
+        if ($document->tagOf($id) === 'SLGC' && !$context->inExtension($id) && $document->node($id)->first('FAMC')?->pointer() === self::VOID) {
+            return $context->unsupported($id, 'KL4001', 'SLGC names its family with a pointer to @VOID@, which 5.5.1 does not have');
+        }
         if (!$document->mayContain($id, '@') || $document->payloadOf($id) !== self::VOID || $context->inExtension($id)) {
             return true;
         }

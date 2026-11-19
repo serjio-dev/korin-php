@@ -6,6 +6,7 @@ namespace Korin\Gedcom\Tests\Unit\Conversion;
 
 use Korin\Gedcom\Conversion\Rule\V70ToV551\Dates;
 use Korin\Gedcom\Conversion\Rule\V70ToV551\Media;
+use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -45,6 +46,11 @@ final class V70ToV551ValuesTest extends TestCase
             "1 ASSO @I2@\n2 RELA godmother\n1 ASSO @I2@\n2 RELA Friend\n1 ASSO @I2@\n2 RELA land-lord\n", []];
         yield 'role description' => ["1 BIRT\n2 SOUR @S1@\n3 EVEN BIRT\n4 ROLE OTHER\n5 PHRASE midwife\n", "1 BIRT\n2 SOUR @S1@\n3 EVEN BIRT\n4 ROLE (midwife)\n", []];
         yield 'ordinance status' => ["1 BAPL\n2 STAT PRE_1970\n3 DATE 1 JAN 1960\n", "1 BAPL\n2 STAT PRE-1970\n3 DATE 1 JAN 1960\n", []];
+        yield 'status 5.5.1 does not have' => ["1 CONL\n2 STAT INFANT\n3 DATE 1 JAN 1960\n", "1 CONL\n2 _STAT INFANT\n3 DATE 1 JAN 1960\n", ['KL3001 @I1@/CONL/STAT extension']];
+        yield 'time in UTC' => ["1 CHAN\n2 DATE 1 JAN 2020\n3 TIME 10:00Z\n", "1 CHAN\n2 DATE 1 JAN 2020\n3 _TIME 10:00Z\n", ['KL3001 @I1@/CHAN/DATE/TIME extension']];
+        yield 'age phrase only' => ["1 DEAT\n2 AGE\n3 PHRASE Zero\n", "1 DEAT\n2 _AGE\n3 PHRASE Zero\n", ['KL3001 @I1@/DEAT/AGE extension']];
+        yield 'residence' => ["1 RESI Kyiv\n2 DATE 1900\n", "1 RESI\n2 DATE 1900\n2 NOTE Kyiv\n", ['KL3005 @I1@/RESI note']];
+        yield 'sealing to no family' => ["1 SLGC\n2 DATE 1 JAN 2000\n3 TIME 10:00\n2 FAMC @VOID@\n", "1 _SLGC\n2 DATE 1 JAN 2000\n3 TIME 10:00\n2 FAMC @VOID@\n", ['KL4001 @I1@/SLGC extension']];
     }
 
     /** @param list<string> $losses */
@@ -72,6 +78,25 @@ final class V70ToV551ValuesTest extends TestCase
         self::assertStringContainsString("1 NAME Me\n1 LANG Hmong\n", $down->output());
         self::assertStringContainsString("1 NAME You\n1 _LANG en-GB\n", $down->output());
         self::assertSame(['KL2001', 'KL3001'], array_map(static fn(\Korin\Gedcom\Conversion\Loss $loss): string => $loss->code, $down->losses()->entries()));
+    }
+
+    #[Test]
+    public function aSubmitterBeyondTheThreeLanguagesKeepsItsTag(): void
+    {
+        $down = Gedcom::convert(Gedcom::parse(self::HEAD . "0 @U1@ SUBM\n1 NAME Me\n1 LANG uk\n1 LANG en\n1 LANG de\n1 LANG fr\n0 TRLR\n"), Version::V5_5_1);
+
+        self::assertStringContainsString("1 LANG Ukrainian\n1 LANG English\n1 LANG German\n1 _LANG fr\n", $down->output());
+        self::assertSame(['KL2002'], array_map(static fn(\Korin\Gedcom\Conversion\Loss $loss): string => $loss->code, $down->losses()->entries()));
+    }
+
+    #[Test]
+    public function aRecordTheSchemaDefinesAsStandardGetsItsTag(): void
+    {
+        $input = self::HEAD . "1 SCHMA\n2 TAG _USER https://gedcom.io/terms/v7/record-SUBM\n0 @U1@ _USER\n1 NAME Me\n0 @I1@ INDI\n1 SUBM @U1@\n0 TRLR\n";
+        $down = Gedcom::convert(Gedcom::parse($input), Version::V5_5_1);
+
+        self::assertStringContainsString("0 @U1@ SUBM\n1 NAME Me\n", $down->output());
+        self::assertNotContains('KV4003', array_map(static fn(Diagnostic $error): string => $error->code, Gedcom::validate($down->document())->errors()), 'INDI.SUBM points to a SUBM record');
     }
 
     /** @return iterable<string, array{string, string}> */

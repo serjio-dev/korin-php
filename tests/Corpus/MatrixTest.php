@@ -25,12 +25,13 @@ final class MatrixTest extends TestCase
      * Errors a valid input may still give, by target: code and a pattern of the message.
      * 5.x requires a submitter a 7.0 file need not name; 5.x lists few media formats (FORM png
      * stays); a 5.5 media record holds the object itself (BLOB), not a file; 7.0 and 5.5.5
-     * require a TYPE that FACT and IDNO need not have in 5.5.1.
+     * require a TYPE that FACT and IDNO need not have in 5.5.1; a 7.0 RESN list stays a list;
+     * 5.5.5 lengths are not converted.
      */
     private const LIMITS = [
-        '5.5' => [['KV2003', '/^HEAD requires SUBM$/'], ['KV3006', '/^FORM does not permit/'], ['KV2003', '/^OBJE requires BLOB$/']],
-        '5.5.1' => [['KV2003', '/^HEAD requires SUBM$/'], ['KV3006', '/^FORM does not permit/']],
-        '5.5.5' => [['KV2003', '/^The file requires a SUBM record$/'], ['KV3006', '/^FORM does not permit/'], ['KV2003', '/^(FACT|IDNO) requires TYPE$/']],
+        '5.5' => [['KV2003', '/^HEAD requires SUBM$/'], ['KV3006', '/^FORM does not permit/'], ['KV2003', '/^OBJE requires BLOB$/'], ['KV3006', '/^RESN does not permit "[^"]*,/']],
+        '5.5.1' => [['KV2003', '/^HEAD requires SUBM$/'], ['KV3006', '/^FORM does not permit/'], ['KV3006', '/^RESN does not permit "[^"]*,/']],
+        '5.5.5' => [['KV2003', '/^The file requires a SUBM record$/'], ['KV3006', '/^FORM does not permit/'], ['KV2003', '/^(FACT|IDNO) requires TYPE$/'], ['KV3010', '/ is (longer|shorter) than /']],
         '7.0' => [['KV2003', '/^(FACT|IDNO) requires TYPE$/']],
     ];
 
