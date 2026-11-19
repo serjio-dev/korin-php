@@ -23,6 +23,8 @@ break the API; such changes are described in `UPGRADE.md`.
   in `static`, Dependabot for Composer and Actions, and a `release` workflow that publishes a
   tag's GitHub Release with its CHANGELOG notes and an attested package archive.
 - The package no longer ships `mkdocs.yml` and `phpdoc.dist.xml`.
+- Root files per specification section 13: `UPGRADE.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`
+  (Contributor Covenant 2.1), `SECURITY.md`, `CITATION.cff`, issue and pull request templates.
 - 7.0 dates in an extension calendar may use any months and epochs (they were an error unless
   extension tags, a rule the specification does not have).
 

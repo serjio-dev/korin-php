@@ -1,0 +1,48 @@
+name: Bug report
+description: A file Korin reads, validates, converts or writes wrongly, or an error.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never attach a real family tree**, not even part of one: it is personal data. Make the smallest *fictional* file that shows the problem, or describe the lines with names and places replaced.
+  - type: input
+    id: version
+    attributes:
+      label: Korin version
+      placeholder: 0.5.0
+    validations:
+      required: true
+  - type: input
+    id: php
+    attributes:
+      label: PHP version, OS and extensions (intl, mbstring, zip)
+      placeholder: PHP 8.4.3 on Ubuntu 24.04, intl and mbstring
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Fictional input
+      description: A minimal GEDCOM file, from 0 HEAD to 0 TRLR, with invented data. Say which program wrote the original, if known.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: Code
+      description: What you call.
+      render: php
+      placeholder: |
+        $document = Gedcom::read('tree.ged');
+        $result = Gedcom::convert($document, Version::V5_5_1);
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual result
+      description: The output, diagnostic codes, loss report entries or exception you get, and what you expected (with a reference to the GEDCOM specification or docs/ if you can).
+    validations:
+      required: true

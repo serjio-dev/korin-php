@@ -1,0 +1,25 @@
+name: Feature request
+description: Something Korin should do, read or convert.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Korin follows [docs/SPEC.md](https://github.com/serjio-dev/korin-php/blob/main/docs/SPEC.md); say where your idea fits, if you can. Examples use fictional data only.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you want to do
+      description: The task, not the solution first. For a vendor dialect, the program and version that writes it.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: How it could work
+      description: An API sketch, a conversion rule, a diagnostic.
+  - type: textarea
+    id: example
+    attributes:
+      label: Fictional example
+      render: text

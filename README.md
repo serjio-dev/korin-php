@@ -240,6 +240,25 @@ The 1.0 target for a full read of 50 MB is ≤ 512 MB and ≤ 20 s.
 Run the benchmarks with `composer bench`.
 A baseline comparison with liberu-genealogy/php-gedcom is in [docs/comparison](docs/comparison/liberu-php-gedcom.md).
 
+## Security
+
+Every input is treated as hostile: limits on memory and time, GEDZIP without zip bombs, and
+messages that quote at most a short fragment of a file, since trees hold personal data. Report
+a vulnerability privately, as [SECURITY.md](SECURITY.md) describes.
+
+## Versioning and BC policy
+
+[Semantic Versioning](https://semver.org/). Until 1.0 a minor release may break the API; every
+break is in [UPGRADE.md](UPGRADE.md), every change in [CHANGELOG.md](CHANGELOG.md). Diagnostic
+(`KV*`) and loss (`KL*`) codes are stable. Releases are signed tags.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md): setup, the rules of the code, and why an expected
+result goes to the [corpus](https://github.com/serjio-dev/gedcom-corpus) first. Never attach a
+real family tree to an issue. The project follows the [Contributor Covenant](CODE_OF_CONDUCT.md);
+to cite Korin, see [CITATION.cff](CITATION.cff).
+
 ## License and trademarks
 
 Apache-2.0. GEDCOM is a trademark of Intellectual Reserve, Inc. Korin is not affiliated with

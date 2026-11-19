@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/serjio-dev/korin-php/security/advisories/new
+    about: Privately, not in a public issue (SECURITY.md).
+  - name: Documentation
+    url: https://serjio-dev.github.io/korin-php/
+    about: Guides, conversion rules, diagnostic and loss codes, API reference.
