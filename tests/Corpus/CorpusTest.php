@@ -9,6 +9,7 @@ use Korin\Gedcom\Conversion\Loss;
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Severity;
+use Korin\Gedcom\Tests\Support\ConversionInvariants;
 use Korin\Gedcom\Tests\Support\Corpus;
 use Korin\Gedcom\Tests\Support\Fingerprint;
 use Korin\Gedcom\Tests\Support\Ops;
@@ -25,6 +26,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class CorpusTest extends TestCase
 {
+    use ConversionInvariants;
+
     private const IMPLEMENTED = ['read', 'roundtrip-preserve', 'roundtrip-stream', 'fingerprint', 'validate', 'validate-indexed', 'edit', 'convert', 'convert-stream', 'gedzip'];
 
     /** @return iterable<string, array{string, string, array<string, mixed>, ?array{to: string, expected: string, losses: string}}> */
@@ -201,8 +204,8 @@ final class CorpusTest extends TestCase
     }
 
     /**
-     * The output equals expected.<ver>.ged, validates without errors, and the loss report matches
-     * losses.<ver>.json by code, path and storedAs.
+     * The output equals expected.<ver>.ged, validates without errors but the documented limits of
+     * the target (as in MatrixTest), and the loss report matches losses.<ver>.json by code, path and storedAs.
      *
      * @param array{to: string, expected: string, losses: string} $conversion
      */
@@ -211,8 +214,9 @@ final class CorpusTest extends TestCase
         $result = Gedcom::convert($document, Version::from($conversion['to']));
         self::assertSame((string) file_get_contents($dir . '/' . $conversion['expected']), $result->output(), 'Output');
         self::assertSame($result->output(), Gedcom::serialize($result->document()), 'The document read back writes the output');
-        $errors = Gedcom::validate($result->document())->errors();
-        self::assertSame([], array_map(strval(...), $errors), 'The output must validate without errors');
+        $to = Version::from($conversion['to']);
+        $errors = array_filter(Gedcom::validate($result->document())->errors(), fn(Diagnostic $error): bool => !$this->isLimit($document->version(), $to, $error, []));
+        self::assertSame([], array_values(array_map(strval(...), $errors)), 'The output must validate without errors');
 
         /** @var array{entries: list<array{code: string, path: string, storedAs: string}>} $golden */
         $golden = json_decode((string) file_get_contents($dir . '/' . $conversion['losses']), true);

@@ -18,7 +18,7 @@ use Korin\Gedcom\Syntax\Escaping;
  * - SOUR: the description (its value) becomes the record's NOTE, as in the gedcom7code
  *   converter; TEXT moves under a new DATA of the citation, the rest stays on the citation.
  *
- * HEAD.SOUR names a program, not a source, and substructures of extensions are left alone.
+ * HEAD.SOUR names a program, not a source, and what is inside an extension is left alone.
  *
  * @internal
  */
@@ -40,8 +40,8 @@ final class InlineRecords implements NodeRule
         if ($parent === 0) {
             return true;
         }
-        $above = $document->tagOf($parent);
-        if ($above === 'HEAD' || str_starts_with($above, '_')) {
+        // Inside an extension at any depth (_NOTE.SOUR.OBJE of a 5.5 note), not only directly under one.
+        if ($document->tagOf($parent) === 'HEAD' || $context->inExtension($parent)) {
             return true;
         }
         $payload = $document->payloadOf($id);

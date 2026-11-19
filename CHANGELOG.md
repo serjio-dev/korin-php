@@ -36,6 +36,10 @@ break the API; such changes are described in `UPGRADE.md`.
   (`BAPL`, `SLGS`, an empty `SOUR.DATA`, `RESI`) as an extension with its tag (`_BAPL`,
   `KL3001`), as 5.5.1 → 5.5.5 does; 7.0 has no such structure (`KV3007`). Converting down
   gives the structure back.
+- 5.5.1 → 5.5.5 keeps a media `FORM` 5.5.5 does not list (`ole`), as conversions to 5.x do,
+  instead of making it `_FORM`, which left the `FILE` without its required `FORM`.
+- 5.x → 7.0 leaves inline media and sources inside an extension inline at any depth
+  (`_MILT.SOUR.OBJE`); before, only directly under one.
 
 ## [0.6.0] - 2026-11-19
 

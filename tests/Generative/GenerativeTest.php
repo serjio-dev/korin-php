@@ -24,21 +24,18 @@ final class GenerativeTest extends TestCase
 {
     use ConversionInvariants;
 
-    private const V5 = ['5.5', '5.5.1', '5.5.5'];
-
     /**
      * Errors of the output that are bugs known from these tests, to be fixed (.claude/tasks/1.0.md,
      * 0.7.3): input versions, target versions, code and a pattern of the message. An entry goes when
      * its bug is fixed.
      */
     private const KNOWN = [
-        // An inline OBJE with more than one FILE, or inside an inline SOUR, becomes a media record FORM is missing from or misplaced in.
-        [self::V5, ['5.5.5', '7.0'], 'KV2003', '/^FILE requires FORM$/'],
-        [['5.5'], ['7.0'], 'KV2001', '/^FORM is not allowed in OBJE$/'],
-        [['5.5'], ['7.0'], 'KV3005', '/^FILE must be a file path/'],
-        // An extension that the next step of the chain makes a standard structure again keeps its value:
-        // 7.0 ROLE under NOTE.SOUR, which 5.5.1 does not have, reaches 5.5 unconverted.
+        // An extension that the next step of the chain makes a standard structure again keeps what it was:
+        // 7.0 ROLE under NOTE.SOUR, which 5.5.1 does not have, reaches 5.5 unconverted; a 5.5 NOTE.SOUR
+        // with an inline OBJE reaches 7.0 with the 5.5 media link (FORM beside FILE).
         [['7.0'], ['5.5'], 'KV3006', '/^ROLE does not permit/'],
+        [['5.5'], ['7.0'], 'KV2003', '/^FILE requires FORM$/'],
+        [['5.5'], ['7.0'], 'KV3005', '/^FILE must be a file path/'],
     ];
 
     /**

@@ -8,6 +8,7 @@ use Korin\Gedcom\Conversion\ConversionResult;
 use Korin\Gedcom\Conversion\Loss;
 use Korin\Gedcom\Conversion\LossPolicy;
 use Korin\Gedcom\ConvertOptions;
+use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\Test;
@@ -26,6 +27,16 @@ final class V551ToV555Test extends TestCase
         self::assertSame(self::HEAD_555 . "0 TRLR\n", $result->output());
         self::assertSame([], $result->losses()->entries());
         self::assertSame([], Gedcom::validate($result->document())->diagnostics());
+    }
+
+    #[Test]
+    public function aMediaFormatFiveFiveFiveDoesNotListStays(): void
+    {
+        $result = $this->down(self::HEAD . "0 @I1@ INDI\n1 OBJE\n2 FILE a.ole\n3 FORM ole\n0 TRLR\n");
+
+        self::assertSame(self::HEAD_555 . "0 @I1@ INDI\n1 OBJE @X1@\n0 @X1@ OBJE\n1 FILE a.ole\n2 FORM ole\n0 TRLR\n", $result->output());
+        self::assertSame([], $result->losses()->entries());
+        self::assertSame(['KV3006'], array_map(static fn(Diagnostic $d): string => $d->code, Gedcom::validate($result->document())->errors()));
     }
 
     #[Test]
