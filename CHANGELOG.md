@@ -24,6 +24,11 @@ break the API; such changes are described in `UPGRADE.md`.
 - `Utf16Codec` takes `useMbstring: false` to force the pure-PHP encoder, like
   `AnselCodec(useIntl: false)`, so that tests cover the path without the extension.
 
+### Fixed
+
+- 7.0 → 5.x keeps `HEAD.SNOTE` as `_SNOTE` (`KL2001`) instead of writing `HEAD.NOTE @N1@`,
+  which 5.x does not allow: its `HEAD.NOTE` is text. Converting up makes it `SNOTE` again.
+
 ## [0.6.0] - 2026-11-19
 
 The official GEDCOM 7 test files: the 25 files of gedcom.io are in the corpus (downloaded by

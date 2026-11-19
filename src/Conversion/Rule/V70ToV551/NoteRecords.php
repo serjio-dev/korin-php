@@ -12,8 +12,9 @@ use Korin\Gedcom\Version;
 
 /**
  * The 7.0 shared note SNOTE is the 5.5.1 NOTE record, and the SNOTE that points to it is a
- * NOTE pointer, where 5.5.1 has a NOTE: an SNOTE under SOUR.DATA.EVEN.PLAC stays for the
- * structures rule, which keeps it as _SNOTE. Extensions are left alone.
+ * NOTE pointer, where 5.5.1 has a NOTE that can be one: an SNOTE under SOUR.DATA.EVEN.PLAC, or
+ * of HEAD (whose NOTE is text only), stays for the structures rule, which keeps it as _SNOTE.
+ * Extensions are left alone.
  *
  * @internal
  */
@@ -40,7 +41,7 @@ final class NoteRecords implements NodeRule
         for ($above = $parent; $above !== 0; $above = $document->parentOf($above)) {
             array_unshift($path, $document->tagOf($above));
         }
-        if ($parent === 0 || Profile::for(Version::V5_5_1)->resolve($path) !== null) {
+        if ($parent === 0 || Profile::for(Version::V5_5_1)->resolve($path)?->pointerTarget() !== null) {
             $document->setTag($id, 'NOTE');
         }
 
