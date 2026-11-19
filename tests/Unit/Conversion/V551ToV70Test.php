@@ -228,6 +228,20 @@ final class V551ToV70Test extends TestCase
     }
 
     #[Test]
+    public function structuresWithNeitherAValueNorSubstructuresAreEventsWithYOrExtensions(): void
+    {
+        $input = self::HEAD . "0 @I1@ INDI\n1 BAPL\n1 BURI\n1 RESI\n1 RESI\n2 PLAC Kyiv\n0 TRLR\n";
+        $result = Gedcom::convert(Gedcom::parse($input), Version::V7_0);
+
+        self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 _BAPL\n1 BURI Y\n1 _RESI\n1 RESI\n2 PLAC Kyiv\n0 TRLR\n", Gedcom::serialize($result->document()));
+        self::assertSame(
+            ['KL3001 warning line 10 (@I1@/BAPL), extension: 7.0 BAPL needs a value or substructures', 'KL3001 warning line 12 (@I1@/RESI[0]), extension: 7.0 RESI needs a value or substructures'],
+            array_map(strval(...), $result->losses()->entries()),
+        );
+        self::assertStringContainsString("0 @I1@ INDI\n1 BAPL\n1 BURI\n1 RESI\n1 RESI\n2 PLAC Kyiv\n", Gedcom::convert($result->document(), Version::V5_5_1)->output());
+    }
+
+    #[Test]
     public function schemaIsAddedToAnExistingOneOrANewHead(): void
     {
         self::assertSame(

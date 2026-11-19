@@ -32,6 +32,10 @@ break the API; such changes are described in `UPGRADE.md`.
   under the `TRAN`, which has neither; 7.0 → 5.x makes them `NOTE` and `SOUR` again. A 5.5.1
   `NOTE` pointer becomes `SNOTE` only where 7.0 has `SNOTE`. Before, the output had `SOUR` and
   `SNOTE` under `TRAN` (`KV2001`).
+- 5.x → 7.0 writes a structure with neither a value nor substructures that is not an event
+  (`BAPL`, `SLGS`, an empty `SOUR.DATA`, `RESI`) as an extension with its tag (`_BAPL`,
+  `KL3001`), as 5.5.1 → 5.5.5 does; 7.0 has no such structure (`KV3007`). Converting down
+  gives the structure back.
 
 ## [0.6.0] - 2026-11-19
 

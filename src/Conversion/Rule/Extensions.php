@@ -19,7 +19,7 @@ use Korin\Gedcom\Version;
  * SEX U as _SEX U), and it gets its tag back. Its substructures are already in the target's
  * form. The source could not write it so when it has no such structure there, the value does
  * not fit the source's (an enumeration value it does not list) but fits the target's, the
- * source allows no more of them there, it is empty (5.5.5 has no empty structure), or (to
+ * source allows no more of them there, it is empty (5.5.5 and 7.0 have no empty structure), or (to
  * 7.0) it points to @VOID@ or names its family so (_SLGC with FAMC @VOID@); and its value fits the
  * target's (a 5.5 _SOUR with a text under NOTE stays: 7.0 NOTE.SOUR is a pointer). Any other extension
  * (_DATE under BIRT) stays: a program wrote it so on purpose. The last rule of the walk but
@@ -83,8 +83,8 @@ final class Extensions implements NodeRule
     /** Whether the source could not write the extension as the structure it has there. */
     private function notWritable(Document $document, int $id, int $parent, string $tag, Substructure $source, Substructure $target, ?string $payload): bool
     {
-        // 5.5.5 has no structure with neither a value nor substructures (1 BURI).
-        if ($this->from === Version::V5_5_5 && ($payload === null || $payload === '') && !$document->hasChildren($id)) {
+        // 5.5.5 and 7.0 have no structure with neither a value nor substructures (1 BURI, 1 BAPL).
+        if (($this->from === Version::V5_5_5 || $this->from === Version::V7_0) && ($payload === null || $payload === '') && !$document->hasChildren($id)) {
             return true;
         }
         $from = Profile::for($this->from);
