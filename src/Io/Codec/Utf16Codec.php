@@ -8,7 +8,8 @@ use Korin\Gedcom\Exception\UnencodableCharacterException;
 
 final readonly class Utf16Codec implements Codec
 {
-    public function __construct(private bool $bigEndian) {}
+    /** @param bool $useMbstring use ext-mbstring to encode when available; false forces the pure-PHP path */
+    public function __construct(private bool $bigEndian, private bool $useMbstring = true) {}
 
     public function decode(string $bytes): ?string
     {
@@ -25,7 +26,7 @@ final readonly class Utf16Codec implements Codec
         if (!Utf8::isValid($utf8)) {
             throw new UnencodableCharacterException('Input is not valid UTF-8');
         }
-        if (function_exists('mb_convert_encoding')) {
+        if ($this->useMbstring && function_exists('mb_convert_encoding')) {
             return mb_convert_encoding($utf8, $this->bigEndian ? 'UTF-16BE' : 'UTF-16LE', 'UTF-8');
         }
         $format = $this->bigEndian ? 'n' : 'v';

@@ -102,10 +102,78 @@ final class CodecsTest extends TestCase
     }
 
     #[Test]
+    public function utf16WithoutMbstringEncodesTheSame(): void
+    {
+        foreach ([true, false] as $bigEndian) {
+            $text = 'Ґ 𝔊 👪 a';
+            self::assertSame((new Utf16Codec($bigEndian))->encode($text), (new Utf16Codec($bigEndian, useMbstring: false))->encode($text));
+        }
+        self::assertSame("\x3D\xD8\x6A\xDC", (new Utf16Codec(bigEndian: false, useMbstring: false))->encode('👪'));
+    }
+
+    #[Test]
+    public function utf16RejectsOrReplacesWhatIsNoUtf16(): void
+    {
+        $codec = new Utf16Codec(bigEndian: false);
+        // An odd number of bytes: the last one is no code unit.
+        self::assertNull($codec->decode("a\x00b"));
+        self::assertSame("a\u{FFFD}", $codec->decodeLossy("a\x00b"));
+        // A lone surrogate.
+        self::assertSame("\u{FFFD}a", $codec->decodeLossy("\x3D\xD8a\x00"));
+        self::assertSame('', $codec->decodeLossy(''));
+
+        $this->expectException(UnencodableCharacterException::class);
+        $codec->encode("a\xC3");
+    }
+
+    #[Test]
+    public function asciiHasNoBytesAbove127(): void
+    {
+        $codec = Codecs::for(Encoding::Ascii);
+        self::assertSame('Anna', $codec->decode('Anna'));
+        self::assertNull($codec->decode("Ann\xE4"));
+        self::assertSame("Ann\u{FFFD}", $codec->decodeLossy("Ann\xE4"));
+        self::assertSame('Anna', $codec->encode('Anna'));
+
+        $this->expectException(UnencodableCharacterException::class);
+        $codec->encode('Anné');
+    }
+
+    #[Test]
+    public function anselReplacesWhatItCannotDecodeAndRejectsWhatItCannotEncode(): void
+    {
+        $codec = Codecs::for(Encoding::Ansel);
+        // 0xAF is not assigned; a combining mark at the end has no letter to go on.
+        self::assertSame("a\u{FFFD}", $codec->decodeLossy("a\xAF"));
+        self::assertNull($codec->decode("a\xE2"));
+        self::assertSame("\u{00E1}", $codec->decodeLossy("a\xE2"));
+        // Two marks the bundled tables cannot compose into one letter stay after it.
+        self::assertSame("q\u{0301}\u{0300}", (new AnselCodec(useIntl: false))->decode("\xE2\xE1q"));
+
+        $this->expectException(UnencodableCharacterException::class);
+        $codec->encode('Ґ');
+    }
+
+    #[Test]
     public function pureUtf8HelpersWorkWithoutExtensions(): void
     {
         self::assertSame([0x0490, 0x1F46A], Utf8::codePoints('Ґ👪'));
         self::assertSame('👪', Utf8::chr(0x1F46A));
         self::assertSame("a\u{FFFD}b", Utf8::scrub("a\xFFb"));
+        self::assertSame('Ґанок', Utf8::scrub('Ґанок'));
+        self::assertSame([0x20AC], Utf8::codePoints('€'));
+        self::assertSame('', Codecs::for(Encoding::Utf8)->decodeLossy(''));
+
+        $this->expectException(\InvalidArgumentException::class);
+        Utf8::codePoints("a\xFF");
+    }
+
+    #[Test]
+    public function utf8EncodesOnlyValidUtf8(): void
+    {
+        self::assertSame('Ґ', Codecs::for(Encoding::Utf8)->encode('Ґ'));
+
+        $this->expectException(UnencodableCharacterException::class);
+        Codecs::for(Encoding::Utf8)->encode("a\xFF");
     }
 }

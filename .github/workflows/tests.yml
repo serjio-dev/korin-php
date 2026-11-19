@@ -46,7 +46,7 @@ jobs:
       - run: vendor/bin/phpunit
 
   # Spec section 11: coverage to Codecov. pcov measures lines; Xdebug's path coverage, the only
-  # branch measure, crashes on this suite (PHP 8.3-8.5, Xdebug 3.5), see docs/coverage.md.
+  # branch measure, crashes on this suite (PHP 8.3-8.5, Xdebug 3.5); spec section 10 sets MSI instead.
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
@@ -72,42 +72,6 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: build/coverage/clover.xml
           fail_ci_if_error: false
-
-  # Experiment (draft PR): which source file makes Xdebug's path coverage crash.
-  xdebug-crash:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-          extensions: intl, mbstring, zip
-          coverage: xdebug
-      - uses: ramsey/composer-install@v4
-      - name: Per file
-        run: |
-          cat > /tmp/repro.php <<'PHP'
-          <?php
-          require 'vendor/autoload.php';
-          use Korin\Gedcom\Gedcom; use Korin\Gedcom\Version;
-          xdebug_set_filter(XDEBUG_FILTER_CODE_COVERAGE, XDEBUG_PATH_INCLUDE, [realpath($argv[1])]);
-          xdebug_start_code_coverage(XDEBUG_CC_UNUSED | XDEBUG_CC_DEAD_CODE | XDEBUG_CC_BRANCH_CHECK);
-          $in = "0 HEAD\n1 SOUR Test\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n1 SUBN @S1@\n0 @I1@ INDI\n1 NAME A\n0 @S1@ SUBN\n1 TEMP SLAKE\n0 @S2@ SUBN\n1 FAMF x\n0 TRLR\n";
-          Gedcom::convert(Gedcom::parse($in), Version::V7_0);
-          $c = xdebug_get_code_coverage();
-          $f = reset($c);
-          echo count($f['functions'] ?? []), " functions, ", array_sum(array_map(static fn($x) => count($x['paths']), $f['functions'] ?? [])), " paths\n";
-          PHP
-          find src -name '*.php' | sort | while read -r f; do
-            out=$(XDEBUG_MODE=coverage /usr/bin/time -f '%M KB %e s' php -d memory_limit=-1 /tmp/repro.php "$f" 2>&1 | tail -2 | tr '\n' ' ')
-            code=$?
-            case "$out" in *Segmentation*|*"core dumped"*|*Fatal*) echo "CRASH $f: $out";; *) echo "ok $f: $out";; esac
-          done | tee /tmp/files.txt
-          echo "--- crashes and the largest"
-          grep CRASH /tmp/files.txt || true
-          sort -t: -k2 -n -r /tmp/files.txt | head -0
-          awk '{for(i=1;i<=NF;i++) if($(i)=="paths") print $(i-1), $2}' /tmp/files.txt | sort -n -r | head -10
 
   without-intl:
     name: PHP 8.2 without intl and zip

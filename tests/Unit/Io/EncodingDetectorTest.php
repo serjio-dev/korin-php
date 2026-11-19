@@ -36,6 +36,9 @@ final class EncodingDetectorTest extends TestCase
         yield 'UTF-16BE without BOM' => [$file('UNICODE', 'Анна', Encoding::Utf16Be), Encoding::Utf16Be, []];
         yield 'CHAR MS-DOS' => [$file('MS-DOS', 'Françoise', Encoding::Cp850), Encoding::Cp850, ['KV1101']];
         yield 'CHAR IBM WINDOWS' => [$file('IBM WINDOWS', 'Françoise', Encoding::Windows1252), Encoding::Windows1252, ['KV1101']];
+        yield 'CHAR WINDOWS-1252 with Cyrillic content' => [$file('WINDOWS-1252', 'Анна Іванівна /Коваль/', Encoding::Windows1251), Encoding::Windows1251, ['KV1101', 'KV1102']];
+        yield 'CHAR WINDOWS-1250' => [$file('WINDOWS-1250', 'Dvořák', Encoding::Windows1250), Encoding::Windows1250, ['KV1101']];
+        yield 'ANSI with ASCII-only content' => [$file('ANSI', 'Anna', Encoding::Ascii), Encoding::Windows1252, ['KV1101']];
         yield 'CHAR OEM' => [$file('OEM', 'Françoise', Encoding::Cp437), Encoding::Cp437, ['KV1101']];
         yield 'Mac line endings' => [str_replace("\n", "\r", $file('ANSEL', 'Wałęsa', Encoding::Ansel)), Encoding::Ansel, []];
     }
