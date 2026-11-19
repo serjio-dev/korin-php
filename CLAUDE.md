@@ -7,8 +7,9 @@ relevant section before changing behaviour. Diagnostic codes are listed in `docs
 
 ```bash
 composer check          # cs + rector + phpstan + phpunit
-vendor/bin/phpunit      # unit + conformance + corpus suites
+vendor/bin/phpunit      # unit + conformance + generative + corpus suites
 vendor/bin/phpunit --testsuite conformance   # cases generated from resources/profiles (tests/Support/Conformance)
+KORIN_SEED=1 KORIN_SEEDS=100 vendor/bin/phpunit --testsuite generative   # random valid files (Cases::random) through the matrix
 KORIN_CORPUS=../gedcom-corpus vendor/bin/phpunit --testsuite corpus   # against a local corpus checkout
 php bin/generate-encoding-tables.php   # regenerate resources/encodings (needs iconv + intl)
 php bin/generate-profiles.php          # compile spec/<version> into resources/profiles; --check in CI

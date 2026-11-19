@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Tests\Corpus;
 
-use Korin\Gedcom\Diagnostic;
-use Korin\Gedcom\Gedcom;
+use Korin\Gedcom\Tests\Support\ConversionInvariants;
 use Korin\Gedcom\Tests\Support\Corpus;
 use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -21,19 +20,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class MatrixTest extends TestCase
 {
-    /**
-     * Errors a valid input may still give, by target: code and a pattern of the message.
-     * 5.x requires a submitter a 7.0 file need not name; 5.x lists few media formats (FORM png
-     * stays); a 5.5 media record holds the object itself (BLOB), not a file; 7.0 and 5.5.5
-     * require a TYPE that FACT and IDNO need not have in 5.5.1; a 7.0 RESN list stays a list;
-     * 5.5.5 lengths are not converted.
-     */
-    private const LIMITS = [
-        '5.5' => [['KV2003', '/^HEAD requires SUBM$/'], ['KV3006', '/^FORM does not permit/'], ['KV2003', '/^OBJE requires BLOB$/'], ['KV3006', '/^RESN does not permit "[^"]*,/']],
-        '5.5.1' => [['KV2003', '/^HEAD requires SUBM$/'], ['KV3006', '/^FORM does not permit/'], ['KV3006', '/^RESN does not permit "[^"]*,/']],
-        '5.5.5' => [['KV2003', '/^The file requires a SUBM record$/'], ['KV3006', '/^FORM does not permit/'], ['KV2003', '/^(FACT|IDNO) requires TYPE$/'], ['KV3010', '/ is (longer|shorter) than /']],
-        '7.0' => [['KV2003', '/^(FACT|IDNO) requires TYPE$/']],
-    ];
+    use ConversionInvariants;
 
     /** @return iterable<string, array{string, Version}> */
     public static function cells(): iterable
@@ -52,36 +39,6 @@ final class MatrixTest extends TestCase
     #[DataProvider('cells')]
     public function theOutputIsValidDeterministicAndStable(string $file, Version $to): void
     {
-        $input = Gedcom::read($file);
-        $result = Gedcom::convert($input, $to);
-        $again = Gedcom::convert(Gedcom::read($file), $to);
-
-        self::assertSame($result->output(), $again->output(), 'Deterministic output');
-        self::assertSame(array_map(strval(...), $result->losses()->entries()), array_map(strval(...), $again->losses()->entries()), 'Deterministic loss report');
-        self::assertSame($result->output(), Gedcom::convert($result->document(), $to)->output(), 'Converting to its own version changes nothing');
-        $out = fopen('php://memory', 'w+b');
-        self::assertNotFalse($out);
-        $losses = Gedcom::convertFile($file, $out, $to);
-        rewind($out);
-        self::assertSame($result->output(), stream_get_contents($out), 'convertFile() writes the output of convert()');
-        self::assertSame(json_encode($result->losses()), json_encode($losses), 'convertFile() reports the losses of convert()');
-
-        $before = [];
-        foreach (Gedcom::validate($input)->errors() as $error) {
-            $before[$error->code] = true;
-        }
-        $unexpected = array_filter(Gedcom::validate($result->document())->errors(), fn(Diagnostic $error): bool => !isset($before[$error->code]) && !$this->isLimit($to, $error));
-        self::assertSame([], array_values(array_map(strval(...), $unexpected)), 'The output must validate without errors');
-    }
-
-    private function isLimit(Version $to, Diagnostic $error): bool
-    {
-        foreach (self::LIMITS[$to->value] ?? [] as [$code, $pattern]) {
-            if ($error->code === $code && preg_match($pattern, $error->message) === 1) {
-                return true;
-            }
-        }
-
-        return false;
+        $this->assertConvertsCleanly((string) file_get_contents($file), $to);
     }
 }

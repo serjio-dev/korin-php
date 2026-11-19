@@ -395,8 +395,8 @@ Every corpus file goes through the whole matrix: reading, writing to the same ve
 3. **Round-trip** — in `preserve` mode the output equals the input byte for byte; in `normalize` mode it is semantically equal.
 4. **Conversion matrix** — for every cell above: the output is valid for the target version, and the `LossReport` matches the golden file. The output may keep the errors of its input and the documented limits of the target (a submitter 7.0 does not require, a media `FORM` 5.x does not list, a 5.5 media record without `BLOB`, `FACT`/`IDNO` without `TYPE`; docs/conversion.md); the conversion is deterministic, and converting the output to its own version changes nothing. Golden loss reports exist for the cells a case names (`convert` in `case.yaml`).
    Each cell runs twice: `read()` + `convert()` + `write()` and `convertFile()`; outputs and `LossReport` must match byte for byte (the `convert-stream` check in the corpus).
-5. **Up-down-up invariants** — the document fingerprint (canonical JSON of the semantic content) after 7.0 → 5.5 → 7.0 equals the original, except for items in the `LossReport`.
-6. **Generative (property-based)** — random valid documents generated from a profile's grammar go through the conversion chain with the same invariants.
+5. **Up-down-up invariants** — the document fingerprint (canonical JSON of the semantic content) after 7.0 → 5.5 → 7.0 equals the original, except for items in the `LossReport`. Substructures compare by tag: 7.0 gives meaning only to the order of substructures with the same tag.
+6. **Generative (property-based)** — random valid documents generated from a profile's grammar go through the conversion chain with the same invariants (`tests/Generative`): every writable version to every writable version, and 7.0 up and down again. A seed gives the same file; CI runs 10 seeds per version, the nightly `fuzz` workflow 300 new ones. Bugs these tests find and that are not fixed yet are listed in the test, each to be removed with its fix.
 7. **Encodings** — every code page, ANSEL combining diacritics, BOM, mismatch between `CHAR` and content, Cyrillic in CP1251 and UTF-16.
 8. **Fuzzing** — `nikic/php-fuzzer` on the lexer, decoders, dates and GEDZIP: no undocumented exceptions and no limits exceeded.
 9. **Mutation** — Infection checks that the tests actually catch bugs rather than just executing code.
@@ -446,7 +446,7 @@ Every PR runs the tests on PHP 8.2–8.6, on three operating systems, with lowes
 | `php-nightly` | Nightly | PHP nightly build, failures do not block |
 | `static` | Every PR | PHPStan, PHP-CS-Fixer, Rector, composer checks |
 | `mutation` | PR (changed lines) + weekly (everything) | Infection on the unit and conformance suites, MSI ≥ 85% |
-| `fuzz` | Nightly | Fuzzing; inputs found are added to the corpus |
+| `fuzz` | Nightly | Fuzzing; inputs found are added to the corpus. Generative tests on 300 new seeds |
 | `bench` | PR | Comparison with `main`, blocks on a regression > 10% |
 | `release` | Tag `v*` | Release build, notes from CHANGELOG, artifact attestation |
 

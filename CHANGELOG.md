@@ -15,6 +15,12 @@ break the API; such changes are described in `UPGRADE.md`.
 - Mutation testing (Infection, `mutation` workflow): MSI ≥ 85% on the lines a pull request
   changes and on the whole code weekly; 82.2% → 85%+ with new unit tests, among them the
   file checks of the parser, which only the corpus suite had covered.
+- Generative tests (`tests/Generative`, SPEC section 10, kind 6): random valid documents of
+  7.0, 5.5.5, 5.5.1 and 5.5 from the grammars of their profiles go through the conversion
+  matrix and 7.0 up and down again; 10 seeds per version in every run, 300 new ones a night.
+  The matrix and up-down-up checks of the corpus are shared with them, and up-down-up now
+  compares substructures of different tags in any order. Bugs they found are listed in the
+  test until fixed.
 - `Utf16Codec` takes `useMbstring: false` to force the pure-PHP encoder, like
   `AnselCodec(useIntl: false)`, so that tests cover the path without the extension.
 

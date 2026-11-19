@@ -52,3 +52,21 @@ jobs:
           path: |
             build/fuzz/crashes
             build/fuzz/fuzz.log
+
+  # Generative tests (SPEC section 10, kind 6) on documents no other run has seen: 300 seeds a night,
+  # from a different first seed each time. A failure names its seed; KORIN_SEED gives the file again.
+  generative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl, mbstring, zip
+          coverage: none
+      - uses: ramsey/composer-install@v4
+      - run: vendor/bin/phpunit --testsuite generative
+        env:
+          KORIN_SEED: ${{ github.run_number }}000
+          KORIN_SEEDS: '300'

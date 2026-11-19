@@ -242,10 +242,10 @@ times without a leading zero (`8:56`) or with a two-digit fraction (`.50`), the 
 
 ## Conversion matrix
 
-Every corpus input is converted to every version (`tests/Corpus/MatrixTest.php`, SPEC
-section 10): the conversion is deterministic, converting the output to its own version changes
-nothing, and the output validates without errors other than those of the input and these
-limits of the target versions:
+Every corpus input, and random valid documents of every version (`tests/Generative`), is
+converted to every version (`tests/Corpus/MatrixTest.php`, SPEC section 10): the conversion
+is deterministic, converting the output to its own version changes nothing, and the output
+validates without errors other than those of the input and these limits of the target versions:
 
 | Target | Error the output may have | Why |
 | --- | --- | --- |
@@ -253,5 +253,8 @@ limits of the target versions:
 | 5.x | `FORM does not permit …` (`KV3006`) on a media `FORM` | 5.x lists a few formats from the 1990s; others (`png`, `pdf`) stay, as programs write them |
 | 5.5, 5.5.1 | `RESN does not permit "confidential, locked"` (`KV3006`) | 5.x has one restriction; programs write the 7.0 list, and keeping one of them would lift a restriction |
 | 5.5 | `OBJE requires BLOB` (`KV2003`) | A 5.5 media record holds the object itself; a file reference is `_FILE` (`KL2001`) |
-| 5.5.5 | `… is longer than 248 characters` (`KV3010`) | Lengths are not converted: a 7.0 text has no limit, and cutting it would lose it |
+| 5.5.5 | `… is longer than 248 characters`, `… is shorter than …` (`KV3010`) | Lengths are not converted: a 7.0 text has no limit, and cutting it would lose it; a short one (`EMAIL x`) is not padded |
 | 7.0, 5.5.5 | `FACT requires TYPE`, `IDNO requires TYPE` (`KV2003`) | 5.5.1 does not require `TYPE`, and nothing names it |
+| 7.0 | `EVEN requires TYPE` (`KV2003`) | An `EVEN` without a value has nothing to name its type with (one with a value gets it as `TYPE`) |
+| 5.5.1, 5.5.5, 7.0, from 5.5 | `OBJE requires FILE` (`KV2003`) | The 5.5 media record holds the object itself (`BLOB`), which is not a file |
+| 5.5.1, 5.5.5, 7.0, from 5.5 | `REPO requires NAME`, `STAT requires DATE` (`KV2003`) | 5.5 requires neither the name of a repository nor the date of an LDS status, and the conversion does not invent them |
