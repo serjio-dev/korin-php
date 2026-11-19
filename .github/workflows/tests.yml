@@ -61,7 +61,9 @@ jobs:
       - uses: ramsey/composer-install@v4
       - name: Fetch external corpus inputs
         run: python3 vendor/korin/gedcom-corpus/scripts/fetch-external.py
-      - run: vendor/bin/phpunit --path-coverage --coverage-clover build/coverage/clover.xml --coverage-cobertura build/coverage/cobertura.xml --coverage-html build/coverage/html --coverage-text=build/coverage/summary.txt --only-summary-for-coverage-text
+      # Experiment (draft): memory and time of path coverage, unit suite alone first.
+      - run: /usr/bin/time -v php -d memory_limit=-1 vendor/bin/phpunit --testsuite unit --path-coverage --coverage-text --only-summary-for-coverage-text 2>&1 | grep -E "Lines:|Branches:|Paths:|Methods:|Maximum resident|Elapsed|Tests:|Fatal" || true
+      - run: php -d memory_limit=-1 vendor/bin/phpunit --path-coverage --coverage-clover build/coverage/clover.xml --coverage-cobertura build/coverage/cobertura.xml --coverage-html build/coverage/html --coverage-text=build/coverage/summary.txt --only-summary-for-coverage-text
       - run: cat build/coverage/summary.txt >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
         with:
