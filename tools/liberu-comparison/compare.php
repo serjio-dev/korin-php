@@ -10,13 +10,13 @@ declare(strict_types=1);
  * For every corpus input both libraries read the file and write it back; the output is read
  * with Korin and its semantic fingerprint is compared with the input's. Then both read the
  * generated benchmark files, each in its own process so peak memory is measured separately.
- * The corpus comes from ../../vendor/korin/gedcom-corpus or KORIN_CORPUS.
+ * The corpus comes from ../../vendor/korin/gedcom-corpus or KORIN_CORPUS (tests/Support/Corpus.php).
  */
 
 use Korin\Gedcom\Benchmarks\BenchFile;
 use Korin\Gedcom\Gedcom;
+use Korin\Gedcom\Tests\Support\Corpus;
 use Korin\Gedcom\Tests\Support\Fingerprint;
-use Symfony\Component\Yaml\Yaml;
 
 require __DIR__ . '/vendor/autoload.php';
 
@@ -29,11 +29,10 @@ if (($argv[1] ?? '') === '--measure') {
     exit(0);
 }
 
-$corpus = getenv('KORIN_CORPUS') ?: __DIR__ . '/../../vendor/korin/gedcom-corpus';
 $rows = [];
-foreach (glob($corpus . '/cases/*/case.yaml') ?: [] as $yaml) {
-    $case = Yaml::parseFile($yaml);
-    $file = dirname($yaml) . '/' . $case['input']['file'];
+// External cases count only once fetched (Corpus).
+foreach (Corpus::cases() as $dir => $case) {
+    $file = $dir . '/' . $case['input']['file'];
     $bytes = (string) file_get_contents($file);
     $expected = leaves(Fingerprint::of(Gedcom::parse($bytes)));
     $rows[] = [

@@ -6,11 +6,11 @@ namespace Korin\Gedcom\Tests\Corpus;
 
 use Korin\Gedcom\Diagnostic;
 use Korin\Gedcom\Gedcom;
+use Korin\Gedcom\Tests\Support\Corpus;
 use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Yaml\Yaml;
 
 /**
  * SPEC section 10, test type 4: every corpus input converted to every version (the conversion
@@ -37,17 +37,11 @@ final class MatrixTest extends TestCase
     /** @return iterable<string, array{string, Version}> */
     public static function cells(): iterable
     {
-        $root = getenv('KORIN_CORPUS');
-        if ($root === false || $root === '') {
-            $root = __DIR__ . '/../../vendor/korin/gedcom-corpus';
-        }
-        $files = glob($root . '/cases/*/case.yaml');
-        foreach ($files === false ? [] : $files as $file) {
+        foreach (Corpus::cases() as $dir => $case) {
             /** @var array{input: array{file: string}} $case */
-            $case = Yaml::parseFile($file);
             if (str_ends_with($case['input']['file'], '.ged')) {
                 foreach (array_filter(Version::cases(), static fn(Version $to): bool => $to->isWritable()) as $to) {
-                    yield basename(dirname($file)) . ' to ' . $to->value => [dirname($file) . '/' . $case['input']['file'], $to];
+                    yield basename($dir) . ' to ' . $to->value => [$dir . '/' . $case['input']['file'], $to];
                 }
             }
         }

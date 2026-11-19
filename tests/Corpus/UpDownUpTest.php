@@ -6,12 +6,12 @@ namespace Korin\Gedcom\Tests\Corpus;
 
 use Korin\Gedcom\Gedcom;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Tests\Support\Corpus;
 use Korin\Gedcom\Tests\Support\Fingerprint;
 use Korin\Gedcom\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Yaml\Yaml;
 
 /**
  * SPEC section 10, test type 5: converting every 7.0 input of the corpus to 5.5.1, 5.5 or 5.5.5 and
@@ -24,17 +24,11 @@ final class UpDownUpTest extends TestCase
     /** @return iterable<string, array{string, Version}> */
     public static function inputs(): iterable
     {
-        $root = getenv('KORIN_CORPUS');
-        if ($root === false || $root === '') {
-            $root = __DIR__ . '/../../vendor/korin/gedcom-corpus';
-        }
-        $files = glob($root . '/cases/*/case.yaml');
-        foreach ($files === false ? [] : $files as $file) {
+        foreach (Corpus::cases() as $dir => $case) {
             /** @var array{input: array{file: string, version: string}} $case */
-            $case = Yaml::parseFile($file);
             if ($case['input']['version'] === '7.0' && str_ends_with($case['input']['file'], '.ged')) {
                 foreach ([Version::V5_5_1, Version::V5_5, Version::V5_5_5] as $via) {
-                    yield basename(dirname($file)) . ' via ' . $via->value => [dirname($file) . '/' . $case['input']['file'], $via];
+                    yield basename($dir) . ' via ' . $via->value => [$dir . '/' . $case['input']['file'], $via];
                 }
             }
         }
