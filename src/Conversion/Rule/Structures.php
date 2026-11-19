@@ -18,7 +18,8 @@ use Korin\Gedcom\Version;
  *
  * - a structure the target has no place for (7.0 → 5.5.1: NO, SDATE, CREA, INIL, CROP,
  *   HEAD.SCHMA, an ASSO of an event, a PHRASE no value rule could join; 5.5.1 → 5.5: EMAIL,
- *   FAX, WWW, MAP, FONE, ROMN; 5.5 → 5.5.1: BLOB, the AGE of a family event) becomes an
+ *   FAX, WWW, MAP, FONE, ROMN; 5.5 → 5.5.1: BLOB, the AGE of a family event; 5.5.1 → 7.0: NOTE
+ *   and SOUR of a FONE or ROMN, which become TRAN) becomes an
  *   extension with its tag and its substructures (_NO, _EMAIL), or is dropped under
  *   LossPolicy::DropWithReport (KL2001);
  * - one more than the target allows (5.5 → 5.5.1: a second PEDI; 5.5.1 → 5.5: a second REPO

@@ -32,8 +32,6 @@ final class GenerativeTest extends TestCase
      * its bug is fixed.
      */
     private const KNOWN = [
-        // FONE and ROMN with a NOTE or a SOUR become a TRAN, which has neither.
-        [self::V5, ['7.0'], 'KV2001', '/^(SNOTE|SOUR) is not allowed in TRAN$/'],
         // A structure with neither a value nor substructures that is not an event (BAPL, SOUR.DATA) stays empty.
         [self::V5, ['7.0'], 'KV3007', '/ has neither a value nor substructures$/'],
         // An inline OBJE with more than one FILE, or inside an inline SOUR, becomes a media record FORM is missing from or misplaced in.

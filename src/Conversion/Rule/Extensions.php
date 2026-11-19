@@ -15,7 +15,7 @@ use Korin\Gedcom\Version;
  * An extension named after a structure of the target version, where the target has that
  * structure and the source could not write it so, is that structure: it is how the conversion
  * the other way writes it (7.0 → 5.5.1: _NO, _SDATE, _CREA, _CROP, _SCHMA under HEAD, _PHRASE
- * under DATE, _FAMC @VOID@; 5.5.1 → 5.5: _EMAIL, _FONE, a second REPO of a source as _REPO,
+ * under DATE, _FAMC @VOID@; 5.5.1 → 7.0 → 5.5.1: _NOTE and _SOUR under TRAN; 5.5.1 → 5.5: _EMAIL, _FONE, a second REPO of a source as _REPO,
  * SEX U as _SEX U), and it gets its tag back. Its substructures are already in the target's
  * form. The source could not write it so when it has no such structure there, the value does
  * not fit the source's (an enumeration value it does not list) but fits the target's, the
