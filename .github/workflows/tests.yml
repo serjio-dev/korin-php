@@ -16,22 +16,18 @@ jobs:
   tests:
     name: PHP ${{ matrix.php }} ${{ matrix.dependencies }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        php: ['8.2', '8.3', '8.4', '8.5']
+        php: ['8.2', '8.3', '8.4', '8.5', '8.6']
         dependencies: [lowest, highest]
-        experimental: [false]
         include:
-          - { os: ubuntu-latest, php: '8.6', dependencies: highest, experimental: true }
-          # Spec section 11: Windows and macOS run on 8.2 and 8.6. Switch 8.5 -> 8.6 below and make
-          # 8.6 on Ubuntu non-experimental once PHP 8.6 is GA (scheduled for 2026-11-19).
-          - { os: windows-latest, php: '8.2', dependencies: highest, experimental: false }
-          - { os: windows-latest, php: '8.5', dependencies: highest, experimental: false }
-          - { os: macos-latest, php: '8.2', dependencies: highest, experimental: false }
-          - { os: macos-latest, php: '8.5', dependencies: highest, experimental: false }
+          # Spec section 11: Windows and macOS on the oldest and newest supported PHP.
+          - { os: windows-latest, php: '8.2', dependencies: highest }
+          - { os: windows-latest, php: '8.6', dependencies: highest }
+          - { os: macos-latest, php: '8.2', dependencies: highest }
+          - { os: macos-latest, php: '8.6', dependencies: highest }
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2

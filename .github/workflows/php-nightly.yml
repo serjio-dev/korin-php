@@ -1,0 +1,31 @@
+name: php-nightly
+
+# Spec section 11: the next PHP, nightly; a failure is a warning of what is coming, not a block.
+on:
+  schedule:
+    - cron: '41 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nightly:
+    name: PHP nightly
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: nightly
+          extensions: intl, mbstring, zip
+          coverage: none
+          ini-values: error_reporting=E_ALL, zend.assertions=1
+      # composer.json allows PHP up to 8.6; the nightly is newer.
+      - uses: ramsey/composer-install@v3
+        with:
+          composer-options: --ignore-platform-req=php+
+      - name: Fetch external corpus inputs
+        run: python3 vendor/korin/gedcom-corpus/scripts/fetch-external.py
+      - run: vendor/bin/phpunit

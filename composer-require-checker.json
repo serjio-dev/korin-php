@@ -1,0 +1,9 @@
+{
+    "symbol-whitelist": [
+        "null", "true", "false", "static", "self", "parent", "array", "string", "int", "float", "bool", "iterable", "callable", "void", "object", "mixed", "never",
+        "Normalizer",
+        "ZipArchive",
+        "mb_convert_encoding", "mb_scrub", "mb_substitute_character"
+    ],
+    "php-core-extensions": ["Core", "date", "hash", "json", "pcre", "random", "Reflection", "SPL", "standard"]
+}

@@ -2,7 +2,8 @@
 *.ged binary
 *.gdz binary
 
-# Not part of the Composer package: only src/, resources/, composer.json, README.md and LICENSE ship.
+# Not part of the Composer package: only src/, resources/, composer.json, README.md, CHANGELOG.md,
+# LICENSE and NOTICE ship.
 /.github export-ignore
 /benchmarks export-ignore
 /bin export-ignore
@@ -15,7 +16,10 @@
 /.gitignore export-ignore
 /.php-cs-fixer.dist.php export-ignore
 /CLAUDE.md export-ignore
+/composer-require-checker.json export-ignore
+/mkdocs.yml export-ignore
 /phpbench.json export-ignore
+/phpdoc.dist.xml export-ignore
 /phpstan.neon.dist export-ignore
 /phpunit.xml.dist export-ignore
 /rector.php export-ignore
