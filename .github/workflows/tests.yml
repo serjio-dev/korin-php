@@ -45,30 +45,33 @@ jobs:
         run: "$(command -v python3 || command -v python) vendor/korin/gedcom-corpus/scripts/fetch-external.py"
       - run: vendor/bin/phpunit
 
-  # Experiment (draft PR): which driver measures this suite.
+  # Spec section 11: coverage to Codecov. pcov measures lines; Xdebug's path coverage, the only
+  # branch measure, crashes on this suite (PHP 8.3-8.5, Xdebug 3.5), see docs/coverage.md.
   coverage:
-    name: Coverage ${{ matrix.driver }} on ${{ matrix.php }}
+    name: Coverage
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { driver: xdebug, php: '8.4', args: '--testsuite unit --path-coverage' }
-          - { driver: xdebug, php: '8.3', args: '--testsuite unit --path-coverage' }
-          - { driver: pcov, php: '8.5', args: '' }
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php }}
+          php-version: '8.5'
           extensions: intl, mbstring, zip
-          coverage: ${{ matrix.driver }}
+          coverage: pcov
       - uses: ramsey/composer-install@v4
       - name: Fetch external corpus inputs
         run: python3 vendor/korin/gedcom-corpus/scripts/fetch-external.py
-      - run: sed -i 's/name="memory_limit" value="512M"/name="memory_limit" value="-1"/' phpunit.xml.dist
-      - run: /usr/bin/time -v php -d memory_limit=-1 vendor/bin/phpunit ${{ matrix.args }} --coverage-text --only-summary-for-coverage-text 2>&1 | grep -E "Lines:|Branches:|Paths:|Methods:|Classes:|Maximum resident|Elapsed|Tests:|Fatal|OK" || true
+      - run: vendor/bin/phpunit --coverage-clover build/coverage/clover.xml --coverage-html build/coverage/html --coverage-text=build/coverage/summary.txt
+      - run: cat build/coverage/summary.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: build/coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/coverage/clover.xml
+          fail_ci_if_error: false
 
   without-intl:
     name: PHP 8.2 without intl and zip
