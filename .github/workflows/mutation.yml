@@ -28,13 +28,15 @@ jobs:
           php-version: '8.5'
           extensions: intl, mbstring, zip
           coverage: pcov
+          # A tool, not a dev dependency: Infection needs PHP 8.3+, the library supports 8.2.
+          tools: infection
       - uses: ramsey/composer-install@v4
       - name: Changed lines
         if: false # measuring first (draft)
-        run: vendor/bin/infection --threads=max --git-diff-lines --git-diff-base=origin/${{ github.base_ref }} --min-msi=85 --min-covered-msi=85 --show-mutations --no-progress
+        run: infection --threads=max --git-diff-lines --git-diff-base=origin/${{ github.base_ref }} --min-msi=85 --min-covered-msi=85 --show-mutations --no-progress
       - name: Everything
         if: true # measuring first (draft)
-        run: vendor/bin/infection --threads=max --no-progress
+        run: infection --threads=max --no-progress
       - run: cat build/infection/summary.log >> "$GITHUB_STEP_SUMMARY"
         if: always()
       - uses: actions/upload-artifact@v7

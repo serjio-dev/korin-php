@@ -1,5 +1,4 @@
 {
-    "$schema": "vendor/infection/infection/resources/schema.json",
     // Spec section 10: MSI >= 85 (mutation workflow). The corpus suite covers the code as a
     // whole and is too slow to run per mutant; unit and conformance tests target it.
     "source": {
