@@ -32,8 +32,6 @@ final class GenerativeTest extends TestCase
      * its bug is fixed.
      */
     private const KNOWN = [
-        // A structure with neither a value nor substructures that is not an event (BAPL, SOUR.DATA) stays empty.
-        [self::V5, ['7.0'], 'KV3007', '/ has neither a value nor substructures$/'],
         // An inline OBJE with more than one FILE, or inside an inline SOUR, becomes a media record FORM is missing from or misplaced in.
         [self::V5, ['5.5.5', '7.0'], 'KV2003', '/^FILE requires FORM$/'],
         [['5.5'], ['7.0'], 'KV2001', '/^FORM is not allowed in OBJE$/'],

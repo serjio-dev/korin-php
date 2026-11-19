@@ -26,8 +26,9 @@ use Korin\Gedcom\Version;
  *   of a source) likewise (KL2002);
  * - the value Y of an event the target has no value for (7.0 or 5.5 BURI Y → 5.5.1 BURI) is
  *   removed: an event without substructures means the same, one with them is reported (KL3003);
- * - 5.5.5 has no structure with neither a value nor substructures: such a structure (1 BURI,
- *   BIRT Y, whose Y 5.5.5 does not have) becomes an extension (KL3001);
+ * - 5.5.5 and 7.0 have no structure with neither a value nor substructures: such a structure
+ *   (1 BURI, BIRT Y, whose Y 5.5.5 does not have; 5.5.1 → 7.0: 1 BAPL, an empty SOUR.DATA)
+ *   becomes an extension (KL3001);
  * - a record the target does not have (SUBN in 5.5.5) becomes an extension record (KL2001).
  *
  * Converting back gives the structures back (the rule Extensions). The last rule of the walk:
@@ -98,19 +99,22 @@ final class Structures implements NodeRule
             if (!$empty) {
                 $context->loss('KL3003', Severity::Warning, $id, StoredAs::Dropped, "{$this->target->value} {$tag} has no value Y");
             }
-        } elseif ($empty && $this->target === Version::V5_5_5 && ($context->value($id) ?? '') === '' && ($payload === null || !Escaping::isPointer($payload))) {
+        } elseif ($empty && ($this->target === Version::V5_5_5 || $this->target === Version::V7_0) && ($context->value($id) ?? '') === '' && ($payload === null || !Escaping::isPointer($payload))) {
             return $this->bare($id, $tag, $context);
         }
 
         return true;
     }
 
-    /** 5.5.5: "every GEDCOM record without subrecords must have a line value" (1 BURI, BIRT Y without its Y). */
+    /**
+     * 5.5.5: "every GEDCOM record without subrecords must have a line value" (1 BURI, BIRT Y without its Y);
+     * 7.0 has no structure with neither either (1 BAPL, an empty SOUR.DATA; an event gets Y first).
+     */
     private function bare(int $id, string $tag, Context $context): bool
     {
         $this->uris[$id] = null;
 
-        return $context->unsupported($id, 'KL3001', "5.5.5 {$tag} needs a value or substructures");
+        return $context->unsupported($id, 'KL3001', "{$this->target->value} {$tag} needs a value or substructures");
     }
 
     private function hasSubstructures(Document $document, int $id): bool
