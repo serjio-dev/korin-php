@@ -15,7 +15,8 @@ use Korin\Gedcom\Syntax\Escaping;
  * free n in document order, and every pointer to it follows. A pointer to a record that does
  * not exist (compared case-sensitively: @test@ is not @TEST@) becomes the null pointer @VOID@,
  * except under NOTE: there it is more likely text written without "@@" escaping (@Smith family@)
- * and stays text (NOTE @@Smith family@), so nothing is lost. Needs the prepass: a pointer may come before the record it points to.
+ * and stays text (NOTE @@Smith family@), so nothing is lost, and in an extension (_IN @B1@),
+ * which 7.0 leaves to the extension's definition. Needs the prepass: a pointer may come before the record it points to.
  *
  * @internal
  */
@@ -71,7 +72,7 @@ final class Xrefs implements NodeRule
         } elseif (!isset($this->xrefs[$payload])) {
             if ($document->tagOf($id) === 'NOTE') {
                 $context->setValue($id, $payload);
-            } elseif ($payload !== self::VOID) {
+            } elseif ($payload !== self::VOID && !str_starts_with($document->tagOf($id), '_') && !$context->inExtension($id)) {
                 $document->setPayload($id, self::VOID);
             }
         }

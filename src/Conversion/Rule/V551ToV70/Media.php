@@ -16,8 +16,9 @@ use Korin\Gedcom\Validation\Rule\PayloadGrammar;
  *   type (jpg → image/jpeg, wav → audio/wav), others application/x-<extension>, as gedcom7code
  *   does (other → application/x-other); a value that already is a media type stays;
  * - FILE becomes a URL or a relative path with "/" separators: /x → file:///x,
- *   c:\x → file:///c:/x, \\server\x → file://server/x, a\b → a/b; spaces, "%", "?", "#",
- *   "[", "]" and characters a URL cannot hold are percent-encoded, as is ":" in the first
+ *   c:\x → file:///c:/x, \\server\x → file://server/x, a\b → a/b; spaces, "%" (but in a
+ *   percent-encoding: a%C3%AB stays, as 7.0 → 5.5.1 writes it), "?", "#", "[", "]" and
+ *   characters a URL cannot hold are percent-encoded, as is ":" in the first
  *   segment of a relative path (https:/x is not a URL). A URI with a scheme ("http://…",
  *   "urn:isbn:…") only has spaces and such characters encoded, a file: URL its backslashes
  *   turned into "/" too (file://C:\x → file:///C:/x); ".." stays, though 7.0 does not allow it.
@@ -42,7 +43,7 @@ final class Media implements NodeRule
     private const UNSAFE = '/[\x00-\x20"<>\\\\^`{|}\x7F]/';
 
     /** Characters a path cannot hold: besides those, the ones a URL gives a meaning. */
-    private const PATH_UNSAFE = '/[\x00-\x20"<>\\\\^`{|}\x7F%?#\[\]]/';
+    private const PATH_UNSAFE = '/[\x00-\x20"<>\\\\^`{|}\x7F?#\[\]]|%(?![0-9A-Fa-f]{2})/';
 
     public function needsPrepass(): bool
     {

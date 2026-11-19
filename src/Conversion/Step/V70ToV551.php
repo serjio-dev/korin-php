@@ -35,6 +35,7 @@ final class V70ToV551 implements Step
         return [
             new Rules\FileHeader(),
             new Rules\Submissions(),
+            new Rules\Aliases(),
             new Nodes(
                 new Rules\TextValues(),
                 new Rules\Events(),
@@ -44,6 +45,7 @@ final class V70ToV551 implements Step
                 new Rules\Identifiers(),
                 new Rules\Dates(),
                 new Rules\Ages(),
+                new Rules\Times(),
                 new Rules\Languages(),
                 new Rules\Media(),
                 new Rules\Enumerations(),

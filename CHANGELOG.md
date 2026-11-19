@@ -25,6 +25,16 @@ break the API; such changes are described in `UPGRADE.md`.
 
 - `maximal70.ged` and `extensions.ged` of gedcom.io are valid: `KV3005` and `KV4003` on their
   documented extension tags are gone.
+- 7.0 → 5.x writes valid files for the gedcom.io test files: a time in UTC (`_TIME`), an `AGE`
+  that is only a `PHRASE` (`_AGE`), a value a closed 5.5.1 list lacks (`_MEDI OTHER` with its
+  `PHRASE`, `_STAT INFANT`), `SLGC` with `FAMC @VOID@` (`_SLGC`, `KL4001`), all `KL3001`; the
+  value of `RESI` becomes a `NOTE` (new `KL3005`); a record `HEAD.SCHMA` defines as a standard
+  one gets its tag (`_USER` → `SUBM`).
+- 7.0 → 5.x → 7.0 gives the document back: a `RESN` list is kept by 5.5 when it lists every
+  item and comes back from `_RESN`; `SNOTE` where 5.5.1 has no `NOTE` stays `_SNOTE`; a fourth
+  `SUBM.LANG` keeps its tag; 5.x → 7.0 no longer encodes the `%` of a percent-encoding
+  (`%C3%AB` became `%25C3%25AB`) and keeps a pointer of an extension to no record (`_IN @B1@`
+  became `@VOID@`).
 
 ## [0.5.0] - 2026-11-18
 

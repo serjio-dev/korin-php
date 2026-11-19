@@ -43,6 +43,10 @@ jobs:
       - uses: ramsey/composer-install@v3
         with:
           dependency-versions: ${{ matrix.dependencies }}
+      # The corpus's external cases (gedcom.io files without a license) are downloaded, not committed.
+      - name: Fetch external corpus inputs
+        shell: bash
+        run: "$(command -v python3 || command -v python) vendor/korin/gedcom-corpus/scripts/fetch-external.py"
       - run: vendor/bin/phpunit
 
   without-intl:

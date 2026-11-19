@@ -6,8 +6,10 @@ namespace Korin\Gedcom\Conversion\Rule\V70ToV551;
 
 use Korin\Gedcom\Conversion\Context;
 use Korin\Gedcom\Conversion\NodeRule;
+use Korin\Gedcom\Conversion\Rule\Payloads;
 use Korin\Gedcom\Conversion\Rule\V551ToV70\Enumerations as Upgrade;
 use Korin\Gedcom\Spec\Profile;
+use Korin\Gedcom\Spec\Structure;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Version;
 
@@ -19,8 +21,10 @@ use Korin\Gedcom\Version;
  * becomes FORM.TYPE.
  *
  * Every value is one that converts up to the same value and PHRASE again. A PHRASE that cannot
- * join the value stays for the structures rule; a value 5.5.1 does not list (PEDI OTHER) is
- * written in 5.5.1 case all the same. SEX X is left to the structures rule.
+ * join the value stays for the structures rule. A value the 5.5.1 structure does not take
+ * (MEDI OTHER + PHRASE Portrait: FORM.TYPE is a closed list; STAT INFANT) keeps the 7.0
+ * structure as an extension (_MEDI, KL3001); one it takes although 5.5.1 does not list it
+ * (PEDI OTHER) is written in 5.5.1 case. SEX X is left to the structures rule.
  *
  * @internal
  */
@@ -90,13 +94,19 @@ final readonly class Enumerations implements NodeRule
         }
         $parent = $document->parentOf($id);
         $above = $document->tagOf($parent);
+        $tag = $document->tagOf($id);
         if ($element === '<ROLE_IN_EVENT>' && $above === 'ASSO') {
             $element = '<RELATION_IS_DESCRIPTOR>';
-            $document->setTag($id, 'RELA');
+            $tag = 'RELA';
         } elseif ($element === '<SOURCE_MEDIA_TYPE>' && $above === 'FORM') {
-            $document->setTag($id, 'TYPE');
+            $tag = 'TYPE';
         } elseif ($element === '<LDS_BAPTISM_DATE_STATUS>') {
             $element = self::STATUSES[$above] ?? $element;
+        }
+        $target = $this->target($document, $parent, $tag);
+        // 5.5.1 has no such structure here (OBJE.RESN): the extension keeps the 7.0 value.
+        if ($target === null) {
+            return true;
         }
         $value = (string) $context->value($id);
         $phrase = null;
@@ -108,17 +118,33 @@ final readonly class Enumerations implements NodeRule
         }
         $text = $phrase === null ? null : (string) $context->value($phrase);
         $spelled = $this->spell($element, $value);
-        $converted = $text === null ? null : $this->first($element, ($element === '<ROLE_IN_EVENT>' ? ["({$text})", $text] : [$text]), $value, $text);
-        if ($converted !== null) {
+        $joined = $text === null ? null : $this->first($element, ($element === '<ROLE_IN_EVENT>' ? ["({$text})", $text] : [$text]), $value, $text);
+        $converted = $joined ?? $this->first($element, [$spelled, $value], $value, null) ?? $value;
+        if (!isset(self::LISTS[$element]) && !Payloads::fits(Profile::for(Version::V5_5_1), $target, $converted)) {
+            return $context->unsupported($id, 'KL3001', "5.5.1 {$tag} has no such value");
+        }
+        if ($joined !== null) {
             $document->removeNode($phrase);
-        } else {
-            $converted = $this->first($element, [$spelled, $value], $value, null) ?? $value;
+        }
+        if ($tag !== $document->tagOf($id)) {
+            $document->setTag($id, $tag);
         }
         if ($converted !== $value) {
             $context->setValue($id, $converted);
         }
 
         return true;
+    }
+
+    /** The 5.5.1 structure $tag under $parent; a list (RESN, DATA.EVEN) fits it, as 5.5.1 programs write it. */
+    private function target(Document $document, int $parent, string $tag): ?Structure
+    {
+        $path = [$tag];
+        for ($above = $parent; $above !== 0; $above = $document->parentOf($above)) {
+            array_unshift($path, $document->tagOf($above));
+        }
+
+        return Profile::for(Version::V5_5_1)->resolve($path);
     }
 
     /** The value in 5.5.1 spelling: as 5.5.1 lists it, otherwise in the case of its list. */

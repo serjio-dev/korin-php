@@ -248,6 +248,14 @@ final class V551ToV70Test extends TestCase
     }
 
     #[Test]
+    public function aPointerOfAnExtensionToNoRecordStays(): void
+    {
+        $output = $this->convert(self::HEAD . "0 @I1@ INDI\n1 _IN @B1@\n1 _X\n2 FAMC @F9@\n1 FAMC @F9@\n0 TRLR\n");
+
+        self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 _IN @B1@\n1 _X\n2 FAMC @F9@\n1 FAMC @VOID@\n0 TRLR\n", $output);
+    }
+
+    #[Test]
     public function inlineMediaKeepsItsFiveFiveOneMeaning(): void
     {
         $output = $this->convert(self::HEAD . "0 @I1@ INDI\n1 OBJE\n2 FILE a.wav\n3 FORM wav\n4 MEDI Audio\n0 TRLR\n");

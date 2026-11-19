@@ -6,11 +6,14 @@ namespace Korin\Gedcom\Conversion\Rule\V70ToV551;
 
 use Korin\Gedcom\Conversion\Context;
 use Korin\Gedcom\Conversion\NodeRule;
+use Korin\Gedcom\Spec\Profile;
 use Korin\Gedcom\Syntax\Document;
+use Korin\Gedcom\Version;
 
 /**
  * The 7.0 shared note SNOTE is the 5.5.1 NOTE record, and the SNOTE that points to it is a
- * NOTE pointer. Extensions are left alone.
+ * NOTE pointer, where 5.5.1 has a NOTE: an SNOTE under SOUR.DATA.EVEN.PLAC stays for the
+ * structures rule, which keeps it as _SNOTE. Extensions are left alone.
  *
  * @internal
  */
@@ -29,7 +32,15 @@ final class NoteRecords implements NodeRule
     public function node(Document $document, int $id, Context $context): bool
     {
         // A pointer to @VOID@ may have become _SNOTE already (Voids).
-        if ($document->tagOf($id) === 'SNOTE' && !$context->inExtension($document->parentOf($id))) {
+        $parent = $document->parentOf($id);
+        if ($document->tagOf($id) !== 'SNOTE' || $context->inExtension($parent)) {
+            return true;
+        }
+        $path = ['NOTE'];
+        for ($above = $parent; $above !== 0; $above = $document->parentOf($above)) {
+            array_unshift($path, $document->tagOf($above));
+        }
+        if ($parent === 0 || Profile::for(Version::V5_5_1)->resolve($path) !== null) {
             $document->setTag($id, 'NOTE');
         }
 
