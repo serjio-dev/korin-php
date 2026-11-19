@@ -17,8 +17,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
       - run: pip install -r docs/requirements.txt
@@ -28,7 +28,7 @@ jobs:
           NO_MKDOCS_2_WARNING: '1'
       - name: API reference
         run: docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/data" phpdoc/phpdoc:3.10 run --no-progress
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: build/site
 
@@ -44,4 +44,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

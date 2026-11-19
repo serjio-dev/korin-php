@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: nightly
@@ -23,7 +23,7 @@ jobs:
           coverage: none
           ini-values: error_reporting=E_ALL, zend.assertions=1
       # composer.json allows PHP up to 8.6; the nightly is newer.
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
         with:
           composer-options: --ignore-platform-req=php+
       - name: Fetch external corpus inputs

@@ -18,7 +18,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Notes from CHANGELOG.md
         run: |
           version="${GITHUB_REF_NAME#v}"
@@ -34,7 +34,7 @@ jobs:
       # The archive Packagist installs: git archive honours export-ignore in .gitattributes.
       - name: Package archive
         run: git archive --format=zip --prefix="korin-gedcom-${GITHUB_REF_NAME#v}/" -o "korin-gedcom-${GITHUB_REF_NAME}.zip" "$GITHUB_REF_NAME"
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: korin-gedcom-${{ github.ref_name }}.zip
       - name: GitHub Release
