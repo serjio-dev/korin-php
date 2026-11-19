@@ -33,6 +33,7 @@ final class GedcomDateTest extends TestCase
         yield 'dual year' => ['30 JAN 1648/49', Version::V5_5_1, GedcomDate::of(new Date(1648, 'JAN', 30, dualYear: 1649)), '!'];
         yield 'dual year over a century' => ['1699/00', Version::V5_5_1, GedcomDate::of(new Date(1699, dualYear: 1700)), '!'];
         yield 'interpreted' => ['INT 1907 (about Christmas)', Version::V5_5_1, GedcomDate::of(Date::of(1907))->withPhrase('about Christmas'), '1907'];
+        yield 'phrase of two lines' => ["(spring\nsummer)", Version::V5_5_1, new GedcomDate(DateKind::None, phrase: "spring\nsummer"), ''];
         yield 'phrase' => ['(spring)', Version::V5_5_1, new GedcomDate(DateKind::None, phrase: 'spring'), ''];
         yield 'empty' => ['', Version::V7_0, new GedcomDate(DateKind::None), ''];
         yield 'Roman' => ['@#DROMAN@ 24 IUL 753', Version::V5_5_1, GedcomDate::of(Date::of(753, 'IUL', 24, Date::ROMAN)), '!'];
@@ -72,6 +73,15 @@ final class GedcomDateTest extends TestCase
         yield 'text' => ['spring 1900', Version::V5_5_1];
         yield '7.0 INT' => ['INT 1900 (x)', Version::V7_0];
         yield 'Roman day 0, in the grammar' => ['@#DROMAN@ 0 IUL 753', Version::V5_5_1];
+        yield 'text before a phrase' => ['x (spring)', Version::V5_5_1];
+        yield 'text after a phrase' => ['(spring) x', Version::V5_5_1];
+        yield 'text before INT' => ['X INT 1900 (y)', Version::V5_5_1];
+        yield 'text after INT' => ['INT 1900 (y) z', Version::V5_5_1];
+        yield 'text before BET' => ['XBET 1900 AND 1910', Version::V5_5_1];
+        yield 'text before ABT' => ['XABT 1900', Version::V5_5_1];
+        yield 'text before FROM' => ['XFROM 1900', Version::V5_5_1];
+        yield 'text before a calendar escape' => ['x@#DJULIAN@ 1650', Version::V5_5_1];
+        yield 'period starting on a day the month lacks' => ['FROM 31 NOV 1900 TO 1910', Version::V5_5_1];
         yield 'unknown calendar, dual year not after the year' => ['@#DUNKNOWN@ 1648/48', Version::V5_5_1];
     }
 

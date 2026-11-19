@@ -144,6 +144,57 @@ final class GedzipTest extends TestCase
     }
 
     #[Test]
+    public function symbolicLinksAreIgnored(): void
+    {
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($this->dir . '/in.gdz', \ZipArchive::CREATE));
+        $zip->addFromString('gedcom.ged', self::GED);
+        foreach (['link' => [\ZipArchive::OPSYS_UNIX, 0o120777], 'file.txt' => [\ZipArchive::OPSYS_UNIX, 0o100644], 'dos.txt' => [\ZipArchive::OPSYS_DOS, 0o120777]] as $name => [$opsys, $mode]) {
+            $zip->addFromString($name, 'target');
+            $zip->setExternalAttributesName($name, $opsys, $mode << 16);
+        }
+        $zip->close();
+        $archive = Gedcom::readGedzip($this->dir . '/in.gdz');
+
+        self::assertSame(['file.txt', 'dos.txt'], $archive->entries());
+        self::assertSame(['link'], $archive->ignored());
+        self::assertSame(['KV1202 warning: A symbolic link is ignored: "link"', 'KV1204 warning line 5 (@M1@/FILE): FILE names no entry of the archive'], array_map(strval(...), $archive->diagnostics()));
+    }
+
+    #[Test]
+    public function theSizeLimitIsOnTheSumOfTheEntries(): void
+    {
+        $this->zip(['gedcom.ged' => self::GED, 'a.txt' => str_repeat('x', 300), 'b.txt' => str_repeat('y', 300)]);
+        $total = strlen(self::GED) + 600;
+
+        self::assertCount(2, Gedcom::readGedzip($this->dir . '/in.gdz', (new ReadOptions())->withArchiveLimits($total, 100))->entries());
+        $this->expectExceptionObject(new GedzipException('The archive holds more than ' . ($total - 1) . ' bytes uncompressed'));
+        Gedcom::readGedzip($this->dir . '/in.gdz', (new ReadOptions())->withArchiveLimits($total - 1, 100));
+    }
+
+    #[Test]
+    public function largeEntriesAreFineWhenTheyAreNotCompressedMuch(): void
+    {
+        // Above 1 MiB the ratio is checked; incompressible bytes, and 1 MiB of zeros, pass.
+        mt_srand(7);
+        $noise = '';
+        for ($i = 0; $i < 1_200_000; $i += 4) {
+            $noise .= pack('N', mt_rand());
+        }
+        $this->zip(['gedcom.ged' => self::GED, 'noise.bin' => $noise, 'zeros.bin' => str_repeat("\0", 1_048_576)]);
+
+        self::assertSame(['noise.bin', 'zeros.bin'], Gedcom::readGedzip($this->dir . '/in.gdz')->entries());
+    }
+
+    #[Test]
+    public function eachMissingFileIsReportedOnce(): void
+    {
+        $this->zip(['gedcom.ged' => "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @M1@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n1 FILE a.jpg\n2 FORM image/jpeg\n0 @M2@ OBJE\n1 FILE b.jpg\n2 FORM image/jpeg\n0 TRLR\n"]);
+
+        self::assertSame(['a.jpg', 'b.jpg'], Gedcom::readGedzip($this->dir . '/in.gdz')->missing());
+    }
+
+    #[Test]
     public function documentOfAnotherVersionIsReported(): void
     {
         $this->zip(['gedcom.ged' => "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 TRLR\n"]);
