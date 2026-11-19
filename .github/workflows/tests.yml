@@ -72,6 +72,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: build/coverage/clover.xml
           fail_ci_if_error: false
+      # Spec section 10: line coverage of Io, Syntax, Conversion and Writer; after the uploads, so a failure still has its report.
+      - run: php bin/check-coverage.php build/coverage/clover.xml
 
   without-intl:
     name: PHP 8.2 without intl and zip
