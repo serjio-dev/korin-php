@@ -7,8 +7,9 @@ namespace Korin\Gedcom\Validation\Rule;
 /**
  * The GEDCOM 7.0 date types DateValue, DatePeriod and DateExact (specification section 2.6 and
  * appendix A). Months and epochs come from the profile's calendars; month lengths are known here
- * for the four standard calendars. Extension calendars must use extension months; their days are
- * not bounded.
+ * for the four standard calendars. Calendars and months that HEAD.SCHMA defines as standard ones
+ * are those ({@see Schema}); the months, epochs and days of other extension calendars are not known,
+ * so not checked.
  *
  * @internal
  */
@@ -37,8 +38,12 @@ final readonly class DateGrammar
     /** @var array<string, array{months: array<string, true>, epochs: array<string, true>}> */
     private array $calendars;
 
-    /** @param array<string, array{uri: string, months: list<string>, epochs: list<string>}> $calendars */
-    public function __construct(array $calendars)
+    /**
+     * @param array<string, array{uri: string, months: list<string>, epochs: list<string>}> $calendars
+     * @param array<string, string> $calendarAliases extension tag => standard calendar
+     * @param array<string, string> $monthAliases extension tag => standard month
+     */
+    public function __construct(array $calendars, private array $calendarAliases = [], private array $monthAliases = [])
     {
         $this->calendars = array_map(static fn(array $calendar): array => [
             'months' => array_fill_keys($calendar['months'], true),
@@ -105,9 +110,9 @@ final readonly class DateGrammar
         if (preg_match(self::DATE, $date, $m) !== 1) {
             return self::INVALID;
         }
-        $calendar = $m[1] === '' ? 'GREGORIAN' : $m[1];
+        $calendar = $m[1] === '' ? 'GREGORIAN' : ($this->calendarAliases[$m[1]] ?? $m[1]);
         $day = $m[2];
-        $month = $m[3];
+        $month = $this->monthAliases[$m[3]] ?? $m[3];
         $epoch = $m[5] ?? '';
         if ($day !== '' && ((int) $day < 1 || (int) $day > self::MAX_DAY)) {
             return self::INVALID;
@@ -115,8 +120,8 @@ final readonly class DateGrammar
 
         $known = $this->calendars[$calendar] ?? null;
         if ($known === null) {
-            // An extension calendar: months must be extension tags, epochs are its own.
-            return $month === '' || $month[0] === '_' ? self::VALID : self::INVALID;
+            // An extension calendar: its months and epochs are not known.
+            return self::VALID;
         }
         // Extension months and epochs may be documented by a standard calendar; they are not checked.
         if (($month !== '' && $month[0] !== '_' && !isset($known['months'][$month]))

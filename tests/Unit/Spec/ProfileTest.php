@@ -72,6 +72,21 @@ final class ProfileTest extends TestCase
     }
 
     #[Test]
+    public function deprecationsComeFromTheTranscription(): void
+    {
+        $profile = Profile::for(Version::V7_0);
+
+        self::assertSame('the ADDR value', $profile->deprecation('https://gedcom.io/terms/v7/ADR1'));
+        self::assertNull($profile->deprecation('https://gedcom.io/terms/v7/ADDR'));
+        self::assertSame('CHILD', $profile->deprecatedValue('https://gedcom.io/terms/v7/enumset-ord-STAT', 'INFANT'));
+        self::assertSame('', $profile->deprecatedValue('https://gedcom.io/terms/v7/enumset-ord-STAT', 'EXCLUDED'));
+        self::assertNull($profile->deprecatedValue('https://gedcom.io/terms/v7/enumset-ord-STAT', 'CHILD'));
+        self::assertSame('TYPE', $profile->deprecatedWithout('https://gedcom.io/terms/v7/EXID'));
+        self::assertSame('COMP', $profile->months()['https://gedcom.io/terms/v7/month-COMP']);
+        self::assertNull(Profile::for(Version::V5_5_1)->deprecation('https://gedcom.io/terms/v7/ADR1'));
+    }
+
+    #[Test]
     public function everyStructureIsReachableFromTheTopLevel(): void
     {
         $profile = Profile::for(Version::V7_0);

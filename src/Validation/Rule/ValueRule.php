@@ -46,7 +46,11 @@ final class ValueRule implements Rule
 
     public function record(Document $document, int $id, int $key): void
     {
-        $record = $this->profile->record($document->tagOf($id));
+        $tag = $document->tagOf($id);
+        if ($tag === 'HEAD' && $this->profile->version() === Version::V7_0) {
+            $this->types = new Payloads7($this->profile, Schema::of($document, $id, $this->profile));
+        }
+        $record = $this->profile->record($tag);
         if ($record !== null && !$document->isInvalid($id)) {
             $this->structure($document, $this->profile, $this->types, $id, $this->profile->structure($record->uri), $this->out);
         }

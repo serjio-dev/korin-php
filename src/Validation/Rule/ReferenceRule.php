@@ -60,6 +60,9 @@ final class ReferenceRule implements Rule
     /** Family links to the other type, checked at the end; 16 bytes each: record, node, the record it points to, tag. */
     private string $linksToCheck = '';
 
+    /** 7.0: extension record tags that HEAD.SCHMA defines as a standard record type */
+    private Schema $schema;
+
     public function begin(Records $records, Profile $profile): void
     {
         $this->records = $records;
@@ -67,6 +70,7 @@ final class ReferenceRule implements Rule
         $this->void = $records->version() === Version::V7_0 ? self::VOID : null;
         $this->duplicates = $this->pointers = $this->linked = [];
         $this->linksToCheck = '';
+        $this->schema = new Schema();
     }
 
     public function record(Document $document, int $id, int $key): void
@@ -77,6 +81,9 @@ final class ReferenceRule implements Rule
             $this->duplicates[] = $this->diagnostic($document, 'KV4002', Severity::Error, 'Xref is already used by the record on line ' . $this->records->line($first), $id);
         }
         $tag = $document->tagOf($id);
+        if ($tag === 'HEAD' && $this->void !== null) {
+            $this->schema = Schema::of($document, $id, $this->profile);
+        }
         $this->pointers($document, $id, $this->definition($this->profile->record($tag)), str_starts_with($tag, '_'));
         if ($xref !== null && $first === $key) {
             $this->familyLinks($document, $id, $key);
@@ -103,7 +110,7 @@ final class ReferenceRule implements Rule
             } elseif ($structure !== null) {
                 $expected = $structure->pointerTarget();
                 $tag = $this->records->tag($target);
-                if ($expected !== null && $this->profile->record($tag)?->uri !== $expected) {
+                if ($expected !== null && $this->profile->record($this->schema->records[$tag] ?? $tag)?->uri !== $expected) {
                     $want = $this->profile->structure($expected)->tag ?? $expected;
                     $this->pointers[] = $this->diagnostic($document, 'KV4003', Severity::Error, "{$structure->tag} must point to a {$want} record, not {$tag}", $id, $structure->uri);
                 }
