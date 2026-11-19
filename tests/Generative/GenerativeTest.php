@@ -28,21 +28,23 @@ final class GenerativeTest extends TestCase
      * Errors of the output that are bugs known from these tests, to be fixed (.claude/tasks/1.0.md,
      * 0.7.3): input versions, target versions, code and a pattern of the message. An entry goes when
      * its bug is fixed.
+     *
+     * @return list<array{list<string>, list<string>, string, string}>
      */
-    private const KNOWN = [
-        // An extension that the next step of the chain makes a standard structure again keeps what it was:
-        // 7.0 ROLE under NOTE.SOUR, which 5.5.1 does not have, reaches 5.5 unconverted; a 5.5 NOTE.SOUR
-        // with an inline OBJE reaches 7.0 with the 5.5 media link (FORM beside FILE).
-        [['7.0'], ['5.5'], 'KV3006', '/^ROLE does not permit/'],
-        [['5.5'], ['7.0'], 'KV2003', '/^FILE requires FORM$/'],
-        [['5.5'], ['7.0'], 'KV3005', '/^FILE must be a file path/'],
-    ];
+    private static function known(): array
+    {
+        return [];
+    }
 
     /**
-     * Losses of known bugs whose structures up-down-up leaves out: a DATE that 5.5.1 does not have
-     * where it stands is _DATE with a 5.5.1 value, and comes back as a DATE with that value.
+     * Losses of known bugs whose structures up-down-up leaves out: code and a pattern of the message.
+     *
+     * @return list<array{string, string}>
      */
-    private const KNOWN_LOSSES = [['KL2001', '/has no DATE here$/']];
+    private static function knownLosses(): array
+    {
+        return [];
+    }
 
     /** @return iterable<string, array{Version, int}> */
     public static function documents(): iterable
@@ -98,7 +100,7 @@ final class GenerativeTest extends TestCase
     public function conversionsKeepTheInvariantsOfTheMatrix(Version $version, int $seed, Version $to): void
     {
         $known = [];
-        foreach (self::KNOWN as [$from, $targets, $code, $pattern]) {
+        foreach (self::known() as [$from, $targets, $code, $pattern]) {
             if (in_array($version->value, $from, true) && in_array($to->value, $targets, true)) {
                 $known[] = [$code, $pattern];
             }
@@ -110,7 +112,7 @@ final class GenerativeTest extends TestCase
     #[DataProvider('chains')]
     public function upDownUpKeepsTheDocument(int $seed, Version $via): void
     {
-        $this->assertUpDownUp(Cases::random(Profile::for(Version::V7_0), $seed), $via, self::KNOWN_LOSSES);
+        $this->assertUpDownUp(Cases::random(Profile::for(Version::V7_0), $seed), $via, self::knownLosses());
     }
 
     /** @return list<Version> */

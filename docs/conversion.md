@@ -45,6 +45,7 @@ Implemented so far:
 | `AGE` | 7.0 form: `<0Y` → `< 0y`, `11m 99y` → `99y 11m`, a bare number is years; `CHILD`, `INFANT`, `STILLBORN` → `< 8y`, `< 1y`, `0y` + `PHRASE`; anything else `PHRASE` of an empty `AGE` |
 | `LANG` name (`Ukrainian`, any case) | BCP 47 (`uk`); a value that is already a tag stays; anything else `und` + `_PHRASE` (7.0 `LANG` has no `PHRASE`) |
 | Media `FORM` (`jpg`) | Media type (`image/jpeg`); an unknown extension `application/x-<ext>` |
+| Media link with `FORM` beside `FILE`, as 5.5 writes it (and some 5.5.1 programs) | `FORM` moves into the `FILE`, as 5.5 → 5.5.1 does. Not into one of several `FILE`, nor into one with its own `FORM`: then it is `_FORM` (`KL2001`) |
 | `FORM.TYPE` (medium of a file) | `FORM.MEDI` |
 | `FILE` | URL or relative path: `/x` → `file:///x`, `c:\x` → `file:///c:/x`, `\\server\x` → `file://server/x`, `\` → `/`; spaces, `%`, `?`, `#`, `[`, `]` percent-encoded. A URI with a scheme (`https://…`, `urn:isbn:…`) only has spaces and such encoded, `file://C:\x` → `file:///C:/x`. `..` stays, though 7.0 does not allow it |
 | Enumerations (`PEDI birth`, `SEX f`, `STAT PRE-1970`, `DNS/CAN`) | 7.0 values (`BIRTH`, `F`, `PRE_1970`, `DNS_CAN`); a value 7.0 does not have becomes `OTHER` + `PHRASE` where 7.0 has both (`NAME.TYPE Screen`, `MEDI document`, `ROLE (midwife)`), and stays otherwise. `SOUR.DATA.EVEN birt,deat` → `BIRT, DEAT` |
@@ -168,6 +169,18 @@ A conversion between 5.5 and 7.0 goes through 5.5.1: 7.0 → 5.5 is 7.0 → 5.5.
 5.5.1 → 5.5, with one loss report for both, located in the input. Converting a 7.0 file to 5.5
 and back gives the same fingerprint, except for `KL3` losses, as it does through 5.5.1 (tested
 on every 7.0 input of the corpus).
+
+A structure 5.5.1 does not have where it stands (5.5 and 7.0 `NOTE.SOUR`, 7.0 `FAM.NCHI.DATE`)
+goes through it as an extension, and the next step makes it the structure again. Its value and
+what is inside are still in the form of the version before 5.5.1. They are converted as the
+5.5.1 structure of that tag that the value fits (`_DATE INT 1900 (about then)` → `DATE 1900` +
+`PHRASE`), a 5.5 media link inside has its `FORM` moved into the `FILE`, and a value the target
+does not list becomes an extension (7.0 `ROLE NGHBR` → 5.5 `_ROLE`, `KL3001`). The `KL2001` of the
+intermediate extension is not reported: the output has the structure. Under `LossPolicy::Fail`
+the first step still stops at it.
+An extension of the input that a conversion makes the structure has its value converted so too
+(5.5.1 `FAM.NCHI._DATE INT 1900 (about then)`, as 7.0 → 5.5.1 writes it, → 7.0 `DATE 1900` +
+`PHRASE`). What is inside is in the target's form already.
 
 ## 4.0 → 5.5
 

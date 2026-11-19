@@ -242,6 +242,49 @@ final class V551ToV70Test extends TestCase
     }
 
     #[Test]
+    public function theValueOfAnExtensionMadeAStructureAgainIsConverted(): void
+    {
+        // As 7.0 → 5.5.1 writes a FAM.NCHI.DATE.
+        $input = self::HEAD . "0 @F1@ FAM\n1 NCHI 2\n2 _DATE INT 1900 (about then)\n0 TRLR\n";
+
+        self::assertSame(self::HEAD_70 . "0 @F1@ FAM\n1 NCHI 2\n2 DATE 1900\n3 PHRASE about then\n0 TRLR\n", $this->convert($input));
+    }
+
+    #[Test]
+    public function whatIsInsideAnExtensionTheStepBeforeMadeIsConvertedFromThatVersion(): void
+    {
+        // 5.5.1 has no NOTE.SOUR: 5.5 → 5.5.1 makes it _SOUR, with the 5.5 media link inside.
+        $input = "0 HEAD\n1 GEDC\n2 VERS 5.5\n0 @I1@ INDI\n1 NOTE Hi\n2 SOUR @S1@\n3 OBJE\n4 FORM jpeg\n4 FILE a b.jpg\n0 @S1@ SOUR\n0 TRLR\n";
+
+        $result = Gedcom::convert(Gedcom::parse($input), Version::V7_0);
+
+        self::assertSame("\u{FEFF}0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NOTE Hi\n2 SOUR @S1@\n3 OBJE @X1@\n0 @S1@ SOUR\n0 @X1@ OBJE\n1 FILE a%20b.jpg\n2 FORM image/jpeg\n0 TRLR\n", $result->output());
+        self::assertSame([], $result->losses()->entries());
+    }
+
+    #[Test]
+    public function aFormBesideItsFileMovesIntoIt(): void
+    {
+        // As 5.5 writes a link, and some programs in 5.5.1.
+        self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 OBJE @X1@\n0 @X1@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n0 TRLR\n", $this->convert(self::HEAD . "0 @I1@ INDI\n1 OBJE\n2 FORM jpg\n2 FILE a.jpg\n0 TRLR\n"));
+        // Not when the link has several files, or its file has a FORM: the one beside is not that file's.
+        self::assertSame(
+            self::HEAD_70 . "0 @I1@ INDI\n1 OBJE @X1@\n1 OBJE @X2@\n0 @X1@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n1 FILE b.png\n2 FORM image/png\n1 _FORM image/bmp\n"
+                . "0 @X2@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n1 _FORM image/png\n0 TRLR\n",
+            $this->convert(self::HEAD . "0 @I1@ INDI\n1 OBJE\n2 FILE a.jpg\n3 FORM jpg\n2 FILE b.png\n3 FORM png\n2 FORM bmp\n1 OBJE\n2 FILE a.jpg\n3 FORM jpg\n2 FORM png\n0 TRLR\n"),
+        );
+    }
+
+    #[Test]
+    public function aPointerOfAnExtensionTheStepBeforeMadeFollowsTheXrefs(): void
+    {
+        // 5.5 NOTE.SOUR, 5.5.1 _SOUR: a pointer to no record is @VOID@ in 7.0, one to a renamed record follows it.
+        $input = "0 HEAD\n1 GEDC\n2 VERS 5.5\n0 @I1@ INDI\n1 NOTE Hi\n2 SOUR @S9@\n2 SOUR @s 1@\n0 @s 1@ SOUR\n1 TITL T\n0 TRLR\n";
+
+        self::assertSame("\u{FEFF}0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NOTE Hi\n2 SOUR @VOID@\n2 SOUR @X1@\n0 @X1@ SOUR\n1 TITL T\n0 TRLR\n", Gedcom::convert(Gedcom::parse($input), Version::V7_0)->output());
+    }
+
+    #[Test]
     public function inlineMediaInsideAnExtensionStays(): void
     {
         $input = self::HEAD . "0 @I1@ INDI\n1 _MILT\n2 SOUR Papers\n3 OBJE\n4 FILE a.jpg\n5 FORM jpg\n0 TRLR\n";

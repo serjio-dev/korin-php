@@ -127,6 +127,23 @@ final class V551ToV55Test extends TestCase
         self::assertSame($input, Gedcom::convert($down->document(), Version::V7_0)->output());
     }
 
+    #[Test]
+    public function whatIsInsideAnExtensionTheStepBeforeMadeIsConvertedFromThatVersion(): void
+    {
+        // 5.5.1 has no NOTE.SOUR: 7.0 → 5.5.1 makes it _SOUR, with the 7.0 ROLE inside, which 5.5.1 does not list either.
+        // Inside it, a NOTE.SOUR the step before left as it was; after it, SEX U, which 5.5.1 lists.
+        $down = Gedcom::convert(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NOTE Hi\n2 SOUR @S1@\n3 PAGE 4\n3 EVEN BIRT\n4 ROLE NGHBR\n"
+            . "3 NOTE Inner\n4 SOUR @S1@\n5 EVEN DEAT\n6 ROLE GODP\n1 SEX U\n0 @S1@ SOUR\n0 TRLR\n"), Version::V5_5);
+
+        self::assertStringContainsString("1 NOTE Hi\n2 SOUR @S1@\n3 PAGE 4\n3 EVEN BIRT\n4 _ROLE NGHBR\n3 NOTE Inner\n4 SOUR @S1@\n5 EVEN DEAT\n6 _ROLE GODP\n1 _SEX U\n", $this->text($down));
+        // The SOUR is no loss: the output has it.
+        self::assertSame([
+            'KL3001 warning line 9 (@I1@/NOTE/SOUR/EVEN/ROLE)',
+            'KL3001 warning line 13 (@I1@/NOTE/SOUR/NOTE/SOUR/EVEN/ROLE)',
+            'KL3001 warning line 14 (@I1@/SEX)',
+        ], $this->where($down));
+    }
+
     private function down(string $gedcom): ConversionResult
     {
         return Gedcom::convert(Gedcom::parse($gedcom), Version::V5_5);

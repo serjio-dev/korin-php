@@ -18,7 +18,9 @@ use Korin\Gedcom\Version;
  * pointer the target requires (5.5.1 REPO without one → 5.5), makes the structure an extension
  * with its tag and value (5.5.1 SEX U → 5.5 _SEX U), or drops it under
  * LossPolicy::DropWithReport (KL3001); converting back gives the structure back (Extensions).
- * A value that does not fit the source version either stays as it is; a RESN list that 7.0 wrote
+ * A value that does not fit the source version either stays as it is, but not inside an extension a
+ * step before made that is a structure again (7.0 NOTE.SOUR, 5.5.1 _SOUR, 5.5 SOUR: ROLE NGHBR becomes
+ * _ROLE); a RESN list that 7.0 wrote
  * ("confidential, locked", kept in 5.5.1) fits while the version lists every item (Payloads).
  * The Y of an event is left to Structures.
  *
@@ -90,7 +92,8 @@ final class Values implements NodeRule
             return true;
         }
         $source = $context->sourceStructure($id);
-        if ($source === null || !Payloads::fits(Profile::for($this->from), $source, $value, $this->grammars) || ($value === 'Y' && $target->payload === null)) {
+        // Inside an extension made a structure again, the value may be of the version before the source (7.0 ROLE NGHBR).
+        if ((!$context->inRestored($id) && ($source === null || !Payloads::fits(Profile::for($this->from), $source, $value, $this->grammars))) || ($value === 'Y' && $target->payload === null)) {
             return true;
         }
         $element = Payloads::enumerated($profile, $target) ?? (preg_match('/<[A-Z_0-9]+>/', (string) $target->payload, $m) === 1 ? $m[0] : '');
