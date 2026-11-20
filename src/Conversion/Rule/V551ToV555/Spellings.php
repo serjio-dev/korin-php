@@ -38,12 +38,9 @@ final class Spellings
         }
         $parts = [];
         preg_match_all('/([0-9]+)([ymd])/i', $m[2], $all, PREG_SET_ORDER);
-        $units = array_map(static fn(array $part): string => strtolower($part[2]), $all);
-        if (in_array(implode('', $units), ['ym', 'm', 'ymd', 'md'], true)) {
-            // One of each, in order: months past 11 go into the years.
-            $numbers = array_combine($units, array_map(static fn(array $part): int => (int) $part[1], $all));
-            $years = ($numbers['y'] ?? 0) + intdiv($numbers['m'], 12);
-            $all = array_filter([[null, (string) $years, 'y'], [null, (string) ($numbers['m'] % 12), 'm'], [null, (string) ($numbers['d'] ?? 0), 'd']], static fn(array $part): bool => $part[1] !== '0');
+        if (preg_match('/^(?:([0-9]+)y *)?([0-9]+)m(?: *([0-9]+)d)?$/i', trim($m[2]), $ymd) === 1) {
+            // Months past 11 go into the years.
+            $all = [[null, (string) ((int) $ymd[1] + intdiv((int) $ymd[2], 12)), 'y'], [null, (string) ((int) $ymd[2] % 12), 'm'], [null, $ymd[3] ?? '', 'd']];
         }
         foreach ($all as [, $number, $unit]) {
             $number = ltrim($number, '0');

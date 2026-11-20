@@ -31,24 +31,24 @@ final class Enumerations implements NodeRule
 {
     private const SET = 'https://gedcom.io/terms/v7/enumset-';
 
-    /** 5.5.1 element => 7.0 enumeration set and whether 7.0 has PHRASE there; OTHER of the set, when not OTHER */
+    /** 5.5.1 element => 7.0 enumeration set and, where 7.0 has PHRASE there, the value a text outside the set takes */
     private const ELEMENTS = [
-        '<ADOPTED_BY_WHICH_PARENT>' => ['ADOP', true],
-        '<CERTAINTY_ASSESSMENT>' => ['QUAY', false],
-        '<CHILD_LINKAGE_STATUS>' => ['FAMC-STAT', true],
-        '<EVENT_TYPE_CITED_FROM>' => ['EVENATTR', true, 'EVEN'],
-        '<EVENTS_RECORDED>' => ['EVENATTR', false],
-        '<LDS_BAPTISM_DATE_STATUS>' => ['ord-STAT', false],
-        '<LDS_CHILD_SEALING_DATE_STATUS>' => ['ord-STAT', false],
-        '<LDS_ENDOWMENT_DATE_STATUS>' => ['ord-STAT', false],
-        '<LDS_SPOUSE_SEALING_DATE_STATUS>' => ['ord-STAT', false],
-        '<NAME_TYPE>' => ['NAME-TYPE', true],
-        '<PEDIGREE_LINKAGE_TYPE>' => ['PEDI', true],
-        '<RELATION_IS_DESCRIPTOR>' => ['ROLE', true],
-        '<RESTRICTION_NOTICE>' => ['RESN', false],
-        '<ROLE_IN_EVENT>' => ['ROLE', true],
-        '<SEX_VALUE>' => ['SEX', false],
-        '<SOURCE_MEDIA_TYPE>' => ['MEDI', true],
+        '<ADOPTED_BY_WHICH_PARENT>' => ['ADOP', 'OTHER'],
+        '<CERTAINTY_ASSESSMENT>' => ['QUAY', null],
+        '<CHILD_LINKAGE_STATUS>' => ['FAMC-STAT', 'OTHER'],
+        '<EVENT_TYPE_CITED_FROM>' => ['EVENATTR', 'EVEN'],
+        '<EVENTS_RECORDED>' => ['EVENATTR', null],
+        '<LDS_BAPTISM_DATE_STATUS>' => ['ord-STAT', null],
+        '<LDS_CHILD_SEALING_DATE_STATUS>' => ['ord-STAT', null],
+        '<LDS_ENDOWMENT_DATE_STATUS>' => ['ord-STAT', null],
+        '<LDS_SPOUSE_SEALING_DATE_STATUS>' => ['ord-STAT', null],
+        '<NAME_TYPE>' => ['NAME-TYPE', 'OTHER'],
+        '<PEDIGREE_LINKAGE_TYPE>' => ['PEDI', 'OTHER'],
+        '<RELATION_IS_DESCRIPTOR>' => ['ROLE', 'OTHER'],
+        '<RESTRICTION_NOTICE>' => ['RESN', null],
+        '<ROLE_IN_EVENT>' => ['ROLE', 'OTHER'],
+        '<SEX_VALUE>' => ['SEX', null],
+        '<SOURCE_MEDIA_TYPE>' => ['MEDI', 'OTHER'],
     ];
 
     /**
@@ -129,8 +129,7 @@ final class Enumerations implements NodeRule
         if (!isset(self::ELEMENTS[$element])) {
             return null;
         }
-        [$set, $phrases] = self::ELEMENTS[$element];
-        $other = self::ELEMENTS[$element][2] ?? 'OTHER';
+        [$set, $other] = self::ELEMENTS[$element];
         if ($value === null || $value === '') {
             // 7.0 ROLE needs a value; an empty RELA says nothing more than OTHER.
             return $element === '<RELATION_IS_DESCRIPTOR>' ? ['OTHER', null] : null;
@@ -150,7 +149,7 @@ final class Enumerations implements NodeRule
         } elseif ($element === '<ROLE_IN_EVENT>' && preg_match(self::DESCRIPTION, $value, $m) === 1) {
             [$enum, $phrase] = ['OTHER', $m[1]];
         } elseif (!$this->permits($enum, $permitted, $list)) {
-            if (!$phrases || !in_array($other, $permitted, true)) {
+            if ($other === null || !in_array($other, $permitted, true)) {
                 return null;
             }
             [$enum, $phrase] = [$other, $value];

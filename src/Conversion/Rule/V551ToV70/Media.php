@@ -67,8 +67,8 @@ final class Media implements NodeRule
             '<MULTIMEDIA_FILE_REFN>' => $this->url($value),
             default => $value,
         };
-        if (preg_match('~^([A-Za-z][A-Za-z0-9+.\-]+):~', $converted, $m) === 1 && !isset(self::AUTHORITY[strtolower($m[1])]) && strtolower($m[1]) !== 'file'
-            && $context->sourceElement($id) === '<MULTIMEDIA_FILE_REFN>') {
+        if ($context->sourceElement($id) === '<MULTIMEDIA_FILE_REFN>' && preg_match('~^([A-Za-z][A-Za-z0-9+.\-]+):~', $converted, $m) === 1
+            && !in_array(strtolower($m[1]), ['ftp', 'http', 'https', 'file'], true)) {
             return $context->unsupported($id, 'KL3001', '7.0 FILE has no such value');
         }
         if ($converted !== $value) {

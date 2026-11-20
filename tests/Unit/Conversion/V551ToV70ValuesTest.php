@@ -6,6 +6,7 @@ namespace Korin\Gedcom\Tests\Unit\Conversion;
 
 use Korin\Gedcom\Conversion\Rule\V551ToV70\Ages;
 use Korin\Gedcom\Conversion\Rule\V551ToV70\Dates;
+use Korin\Gedcom\Conversion\Rule\V551ToV70\Enumerations;
 use Korin\Gedcom\Conversion\Rule\V551ToV70\Media;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -92,6 +93,7 @@ final class V551ToV70ValuesTest extends TestCase
         yield 'not quite a url' => ['https:/not.a.url', 'https%3A/not.a.url'];
         yield 'url' => ['https://example.com/a b.jpg?x=1#y', 'https://example.com/a%20b.jpg?x=1#y'];
         yield 'uri without authority' => ['urn:isbn:123', 'urn:isbn:123'];
+        yield 'colon in a later segment' => ['photos/ab:c.jpg', 'photos/ab:c.jpg'];
         yield 'windows file url' => ['file://C:\photos\a b.jpg', 'file:///C:/photos/a%20b.jpg'];
         yield 'file url' => ['file:///home/a.jpg', 'file:///home/a.jpg'];
         yield 'non-ascii' => ['фото/Київ.jpg', 'фото/Київ.jpg'];
@@ -102,6 +104,24 @@ final class V551ToV70ValuesTest extends TestCase
     public function filesBecomeUrls(string $value, string $expected): void
     {
         self::assertSame($expected, (new Media())->url($value));
+    }
+
+    /** @return iterable<string, array{string, string, ?array{string, ?string}}> */
+    public static function enumerations(): iterable
+    {
+        yield 'in the set' => ['<PEDIGREE_LINKAGE_TYPE>', 'birth', ['BIRTH', null]];
+        yield 'outside, OTHER' => ['<NAME_TYPE>', 'Screen', ['OTHER', 'Screen']];
+        yield 'outside, a citation: EVEN' => ['<EVENT_TYPE_CITED_FROM>', 'Census of Galicia', ['EVEN', 'Census of Galicia']];
+        yield 'outside, no OTHER in the set' => ['<ADOPTED_BY_WHICH_PARENT>', 'Grandma', null];
+        yield 'outside, no PHRASE' => ['<CERTAINTY_ASSESSMENT>', '7', null];
+    }
+
+    /** @param ?array{string, ?string} $expected */
+    #[Test]
+    #[DataProvider('enumerations')]
+    public function enumerationsTakeTheSevenValue(string $element, string $value, ?array $expected): void
+    {
+        self::assertSame($expected, (new Enumerations())->convert($element, $value));
     }
 
     /** @return iterable<string, array{string, string}> */

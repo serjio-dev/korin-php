@@ -240,9 +240,11 @@ final class V551ToV70Test extends TestCase
     #[Test]
     public function aFileOfAUrlSevenDoesNotSupportIsAnExtension(): void
     {
-        $result = Gedcom::convert(Gedcom::parse(self::HEAD . "0 @O1@ OBJE\n1 FILE mailto:a@@b.org\n2 FORM url\n1 FILE urn:isbn:123\n2 FORM url\n1 FILE b.jpg\n2 FORM jpg\n0 TRLR\n"), Version::V7_0);
+        $result = Gedcom::convert(Gedcom::parse(self::HEAD . "0 @O1@ OBJE\n1 FILE mailto:a@@b.org\n2 FORM url\n1 FILE urn:isbn:123\n2 FORM url\n1 FILE b.jpg\n2 FORM jpg\n"
+            . "1 FILE HTTPS://example.com/c.jpg\n2 FORM jpg\n1 FILE photos/ab:c.jpg\n2 FORM jpg\n0 TRLR\n"), Version::V7_0);
 
-        self::assertSame(self::HEAD_70 . "0 @O1@ OBJE\n1 _FILE mailto:a@b.org\n2 FORM url\n1 _FILE urn:isbn:123\n2 FORM url\n1 FILE b.jpg\n2 FORM image/jpeg\n0 TRLR\n", Gedcom::serialize($result->document()));
+        self::assertSame(self::HEAD_70 . "0 @O1@ OBJE\n1 _FILE mailto:a@b.org\n2 FORM url\n1 _FILE urn:isbn:123\n2 FORM url\n1 FILE b.jpg\n2 FORM image/jpeg\n"
+            . "1 FILE HTTPS://example.com/c.jpg\n2 FORM image/jpeg\n1 FILE photos/ab:c.jpg\n2 FORM image/jpeg\n0 TRLR\n", Gedcom::serialize($result->document()));
         self::assertSame(
             ['KL3001 warning line 10 (@O1@/FILE[0]), extension: 7.0 FILE has no such value', 'KL3001 warning line 12 (@O1@/FILE[1]), extension: 7.0 FILE has no such value'],
             array_map(strval(...), $result->losses()->entries()),
