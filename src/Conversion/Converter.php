@@ -27,7 +27,10 @@ use Korin\Gedcom\Writer\Writer;
  * Output conventions: HEAD.GEDC.VERS names the target; 5.x HEAD.CHAR names the output encoding
  * (UTF-8, for 5.5 UTF-16 as "UNICODE"); the BOM follows the target version; every line ends
  * with the source's dominant line terminator. Converting to the version a document already
- * has converts nothing: the result is a copy, written as the input was.
+ * has converts nothing: the result is a copy, written as the input was; a 5.0–5.4 draft, read
+ * as 5.5, is written as 5.5 (SPEC section 10: one step), with no rules of its own. Before each
+ * step HEAD.GEDC.VERS names the version the step converts from: what the file declared ("4+",
+ * "5.01") is not a value of the later versions.
  */
 final readonly class Converter
 {
@@ -60,7 +63,7 @@ final readonly class Converter
         if (!$to->isWritable()) {
             throw new UnsupportedVersionException("GEDCOM {$to->value} is read only: convert to 5.5 or later");
         }
-        if ($from === $to) {
+        if ($from === $to && !$this->isDraft($document->head())) {
             $copy = $document->copy();
 
             return new ConversionResult(new LossReport($from, $to), (new Writer())->serialize($copy), new ReadOptions(), $copy);
@@ -99,7 +102,7 @@ final readonly class Converter
         if (!$to->isWritable()) {
             throw new UnsupportedVersionException("GEDCOM {$to->value} is read only: convert to 5.5 or later");
         }
-        if ($from === $to) {
+        if ($from === $to && !$this->isDraft($input->head())) {
             $input->copyTo($out);
 
             return new LossReport($from, $to);
@@ -215,14 +218,16 @@ final readonly class Converter
      * The steps from one version to the other and their rules, new for this conversion (rules
      * keep state between the records of one input); the first step also drops source lines.
      *
-     * @return array{non-empty-list<Step>, list<list<Rule>>}
+     * @return array{list<Step>, list<list<Rule>>} no steps for a draft to 5.5
      */
     private function plan(Version $from, Version $to): array
     {
-        $route = $this->route($from, $to) ?? throw new ConversionException("Conversion from {$from->value} to {$to->value} is not supported yet");
+        $route = $from === $to ? [] : $this->route($from, $to) ?? throw new ConversionException("Conversion from {$from->value} to {$to->value} is not supported yet");
         /** @var list<list<Rule>> $rules by step */
         $rules = array_map(static fn(Step $step): array => $step->rules(), $route);
-        $rules[0] = [new Rule\SourceLines(), ...$rules[0]];
+        if ($rules !== []) {
+            $rules[0] = [new Rule\SourceLines(), ...$rules[0]];
+        }
 
         return [$route, $rules];
     }
@@ -344,8 +349,8 @@ final readonly class Converter
      * converts (5.5.5 SUBM after HEAD) is converted next, and convertFile() can follow it record
      * by record.
      *
-     * @param non-empty-list<Step> $route
-     * @param list<list<Rule>>     $rules by step
+     * @param list<Step>       $route
+     * @param list<list<Rule>> $rules by step
      */
     private function convertRecords(Document $work, Context $context, array $route, array $rules): void
     {
@@ -364,9 +369,9 @@ final readonly class Converter
     }
 
     /**
-     * @param non-empty-list<Step> $route
-     * @param list<list<Rule>>     $rules by step
-     * @param array<int, true>     $done  records converted, updated
+     * @param list<Step>       $route
+     * @param list<list<Rule>> $rules by step
+     * @param array<int, true> $done  records converted, updated
      */
     private function convertRecord(Document $work, int $record, int $first, Context $context, array $route, array $rules, array &$done): void
     {
@@ -375,6 +380,10 @@ final readonly class Converter
         $added = [];
         for ($step = $first; $step < count($route) && $work->contains($record); ++$step) {
             $work->setVersion($route[$step]->from());
+            $vers = $work->tagOf($record) === 'HEAD' ? $work->node($record)->first('GEDC')?->first('VERS') : null;
+            if ($vers !== null && $vers->value() !== $route[$step]->from()->value) {
+                $vers->setValue($route[$step]->from()->value);
+            }
             $context->enter($route[$step], $record, $step === 0);
             foreach ($rules[$step] as $rule) {
                 if (!$work->contains($record)) {
@@ -419,6 +428,14 @@ final readonly class Converter
         if ($head->first('SOUR') === null) {
             $head->addChild('SOUR', 'Korin', 0);
         }
+    }
+
+    /** Whether HEAD declares a 5.0–5.4 draft, which is read as 5.5 (Version::fromDeclared()). */
+    private function isDraft(?Node $head): bool
+    {
+        $declared = $head?->first('GEDC')?->first('VERS')?->value();
+
+        return $declared !== null && trim($declared) !== '5.5' && Version::fromDeclared($declared) === Version::V5_5;
     }
 
     private function set(Node $parent, string $tag, string $value): void

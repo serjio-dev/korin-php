@@ -39,6 +39,7 @@ final class ConvertFileTest extends TestCase
         yield 'two SUBN and a SUBM, to 7.0' => [self::HEAD_551 . "1 SUBM @U1@\n0 @U1@ SUBM\n1 NAME U\n0 @S1@ SUBN\n1 TEMP SLAKE\n0 @I1@ INDI\n0 @S2@ SUBN\n1 FAMF y\n0 TRLR\n", Version::V7_0];
         yield 'LANG of HEAD and SUBM, to 7.0' => [self::HEAD_551 . "1 LANG Ukrainian\n1 SUBM @U1@\n0 @I1@ INDI\n1 NAME A\n0 @U1@ SUBM\n1 NAME U\n1 LANG English\n1 LANG Klingon\n0 TRLR\n", Version::V7_0];
         yield 'extensions with a schema, to 5.5.1' => ["0 HEAD\n1 GEDC\n2 VERS 7.0\n1 SCHMA\n2 TAG _SKYPEID http://xmlns.com/foaf/0.1/skypeID\n0 @I1@ INDI\n1 _SKYPEID x\n1 _UID y\n1 SEX X\n0 @F1@ FAM\n1 _STAT z\n0 TRLR\n", Version::V5_5_1];
+        yield 'a 5.3 draft, to 5.5' => ["0 HEAD\n1 GEDC\n2 VERS 5.3\n2 FORM LINEAGE-LINKED\n1 CHAR ASCII\n0 @I1@ INDI\n1 NAME A\n0 TRLR\n", Version::V5_5];
         yield 'same version' => ["\xEF\xBB\xBF0 HEAD\n1 GEDC\n2 VERS 7.0\n0 TRLR", Version::V7_0];
     }
 

@@ -206,6 +206,11 @@ The `+` continuation and the `@#L` and `@#C` escapes of 4.0 are not read: such l
 as they are (`KV1001`).
 
 A 5.0–5.4 draft (and `5.01`, the 5.1 of some programs) is read as 5.5, with `KV1009`.
+Converted to 5.5 it is written as 5.5 (`GEDC.VERS 5.5`, `CHAR UNICODE`), not copied as a 5.5
+document is; no rule changes its structures.
+
+What a file declares in `GEDC.VERS` (`4+`, `4.0.4.18`, `5.01`) describes the file, not its
+data: each step reads the version it converts from there, and the output names the target.
 
 ## 5.5.1 → 5.5.5
 
