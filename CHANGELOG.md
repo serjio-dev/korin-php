@@ -7,6 +7,16 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+### Changed
+
+- `convertFile()` reads, converts and writes the records in batches of about 64 KB of the file
+  instead of one by one, and writes its output in pieces of 64 KB: to 7.0, 10 MB take 1.3 s
+  (2.0 s in 0.7.0) and 50 MB 6.5 s (10.2 s), in the same memory (43 MB for 50 MB).
+- `convert()` and writes in normal form are faster: lines already in their normal form are
+  copied in runs, and the rules of 5.5.1 → 7.0 check less of every line. `convert()` to 7.0
+  of 10 MB takes 0.77 s (0.94 s in 0.7.0), of 50 MB 3.9 s (4.7 s); to 5.5 and 5.5.5 0.79 s and
+  0.91 s (0.86 s and 1.0 s).
+
 ## [0.7.0] - 2026-11-20
 
 Quality thresholds: line coverage in CI (≥ 95% for Io, Syntax, Conversion and Writer), mutation

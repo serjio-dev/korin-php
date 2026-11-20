@@ -42,6 +42,12 @@ final readonly class Converter
         '7.0' => Encoding::Utf8,
     ];
 
+    /** Bytes of output convertFile() collects before it writes them. */
+    private const BUFFER = 65536;
+
+    /** Bytes of the file convertFile() converts in one document. */
+    private const BATCH = 65536;
+
     /** @var list<Step> */
     private array $steps;
 
@@ -136,6 +142,7 @@ final readonly class Converter
         $writer = new Writer();
         $added = $this->temporary();
         $tail = null;
+        $buffer = '';
         $consumed = [];
 
         // HEAD, with the records its rules take from the file.
@@ -186,26 +193,50 @@ final readonly class Converter
             $this->write($added, $writer->serialize($stamped, $write, $new));
         }
 
-        for ($i = 1, $count = count($input); $i < $count; ++$i) {
-            if (isset($consumed[$i])) {
+        for ($i = 1, $count = count($input); $i < $count;) {
+            // Records in batches of some size, parsed and written together; the first TRLR starts one.
+            $batch = [];
+            for ($size = 0; $i < $count && $size < self::BATCH; ++$i) {
+                if (isset($consumed[$i])) {
+                    continue;
+                }
+                if ($tail === null && $batch !== [] && $input->tagAt($i) === 'TRLR') {
+                    break;
+                }
+                $batch[] = $i;
+                $size += $input->sizeAt($i);
+            }
+            if ($batch === []) {
                 continue;
             }
-            $source = $input->recordAt($i, cache: false)->document();
+            $source = $input->recordsAt($batch);
             $work = $source->copy();
             $context->unit($source, $work, $prepass === null ? null : new Prepass($prepass->xrefs, [], $prepass->languages));
             $done = [];
-            $this->convertRecord($work, (int) $work->nextRecord(0), 0, $context, $route, $rules, $done);
+            foreach ($work->childIds(0) as $record) {
+                if (!isset($done[$record]) && $work->contains($record)) {
+                    $this->convertRecord($work, $record, 0, $context, $route, $rules, $done);
+                }
+            }
             $work->setVersion($to);
             [$records, $new] = $this->split($work);
-            if ($tail === null && $input->tagAt($i) === 'TRLR') {
+            if ($tail === null && $input->tagAt($batch[0]) === 'TRLR') {
                 // Records the conversion adds go before the first TRLR: what follows waits for them.
+                $this->write($out, $buffer);
+                $buffer = '';
                 $tail = $this->temporary();
             }
-            $this->write($tail ?? $out, $writer->serialize($work, $write, $records));
+            // Written in pieces of some size, not batch by batch.
+            $buffer .= $writer->serialize($work, $write, $records);
+            if (strlen($buffer) >= self::BUFFER) {
+                $this->write($tail ?? $out, $buffer);
+                $buffer = '';
+            }
             if ($new !== []) {
                 $this->write($added, $writer->serialize($work, $write, $new));
             }
         }
+        $this->write($tail ?? $out, $buffer);
         $this->append($out, $added);
         if ($tail !== null) {
             $this->append($out, $tail);

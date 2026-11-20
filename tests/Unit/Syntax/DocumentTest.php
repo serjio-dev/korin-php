@@ -52,6 +52,33 @@ final class DocumentTest extends TestCase
     }
 
     #[Test]
+    public function walkGivesTheDepthOfEveryLine(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NOTE a\n2 CONT b\n0 TRLR\n");
+        $lines = [];
+        foreach ($doc->walk() as $depth => $id) {
+            $lines[] = [$depth, $id];
+        }
+
+        self::assertSame([[0, 1], [1, 2], [2, 3], [0, 4], [1, 5], [2, 6], [0, 7]], $lines);
+        self::assertSame([5, 6], iterator_to_array($doc->walk([5]), false));
+    }
+
+    #[Test]
+    public function substructuresAndContinuationsAreFoundAmongTheChildren(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @N1@ NOTE a\n1 CONT b\n1 SOUR @S1@\n1 CONT c@d\n0 @N2@ NOTE e\n1 CONC f\n0 @N3@ NOTE\n0 TRLR\n");
+
+        self::assertSame([6], $doc->substructureIdsReversed(4));
+        self::assertSame([3], $doc->substructureIdsReversed(2));
+        self::assertSame([], $doc->substructureIdsReversed(11));
+        self::assertTrue($doc->hasContinuation(4, '@'));
+        self::assertFalse($doc->hasContinuation(4, '#'));
+        self::assertTrue($doc->hasContinuation(8, '#'));
+        self::assertFalse($doc->hasContinuation(11, '@'));
+    }
+
+    #[Test]
     public function ambiguousPathWithoutIndexIsRejected(): void
     {
         $this->expectException(InvalidPathException::class);

@@ -41,8 +41,11 @@ final class Structures implements NodeRule
     /** @var array<int, ?Structure> target structure of the structures of the record being converted */
     private array $structures = [];
 
-    /** @var array<int, array<string, int>> standard substructures kept so far, by parent and tag */
+    /** @var array<int, array<string, int>> standard substructures kept so far, by parent and tag, of those with a maximum */
     private array $counts = [];
+
+    /** @var array<string, array<string, array{?int, ?Structure}|false>> by parent structure URI (and 5.x form) and tag: the maximum and the structure, false where the target has none */
+    private array $places = [];
 
     private readonly Profile $profile;
 
@@ -82,21 +85,24 @@ final class Structures implements NodeRule
             return true;
         }
         // 5.x: by the form of the parent (OBJE @O1@ has no TITL, SOUR @S1@ no TEXT).
-        $substructure = ($structure->forms === [] ? $structure->substructures : $structure->substructuresOf($structure->formOf($document, $parent)))[$tag] ?? null;
-        if ($substructure === null) {
+        $form = $structure->formOf($document, $parent);
+        $place = $this->places[$form === null ? $structure->uri : "{$structure->uri} {$form}"][$tag] ??= $this->place($structure, $form, $tag);
+        if ($place === false) {
             $this->structures[$id] = null;
 
             return $context->unsupported($id, 'KL2001', "{$this->target->value} has no {$tag} here");
         }
-        $max = $substructure->cardinality->max;
-        $count = $this->counts[$parent][$tag] ?? 0;
-        if ($max !== null && $count >= $max) {
-            $this->structures[$id] = null;
+        [$max, $definition] = $place;
+        if ($max !== null) {
+            $count = $this->counts[$parent][$tag] ?? 0;
+            if ($count >= $max) {
+                $this->structures[$id] = null;
 
-            return $context->unsupported($id, 'KL2002', "{$this->target->value} allows {$max} {$tag} here");
+                return $context->unsupported($id, 'KL2002', "{$this->target->value} allows {$max} {$tag} here");
+            }
+            $this->counts[$parent][$tag] = $count + 1;
         }
-        $this->counts[$parent][$tag] = $count + 1;
-        $this->structures[$id] = $definition = $this->profile->structure($substructure->uri);
+        $this->structures[$id] = $definition;
         // The value is read only where it decides: most structures have one, or substructures.
         if ($definition?->payload === null && $document->payloadOf($id) === 'Y') {
             $empty = !$this->hasSubstructures($document, $id);
@@ -124,6 +130,18 @@ final class Structures implements NodeRule
         $this->structures[$id] = null;
 
         return $context->unsupported($id, 'KL3001', "{$this->target->value} {$tag} needs a value or substructures");
+    }
+
+    /**
+     * @param ?('pointer'|'inline') $form
+     *
+     * @return array{?int, ?Structure}|false
+     */
+    private function place(Structure $structure, ?string $form, string $tag): array|false
+    {
+        $substructure = $structure->substructuresOf($form)[$tag] ?? null;
+
+        return $substructure === null ? false : [$substructure->cardinality->max, $this->profile->structure($substructure->uri)];
     }
 
     private function hasSubstructures(Document $document, int $id): bool

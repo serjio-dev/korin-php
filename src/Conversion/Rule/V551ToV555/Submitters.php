@@ -22,6 +22,9 @@ final class Submitters implements Rule
 {
     private ?int $submitter = null;
 
+    /** The document of HEAD and the submitter: convertFile() converts the other records in documents of their own. */
+    private ?Document $head = null;
+
     public function needsPrepass(): bool
     {
         return false;
@@ -30,7 +33,7 @@ final class Submitters implements Rule
     public function record(Document $document, int $record, Context $context): void
     {
         $tag = $document->tagOf($record);
-        if ($tag === 'SUBM' && $this->submitter !== null && $record !== $this->submitter) {
+        if ($tag === 'SUBM' && $this->submitter !== null && ($record !== $this->submitter || $document !== $this->head)) {
             $context->unsupported($record, 'KL2002', '5.5.5 allows one SUBM record');
 
             return;
@@ -39,6 +42,7 @@ final class Submitters implements Rule
             return;
         }
         $this->submitter = null;
+        $this->head = $document;
         $pointer = $document->node($record)->first('SUBM');
         $xref = $pointer?->pointer();
         $submitter = $xref === null ? null : $document->record($xref);

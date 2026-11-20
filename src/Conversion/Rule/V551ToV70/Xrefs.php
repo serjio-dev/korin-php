@@ -51,16 +51,14 @@ final class Xrefs implements NodeRule
                 }
             }
         }
-        if ($document->isInvalid($id)) {
-            return true;
-        }
         if ($this->renamed !== []) {
+            // A line that could not be parsed has no xref.
             $xref = $document->xrefOf($id);
             if ($xref !== null && isset($this->renamed[$xref])) {
                 $document->setXref($id, $this->renamed[$xref]);
             }
         }
-        if (!$document->mayContain($id, '@')) {
+        if (!$document->mayContain($id, '@') || $document->isInvalid($id)) {
             return true;
         }
         $payload = $document->payloadOf($id);

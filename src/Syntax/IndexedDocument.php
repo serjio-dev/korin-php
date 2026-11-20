@@ -341,6 +341,38 @@ final class IndexedDocument implements \Countable
         return $node;
     }
 
+    /**
+     * @internal records with these numbers, after the first, read at once and parsed into one
+     * document, each with its own line numbers (Converter::convertFile())
+     *
+     * @param non-empty-list<int> $numbers in file order
+     */
+    public function recordsAt(array $numbers): Document
+    {
+        [$start] = $this->entry($numbers[0]);
+        $last = $numbers[count($numbers) - 1];
+        $end = $last + 1 < $this->count ? $this->entry($last + 1)[0] : $this->end;
+        $bytes = $this->bytes($start, $end - $start);
+        $records = [];
+        foreach ($numbers as $i) {
+            [$offset, $line] = $this->entry($i);
+            $next = $i + 1 < $this->count ? $this->entry($i + 1)[0] : $this->end;
+            $records[] = [substr($bytes, $offset - $start, $next - $offset), $line];
+        }
+        $document = $this->parser->parseRecords($records, $this->encoding, $this->version, false, $this->lineEnding, $this->options);
+        $document->freeze();
+
+        return $document;
+    }
+
+    /** @internal the length in bytes of the record with this number, without reading it */
+    public function sizeAt(int $i): int
+    {
+        $next = $i + 1 < $this->count ? $this->entry($i + 1)[0] : $this->end;
+
+        return $next - $this->entry($i)[0];
+    }
+
     /** @internal the bytes of the record with this number, as in the file */
     public function bytesAt(int $i): string
     {

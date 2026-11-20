@@ -42,24 +42,19 @@ final class TextValues implements NodeRule
     /** Whether the value is written differently in 7.0: it has CONC lines or an "@". */
     private function changes(Document $document, int $id): bool
     {
-        if ($this->hasAt($document, $id)) {
-            return !Escaping::isPointer((string) $document->payloadOf($id));
+        if ($document->mayContain($id, '@') && str_contains($payload = (string) $document->payloadOf($id), '@')) {
+            return !Escaping::isPointer($payload);
         }
-        if (!$document->hasChildren($id)) {
+        if (!$document->hasChildren($id) || !$document->hasContinuation($id, '@')) {
             return false;
         }
         foreach ($document->childIds($id) as $child) {
             $tag = $document->tagOf($child);
-            if ($tag === 'CONC' || ($tag === 'CONT' && $this->hasAt($document, $child))) {
+            if ($tag === 'CONC' || ($tag === 'CONT' && str_contains((string) $document->payloadOf($child), '@'))) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    private function hasAt(Document $document, int $id): bool
-    {
-        return $document->mayContain($id, '@') && str_contains((string) $document->payloadOf($id), '@');
     }
 }

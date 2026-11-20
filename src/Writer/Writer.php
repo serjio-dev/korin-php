@@ -39,7 +39,25 @@ final class Writer
         $out = $bom ? $encoding->bom() : '';
         $pendingEol = null;
         $lastIsNew = false;
-        foreach ($document->walk($records) as $id) {
+        /** @var ?array{int, int} $run normal lines that follow each other in the source, copied together: offset and length */
+        $run = null;
+        foreach ($document->walk($records) as $depth => $id) {
+            if ($canonical && ($undecodable === [] || !isset($undecodable[$document->lineOf($id)]))
+                && ($span = $document->normalSpan($id, $depth, $lineEnding, $limit)) !== null) {
+                if ($run !== null && $span[0] === $run[0] + $run[1]) {
+                    $run[1] += $span[1];
+                } else {
+                    $out .= $this->flush($document, $run, $pendingEol, $eol);
+                    $pendingEol = null;
+                    $run = $span;
+                }
+                $lastIsNew = false;
+                continue;
+            }
+            if ($run !== null) {
+                $out .= $this->flush($document, $run, null, $eol);
+                $run = null;
+            }
             if ($pendingEol !== null) {
                 // A line that had no terminator (the last one in the input) is no longer last.
                 $out .= $pendingEol === '' ? $eol : $pendingEol;
@@ -60,18 +78,12 @@ final class Writer
                     $lastIsNew = false;
                     continue;
                 }
-            } elseif ($canonical && ($line = $this->normalLine($document, $id, $lineEnding, $limit, $undecodable)) !== null) {
-                $out .= $line;
-                $pendingEol = $eol;
-                $lastIsNew = false;
-                continue;
             } elseif ($document->isInvalid($id)) {
                 // A line that could not be parsed is written as it was read.
                 $out .= $codec->encode($document->originalText($id)[0] ?? '');
                 $pendingEol = $eol;
                 continue;
             }
-            $depth = $document->depthOf($id);
             $xref = $document->xrefOf($id);
             $tag = $document->tagOf($id);
             $payload = $document->payloadOf($id);
@@ -93,6 +105,7 @@ final class Writer
             }
             $lastIsNew = $document->lineOf($id) === 0;
         }
+        $out .= $this->flush($document, $run, null, $eol);
         // Keep a missing final terminator only when the input had none; a normalized file always has one.
         if ($pendingEol !== null) {
             $out .= $pendingEol === '' && ($lastIsNew || $normalize) ? $eol : $pendingEol;
@@ -102,24 +115,15 @@ final class Writer
     }
 
     /**
-     * The original content of a UTF-8 line when writing it anew would give the same bytes: one
-     * space between level, xref, tag and value, the level of its depth, the line terminator of
-     * the output, short enough for the 5.x limit, and decoded without errors.
+     * A run of normal lines, after the terminator still due before it.
      *
-     * @param array<int, true> $undecodable
+     * @param ?array{int, int} $run offset and length in the source
      */
-    private function normalLine(Document $document, int $id, string $lineEnding, ?int $limit, array $undecodable): ?string
+    private function flush(Document $document, ?array $run, ?string $pendingEol, string $eol): string
     {
-        $original = $document->originalLine($id);
-        if ($original === null || $original[1] !== $lineEnding || $document->isInvalid($id) || isset($undecodable[$document->lineOf($id)])) {
-            return null;
-        }
-        [$content, , $valueStart] = $original;
-        $xref = $document->xrefOf($id);
-        $prefix = $document->depthOf($id) . ($xref !== null ? ' ' . $xref : '') . ' ' . $document->tagOf($id);
-        $normal = $valueStart === 0 ? strlen($content) === strlen($prefix) : $valueStart === strlen($prefix) + 1;
+        $due = $pendingEol === null ? '' : ($pendingEol === '' ? $eol : $pendingEol);
 
-        return $normal && str_starts_with($content, $prefix) && ($limit === null || strlen($content) <= $limit) ? $content : null;
+        return $run === null ? $due : $due . $document->sourceBytes($run[0], $run[1]);
     }
 
     /** @return array<int, true> lines with bytes invalid in the document's encoding (KV1003) */
