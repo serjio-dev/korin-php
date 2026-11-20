@@ -88,6 +88,48 @@ final class ConverterTest extends TestCase
         self::assertNotSame($doc, $result->document());
         self::assertSame(self::FILE_55, Gedcom::serialize($result->document()));
         self::assertSame('{"from":"5.5","to":"5.5","entries":[]}', json_encode($result->losses()));
+        // VERS 5.5 with a space, no GEDC, no HEAD: not a draft either.
+        foreach (["0 HEAD\n1 GEDC\n2 VERS 5.5 \n0 TRLR\n", "0 HEAD\n0 TRLR\n", "0 @I1@ INDI\n0 TRLR\n"] as $file) {
+            self::assertSame($file, (new Converter([]))->convert(Gedcom::parse($file, (new ReadOptions())->withVersion(Version::V5_5)), Version::V5_5)->output());
+        }
+    }
+
+    #[Test]
+    public function aDraftIsWrittenAs55(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 SOUR X\n1 GEDC\n2 VERS 5.01\n2 FORM LINEAGE-LINKED\n1 CHAR MACINTOSH\n0 @I1@ INDI\n0 TRLR\n");
+
+        $result = (new Converter([]))->convert($doc, Version::V5_5);
+
+        // One step with no rules of its own (SPEC section 10), not a copy.
+        self::assertSame(Version::V5_5, $doc->version());
+        self::assertSame("\u{FEFF}0 HEAD\n1 SOUR X\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n1 CHAR UNICODE\n0 @I1@ INDI\n0 TRLR\n", mb_convert_encoding($result->output(), 'UTF-8', 'UTF-16BE'));
+        self::assertSame([], $result->losses()->entries());
+    }
+
+    #[Test]
+    public function eachStepReadsTheVersionItConvertsFrom(): void
+    {
+        $seen = [];
+        $converter = new Converter([
+            $this->step(Version::V4_0, Version::V5_5, $this->rule(static function (Document $d, int $record) use (&$seen): void {
+                if ($d->tagOf($record) === 'HEAD') {
+                    $seen[] = $d->node($record)->first('GEDC')?->first('VERS')?->value();
+                }
+            })),
+            $this->step(Version::V5_5, Version::V5_5_1, $this->rule(static function (Document $d, int $record) use (&$seen): void {
+                if ($d->tagOf($record) === 'HEAD') {
+                    $seen[] = $d->node($record)->first('GEDC')?->first('VERS')?->value();
+                }
+            })),
+        ]);
+
+        $converter->convert(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 4+\n0 TRLR\n"), Version::V5_5_1);
+        // A HEAD without GEDC gets one from the output only.
+        $converter->convert(Gedcom::parse("0 HEAD\n0 TRLR\n", (new ReadOptions())->withVersion(Version::V4_0)), Version::V5_5_1);
+
+        // What the file declared is not a value of the later versions (5.5.5 _VERS, KL3001).
+        self::assertSame(['4.0', '5.5', null, null], $seen);
     }
 
     #[Test]

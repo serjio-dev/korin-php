@@ -26,6 +26,10 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ### Fixed
 
+- A 5.0–5.4 draft converted to 5.5 is written as 5.5 (`GEDC.VERS 5.5`, `CHAR UNICODE`); it used
+  to be copied with its draft version and character set, which 5.5 does not have.
+- A 4.0 or draft `GEDC.VERS` (`4+`, `5.01`) converted to 5.5.5 no longer becomes `_VERS` with a
+  `KL3001`: each step of the chain reads the version it converts from.
 - The 5.x validator checks a source citation and a media link by their form: by pointer or
   inline, which the profile used to merge (`SOUR @S1@` + `TEXT`, an inline `SOUR` + `PAGE`,
   `OBJE @O1@` + `FILE` are `KV2001`, an inline `OBJE` without `FILE` `KV2003`). The conversion
