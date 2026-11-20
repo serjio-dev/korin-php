@@ -24,8 +24,16 @@ php -d memory_limit=2G ../../../vendor/bin/php-fuzzer fuzz ../../../fuzz/read.ph
 The fuzzer keeps its corpus in memory and grows past the 128 MB of a default `php.ini` in a few
 minutes: give it more. Crashes are written to the working directory as `crash-<hash>.txt`.
 
-The `fuzz` workflow runs every target for 20 minutes each night (and on demand, for as long as
-asked), keeping the corpus between runs. A crash fails the run and is attached to it. Fix it
+The `fuzz` workflow runs every target for 20 minutes each night, keeping the corpus between runs.
+On demand it runs for as long as asked, in shards: several runs of every target side by side,
+each for at most 330 minutes (a hosted job lasts 6 hours). The 1.0 criterion of 24 hours without
+new crashes is 2 shards × 4 targets × 180 minutes:
+
+```bash
+gh workflow run fuzz.yml -f minutes=180 -f shards=2
+```
+
+A crash fails the run and is attached to it; so does a fuzzer that stops before its time. Fix it
 with a unit test of the minimized input; an input that shows behaviour worth keeping goes to
 gedcom-corpus as a case with `source.origin: fuzz`.
 
@@ -39,3 +47,4 @@ gedcom-corpus as a case with `source.origin: fuzz`.
 | Years longer than an int: a PHP warning in validation, a `TypeError` in `GedcomDate::parse()` | Validation takes a year modulo 10 000 (leap and dual years are the same); a `Date` holds years up to `Date::MAX_YEAR` |
 | A conversion read the first byte of an empty tag (a PHP warning) | Tags are checked with `str_starts_with()` |
 | A damaged `gedcom.ged` in a GEDZIP archive: a PHP warning, or with a wrong CRC no error at all | `GedzipException` |
+| A date range that names its end first (`BET 1950 AND 92 BCE`, in the gedcom7code date tests) had days that ended before they began, and plausibility could report a conflict that was not certain. Found in a seed, which stops the fuzzer at once with status 0: the nightly runs of `values` had fuzzed nothing since | It spans the same days as the range in order; the workflow fails a fuzzer that stops early |

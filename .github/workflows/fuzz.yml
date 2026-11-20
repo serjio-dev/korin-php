@@ -3,24 +3,47 @@ name: fuzz
 on:
   schedule:
     - cron: '17 2 * * *'
+  # A long run (plan 1.0: 24 h without new crashes) is shards × targets × minutes: 2 × 4 × 180.
+  # A hosted job lasts at most 6 h, setup included.
   workflow_dispatch:
     inputs:
       minutes:
-        description: Minutes per target
+        description: Minutes per target and shard (at most 330)
         default: '20'
+      shards:
+        description: Runs of every target side by side (1 to 4)
+        default: '1'
 
 permissions:
   contents: read
 
 jobs:
-  fuzz:
-    name: fuzz ${{ matrix.target }}
+  shards:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    outputs:
+      list: ${{ steps.list.outputs.list }}
+      timeout: ${{ steps.list.outputs.timeout }}
+    steps:
+      - id: list
+        run: |
+          [[ "${SHARDS:-1}" =~ ^[1-4]$ ]] || { echo "::error::shards must be 1 to 4"; exit 1; }
+          [[ "${MINUTES:-20}" =~ ^[0-9]+$ ]] && (( ${MINUTES:-20} <= 330 )) || { echo "::error::minutes must be at most 330"; exit 1; }
+          echo "list=$(jq -cn --argjson n "${SHARDS:-1}" '[range(1; $n + 1)]')" >> "$GITHUB_OUTPUT"
+          echo "timeout=$(( ${MINUTES:-20} + 30 ))" >> "$GITHUB_OUTPUT"
+        env:
+          SHARDS: ${{ inputs.shards }}
+          MINUTES: ${{ inputs.minutes }}
+
+  fuzz:
+    name: fuzz ${{ matrix.target }} ${{ matrix.shard }}
+    needs: shards
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(needs.shards.outputs.timeout) }}
     strategy:
       fail-fast: false
       matrix:
         target: [read, values, decode, gedzip]
+        shard: ${{ fromJSON(needs.shards.outputs.list) }}
     steps:
       - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
@@ -28,27 +51,32 @@ jobs:
           php-version: '8.4'
           extensions: intl, mbstring, zip
           coverage: none
-          ini-values: memory_limit=4G
+          # The fuzzer keeps its corpus in memory; running out of it would be reported as a crash.
+          ini-values: memory_limit=10G
       - uses: ramsey/composer-install@v4
       # The corpus grows from night to night; seeds come from gedcom-corpus.
       - uses: actions/cache@v6
         with:
           path: build/fuzz/${{ matrix.target }}
-          key: fuzz-${{ matrix.target }}-${{ github.run_id }}
+          key: fuzz-${{ matrix.target }}-${{ github.run_id }}-${{ matrix.shard }}
           restore-keys: fuzz-${{ matrix.target }}-
       - run: php fuzz/seed.php
       - name: Fuzz
         run: |
           mkdir -p build/fuzz/crashes && cd build/fuzz/crashes
-          timeout $(( ${MINUTES:-20} * 60 )) ../../../vendor/bin/php-fuzzer fuzz ../../../fuzz/${{ matrix.target }}.php ../${{ matrix.target }} > ../fuzz.log 2>&1 || true
+          status=0
+          timeout $(( ${MINUTES:-20} * 60 )) ../../../vendor/bin/php-fuzzer fuzz ../../../fuzz/${{ matrix.target }}.php ../${{ matrix.target }} > ../fuzz.log 2>&1 || status=$?
           grep -A3 CRASH ../fuzz.log | head -40 || true
-          ! ls crash-*.txt > /dev/null 2>&1
+          tail -3 ../fuzz.log
+          if ls crash-*.txt > /dev/null 2>&1; then echo "::error::The fuzzer found a crash"; exit 1; fi
+          # 124: stopped by the timeout. Anything else ended the run early, without a crash.
+          [ "$status" -eq 124 ] || { echo "::error::The fuzzer stopped after $SECONDS s with status $status"; exit 1; }
         env:
           MINUTES: ${{ inputs.minutes }}
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: crashes-${{ matrix.target }}
+          name: crashes-${{ matrix.target }}-${{ matrix.shard }}
           path: |
             build/fuzz/crashes
             build/fuzz/fuzz.log
