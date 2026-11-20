@@ -68,7 +68,7 @@ final class Extensions implements NodeRule
         }
         $profile = Profile::for($this->to);
         $above = $profile->resolve($tags);
-        $target = $above?->substructuresOf($above->formOf($document, $parent))[$standard] ?? null;
+        $target = $above === null ? null : $above->substructuresOf($above->formOf($document, $parent))[$standard] ?? null;
         $payload = $document->payloadOf($id);
         $targetStructure = $target === null ? null : $profile->structure($target->uri);
         // The value must fit too: a 5.5 _SOUR with a text under NOTE is no 7.0 NOTE.SOUR, a pointer.
@@ -77,7 +77,7 @@ final class Extensions implements NodeRule
         }
         // By the form the parent had in the source: InlineRecords may have made an inline citation a pointer.
         $sourceParent = $context->isFromSource($parent) ? $context->sourceStructure($parent) : null;
-        $source = $sourceParent?->substructuresOf($context->sourceForm($parent))[$standard] ?? null;
+        $source = $sourceParent === null ? null : $sourceParent->substructuresOf($context->sourceForm($parent, $sourceParent))[$standard] ?? null;
         if ($source !== null && ($this->to !== Version::V7_0 || ($payload !== '@VOID@' && $document->node($id)->first('FAMC')?->pointer() !== '@VOID@'))
             && !$this->notWritable($document, $id, $parent, $standard, $source, $target, $payload)) {
             return true;

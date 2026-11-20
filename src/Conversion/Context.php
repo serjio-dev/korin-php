@@ -304,18 +304,14 @@ final class Context
     }
 
     /**
-     * 5.x: the form a structure had in the source of the step (Structure::form()); null for a structure
-     * without forms, or when it was not there.
+     * 5.x: the form a structure of the source (isFromSource(), $structure its sourceStructure()) had as
+     * the step began (Structure::form()); null for a structure without forms.
      *
      * @return ?('pointer'|'inline')
      */
-    public function sourceForm(int $node): ?string
+    public function sourceForm(int $node, Structure $structure): ?string
     {
-        if (!$this->first) {
-            return $this->stepForms[$node] ?? null;
-        }
-
-        return $this->source->contains($node) ? $this->sourceStructure($node)?->formOf($this->source, $node) : null;
+        return $this->first ? $structure->formOf($this->source, $node) : $this->stepForms[$node] ?? null;
     }
 
     /**
@@ -342,8 +338,9 @@ final class Context
         while ($stack !== []) {
             $id = array_pop($stack);
             $structure = $this->stepUris[$id] === null ? null : $this->profile()->structure($this->stepUris[$id]);
-            if ($structure !== null && $structure->forms !== []) {
-                $this->stepForms[$id] = $structure->formOf($this->document, $id);
+            $form = $structure?->formOf($this->document, $id);
+            if ($form !== null) {
+                $this->stepForms[$id] = $form;
             }
             foreach ($this->document->childIds($id) as $child) {
                 $this->stepUris[$child] = $structure?->substructure($this->document->tagOf($child))?->uri;
@@ -429,8 +426,9 @@ final class Context
                 continue;
             }
             $structure = $profile->structure($uri);
-            if ($structure !== null && $structure->forms !== []) {
-                $this->stepForms[$id] = $structure->formOf($this->document, $id);
+            $form = $structure?->formOf($this->document, $id);
+            if ($form !== null) {
+                $this->stepForms[$id] = $form;
             }
             foreach ($this->document->childIds($id) as $child) {
                 if ($child < $this->watermark) {

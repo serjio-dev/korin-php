@@ -280,6 +280,8 @@ final class V551ToV70Test extends TestCase
     {
         // The inline 5.5.1 citation has no PAGE: _PAGE is how it writes one, though InlineRecords points the citation to @X1@ first.
         self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 SOUR @X1@\n2 PAGE 5\n0 @X1@ SOUR\n1 NOTE Told\n0 TRLR\n", $this->convert(self::HEAD . "0 @I1@ INDI\n1 SOUR Told\n2 _PAGE 5\n0 TRLR\n"));
+        // From 5.5 too, where 5.5.1 → 7.0 is the second step of the chain.
+        self::assertStringEndsWith("0 @I1@ INDI\n1 SOUR @X1@\n2 PAGE 5\n0 @X1@ SOUR\n1 NOTE Told\n0 TRLR\n", $this->convert("0 HEAD\n1 GEDC\n2 VERS 5.5\n0 @I1@ INDI\n1 SOUR Told\n2 _PAGE 5\n0 TRLR\n"));
     }
 
     #[Test]

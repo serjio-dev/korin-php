@@ -118,7 +118,7 @@ final class StructureRule implements Rule
             }
         }
         foreach ($profile->choices($structure->uri) as $tags) {
-            $present = array_values(array_intersect_key($first, array_flip($tags)));
+            $present = array_intersect_key($first, array_flip($tags));
             // At the first line of the later one: the extra one in the file.
             if (count($present) > 1) {
                 $out[] = $this->diagnostic($document, 'KV2002', "{$structure->tag} allows one of " . implode(' and ', $tags), max($present), $structure->uri);
