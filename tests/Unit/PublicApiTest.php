@@ -112,16 +112,16 @@ final class PublicApiTest extends TestCase
     {
         $parameters = [];
         foreach ($method->getParameters() as $parameter) {
-            $parameters[] = ltrim(self::type($parameter->getType(), $method) . ' ')
+            $parameters[] = ltrim($this->type($parameter->getType(), $method) . ' ')
                 . ($parameter->isPassedByReference() ? '&' : '') . ($parameter->isVariadic() ? '...' : '') . '$' . $parameter->getName()
                 . ($parameter->isDefaultValueAvailable() ? ' = …' : '');
         }
 
-        return ($method->isStatic() ? 'static ' : '') . $method->getName() . '(' . implode(', ', $parameters) . ')' . ($method->hasReturnType() ? ': ' . self::type($method->getReturnType(), $method) : '');
+        return ($method->isStatic() ? 'static ' : '') . $method->getName() . '(' . implode(', ', $parameters) . ')' . ($method->hasReturnType() ? ': ' . $this->type($method->getReturnType(), $method) : '');
     }
 
     /** A type as written, but self by its class: reflection gives either, by PHP version. */
-    private static function type(?\ReflectionType $type, \ReflectionMethod $method): string
+    private function type(?\ReflectionType $type, \ReflectionMethod $method): string
     {
         return (string) preg_replace('/(?<![\\\\\w])self\b/', $method->getDeclaringClass()->getName(), (string) $type);
     }
