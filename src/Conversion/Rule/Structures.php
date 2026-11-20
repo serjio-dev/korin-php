@@ -9,8 +9,8 @@ use Korin\Gedcom\Conversion\NodeRule;
 use Korin\Gedcom\Conversion\StoredAs;
 use Korin\Gedcom\Severity;
 use Korin\Gedcom\Spec\Profile;
+use Korin\Gedcom\Spec\Structure;
 use Korin\Gedcom\Syntax\Document;
-use Korin\Gedcom\Syntax\Escaping;
 use Korin\Gedcom\Version;
 
 /**
@@ -38,13 +38,18 @@ use Korin\Gedcom\Version;
  */
 final class Structures implements NodeRule
 {
-    /** @var array<int, ?string> target structure of the structures of the record being converted */
-    private array $uris = [];
+    /** @var array<int, ?Structure> target structure of the structures of the record being converted */
+    private array $structures = [];
 
-    /** @var array<string, int> standard substructures kept so far, by parent and tag */
+    /** @var array<int, array<string, int>> standard substructures kept so far, by parent and tag */
     private array $counts = [];
 
-    public function __construct(private readonly Version $target) {}
+    private readonly Profile $profile;
+
+    public function __construct(private readonly Version $target)
+    {
+        $this->profile = Profile::for($target);
+    }
 
     public function needsPrepass(): bool
     {
@@ -58,42 +63,43 @@ final class Structures implements NodeRule
 
     public function node(Document $document, int $id, Context $context): bool
     {
-        $profile = Profile::for($this->target);
         $tag = $document->tagOf($id);
         $parent = $document->parentOf($id);
         if ($parent === 0) {
-            $this->uris = [$id => $profile->record($tag)?->uri];
+            $uri = $this->profile->record($tag)?->uri;
+            $this->structures = [$id => $uri === null ? null : $this->profile->structure($uri)];
             $this->counts = [];
-            if ($this->uris[$id] === null && $tag[0] !== '_' && !$document->isInvalid($id)) {
+            if ($uri === null && $tag[0] !== '_' && !$document->isInvalid($id)) {
                 return $context->unsupported($id, 'KL2001', "{$this->target->value} has no {$tag} record");
             }
 
             return true;
         }
-        $above = $this->uris[$parent] ?? null;
-        if ($above === null || str_starts_with($tag, '_') || $document->isInvalid($id)) {
-            $this->uris[$id] = null;
+        $structure = $this->structures[$parent] ?? null;
+        if ($structure === null || $tag[0] === '_' || $document->isInvalid($id)) {
+            $this->structures[$id] = null;
 
             return true;
         }
         // 5.x: by the form of the parent (OBJE @O1@ has no TITL, SOUR @S1@ no TEXT).
-        $structure = $profile->structure($above);
-        $substructure = $structure === null ? null : $structure->substructuresOf($structure->formOf($document, $parent))[$tag] ?? null;
-        $this->uris[$id] = $substructure?->uri;
+        $substructure = ($structure->forms === [] ? $structure->substructures : $structure->substructuresOf($structure->formOf($document, $parent)))[$tag] ?? null;
         if ($substructure === null) {
+            $this->structures[$id] = null;
+
             return $context->unsupported($id, 'KL2001', "{$this->target->value} has no {$tag} here");
         }
         $max = $substructure->cardinality->max;
-        $key = $parent . ' ' . $tag;
-        if ($max !== null && ($this->counts[$key] ?? 0) >= $max) {
-            $this->uris[$id] = null;
+        $count = $this->counts[$parent][$tag] ?? 0;
+        if ($max !== null && $count >= $max) {
+            $this->structures[$id] = null;
 
             return $context->unsupported($id, 'KL2002', "{$this->target->value} allows {$max} {$tag} here");
         }
-        $this->counts[$key] = ($this->counts[$key] ?? 0) + 1;
-        $payload = $document->payloadOf($id);
-        $empty = !$this->hasSubstructures($document, $id);
-        if ($payload === 'Y' && $profile->structure($substructure->uri)?->payload === null) {
+        $this->counts[$parent][$tag] = $count + 1;
+        $this->structures[$id] = $definition = $this->profile->structure($substructure->uri);
+        // The value is read only where it decides: most structures have one, or substructures.
+        if ($definition?->payload === null && $document->payloadOf($id) === 'Y') {
+            $empty = !$this->hasSubstructures($document, $id);
             if ($empty && $this->target === Version::V5_5_5) {
                 return $this->bare($id, $tag, $context);
             }
@@ -101,7 +107,8 @@ final class Structures implements NodeRule
             if (!$empty) {
                 $context->loss('KL3003', Severity::Warning, $id, StoredAs::Dropped, "{$this->target->value} {$tag} has no value Y");
             }
-        } elseif ($empty && ($this->target === Version::V5_5_5 || $this->target === Version::V7_0) && ($context->value($id) ?? '') === '' && ($payload === null || !Escaping::isPointer($payload))) {
+        } elseif (($this->target === Version::V5_5_5 || $this->target === Version::V7_0) && !$document->hasPayload($id)
+            && !$this->hasSubstructures($document, $id) && ($context->value($id) ?? '') === '') {
             return $this->bare($id, $tag, $context);
         }
 
@@ -114,7 +121,7 @@ final class Structures implements NodeRule
      */
     private function bare(int $id, string $tag, Context $context): bool
     {
-        $this->uris[$id] = null;
+        $this->structures[$id] = null;
 
         return $context->unsupported($id, 'KL3001', "{$this->target->value} {$tag} needs a value or substructures");
     }

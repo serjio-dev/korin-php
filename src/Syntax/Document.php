@@ -678,6 +678,18 @@ final class Document
         return isset($this->dirty[$id]);
     }
 
+    /** Whether a structure has a payload that is not empty: payloadOf() without decoding it. */
+    public function hasPayload(int $id): bool
+    {
+        $pos = $this->pos[$id];
+        $valueStart = $pos >> 3 & self::EXPLICIT;
+        if ($pos < 0 || $valueStart === self::EXPLICIT || isset($this->dirty[$id])) {
+            return ($this->payload[$id] ?? '') !== '';
+        }
+
+        return $valueStart !== 0 && $this->contentLength($id) > $valueStart;
+    }
+
     /** @internal */
     public function isInvalid(int $id): bool
     {

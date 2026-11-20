@@ -231,8 +231,8 @@ Measured with PHPBench on generated, fictional 5.5.1 files (PHP 8.5, Apple M-ser
 | Preserve-mode write of 10 MB, unchanged / 10% of surnames edited | 76 MB | 112 ms / 130 ms |
 | Streaming read, 10 MB / 50 MB UTF-8 | 2.4 MB | 0.58 s / 2.9 s |
 | `open()` index, 10 MB / 50 MB UTF-8; then an uncached record | 7.8 MB / 27 MB | 0.14 s / 0.71 s; 10 µs |
-| `convert()` to 7.0 of a document read, 10 MB / 50 MB (memory with the document, time without the read) | 112 MB / 674 MB | 0.70 s / 3.6 s |
-| `convertFile()` to 7.0, 10 MB / 50 MB | 14 MB / 43 MB | 1.7 s / 8.4 s |
+| `convert()` to 7.0 of a document read, 10 MB / 50 MB (memory with the document, time without the read) | 112 MB / 674 MB | 0.94 s / 4.7 s |
+| `convertFile()` to 7.0, 10 MB / 50 MB | 14 MB / 43 MB | 2.0 s / 10.2 s |
 | Validation of a document read, 10 MB, plausibility included (document included) | 76 MB | 1.3 s |
 | `open()` and validation, 10 MB / 50 MB, plausibility included | 15 MB / 64 MB | 2.1 s / 10.6 s |
 

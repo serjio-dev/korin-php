@@ -7,6 +7,20 @@ new diagnostic or a different conversion of a value, are in [CHANGELOG.md](CHANG
 Diagnostic (`KV*`) and loss (`KL*`) codes are stable: a code keeps its meaning, and a new case
 gets a new code.
 
+## 0.6 → 0.7
+
+No breaking changes. `Structure` gained an optional constructor parameter (`forms`). Worth
+knowing:
+
+- The 5.x validator checks a source citation and a media link by their form: `SOUR @S1@` +
+  `TEXT`, an inline `SOUR` + `PAGE`, `OBJE @O1@` + `FILE` are `KV2001` now, an inline `OBJE`
+  without `FILE` `KV2003`; 7.0 `HEAD` with both `NOTE` and `SNOTE` is `KV2002`. Files that
+  validated before can have these errors.
+- Conversions write as extensions some structures they wrote invalidly before (`KL2001`,
+  `KL3001`: 5.x → 7.0 `_BAPL` and other empty structures, `_NOTE` and `_SOUR` under `TRAN`,
+  `_FILE` of a `mailto:` URL; 7.0 → 5.x `_SNOTE` in `HEAD`), and a 5.0–5.4 draft converted to
+  5.5 is written as 5.5 instead of copied. Golden files of conversions may need an update.
+
 ## 0.5 → 0.6
 
 No breaking changes. Worth knowing:
