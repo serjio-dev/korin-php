@@ -15,7 +15,9 @@ use Korin\Gedcom\Version;
  * Enumeration values in 7.0 case and spelling (birth → BIRTH, PRE-1970 → PRE_1970, DNS/CAN →
  * DNS_CAN). A value the 7.0 set does not have becomes OTHER with the value as PHRASE where 7.0
  * has both ("1 NAME … 2 TYPE Screen" → TYPE OTHER, PHRASE Screen), and stays as it is
- * elsewhere. A 5.5.1 role description "(text)" is OTHER with PHRASE text.
+ * elsewhere; the event type a citation is from, whose set has no OTHER, is EVEN, the generic
+ * event, with the value as PHRASE ("2 EVEN Census of Galicia" → EVEN EVEN, PHRASE Census of
+ * Galicia). A 5.5.1 role description "(text)" is OTHER with PHRASE text.
  *
  * ASSO.RELA, free text in 5.5.1, becomes ROLE: the value when it names a 7.0 role (friend →
  * FRIEND), the role for a common word with the word as PHRASE (neighbor → NGHBR, PHRASE
@@ -29,12 +31,12 @@ final class Enumerations implements NodeRule
 {
     private const SET = 'https://gedcom.io/terms/v7/enumset-';
 
-    /** 5.5.1 element => 7.0 enumeration set and whether 7.0 has PHRASE there */
+    /** 5.5.1 element => 7.0 enumeration set and whether 7.0 has PHRASE there; OTHER of the set, when not OTHER */
     private const ELEMENTS = [
         '<ADOPTED_BY_WHICH_PARENT>' => ['ADOP', true],
         '<CERTAINTY_ASSESSMENT>' => ['QUAY', false],
         '<CHILD_LINKAGE_STATUS>' => ['FAMC-STAT', true],
-        '<EVENT_TYPE_CITED_FROM>' => ['EVENATTR', true],
+        '<EVENT_TYPE_CITED_FROM>' => ['EVENATTR', true, 'EVEN'],
         '<EVENTS_RECORDED>' => ['EVENATTR', false],
         '<LDS_BAPTISM_DATE_STATUS>' => ['ord-STAT', false],
         '<LDS_CHILD_SEALING_DATE_STATUS>' => ['ord-STAT', false],
@@ -128,6 +130,7 @@ final class Enumerations implements NodeRule
             return null;
         }
         [$set, $phrases] = self::ELEMENTS[$element];
+        $other = self::ELEMENTS[$element][2] ?? 'OTHER';
         if ($value === null || $value === '') {
             // 7.0 ROLE needs a value; an empty RELA says nothing more than OTHER.
             return $element === '<RELATION_IS_DESCRIPTOR>' ? ['OTHER', null] : null;
@@ -147,10 +150,10 @@ final class Enumerations implements NodeRule
         } elseif ($element === '<ROLE_IN_EVENT>' && preg_match(self::DESCRIPTION, $value, $m) === 1) {
             [$enum, $phrase] = ['OTHER', $m[1]];
         } elseif (!$this->permits($enum, $permitted, $list)) {
-            if (!$phrases || !in_array('OTHER', $permitted, true)) {
+            if (!$phrases || !in_array($other, $permitted, true)) {
                 return null;
             }
-            [$enum, $phrase] = ['OTHER', $value];
+            [$enum, $phrase] = [$other, $value];
         }
         $phrase = $phrase === '' ? null : $phrase;
 

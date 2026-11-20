@@ -6,7 +6,8 @@ namespace Korin\Gedcom\Conversion\Rule\V551ToV555;
 
 /**
  * The 5.5.5 spelling of 5.5.1 values its stricter grammars reject (for Rule\Values): ages with
- * a space after < and > and without leading zeroes or zero parts ("<01y 0m" → "< 1y"), dates
+ * a space after < and > and without leading zeroes or zero parts ("<01y 0m" → "< 1y"), months
+ * past 11 in years ("42m" → "3y 6m"; days stay, a month has no fixed length), dates
  * with days without a leading zero and years of at least 3 digits ("05 JAN 50" → "5 JAN 050"),
  * times with hours without one and two-digit fractions ("09:05:00.5" → "9:05:00.50"), place
  * names with ", " between parts. Null when there is none: an age of 0y, a longer fraction.
@@ -37,6 +38,13 @@ final class Spellings
         }
         $parts = [];
         preg_match_all('/([0-9]+)([ymd])/i', $m[2], $all, PREG_SET_ORDER);
+        $units = array_map(static fn(array $part): string => strtolower($part[2]), $all);
+        if (in_array(implode('', $units), ['ym', 'm', 'ymd', 'md'], true)) {
+            // One of each, in order: months past 11 go into the years.
+            $numbers = array_combine($units, array_map(static fn(array $part): int => (int) $part[1], $all));
+            $years = ($numbers['y'] ?? 0) + intdiv($numbers['m'], 12);
+            $all = array_filter([[null, (string) $years, 'y'], [null, (string) ($numbers['m'] % 12), 'm'], [null, (string) ($numbers['d'] ?? 0), 'd']], static fn(array $part): bool => $part[1] !== '0');
+        }
         foreach ($all as [, $number, $unit]) {
             $number = ltrim($number, '0');
             if ($number !== '') {

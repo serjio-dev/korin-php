@@ -228,6 +228,28 @@ final class V551ToV70Test extends TestCase
     }
 
     #[Test]
+    public function theEventTypeOfACitationOutsideTheSevenSetIsEvenWithAPhrase(): void
+    {
+        $input = self::HEAD . "0 @S1@ SOUR\n1 TITL T\n0 @I1@ INDI\n1 SOUR @S1@\n2 EVEN Census of Galicia\n2 PAGE 4\n1 SOUR @S1@\n2 EVEN cens\n0 TRLR\n";
+        $output = $this->convert($input);
+
+        self::assertStringEndsWith("0 @I1@ INDI\n1 SOUR @S1@\n2 EVEN EVEN\n3 PHRASE Census of Galicia\n2 PAGE 4\n1 SOUR @S1@\n2 EVEN CENS\n0 TRLR\n", $output);
+        self::assertStringContainsString("2 EVEN Census of Galicia\n2 PAGE 4\n", Gedcom::convert(Gedcom::parse($output), Version::V5_5_1)->output());
+    }
+
+    #[Test]
+    public function aFileOfAUrlSevenDoesNotSupportIsAnExtension(): void
+    {
+        $result = Gedcom::convert(Gedcom::parse(self::HEAD . "0 @O1@ OBJE\n1 FILE mailto:a@@b.org\n2 FORM url\n1 FILE urn:isbn:123\n2 FORM url\n1 FILE b.jpg\n2 FORM jpg\n0 TRLR\n"), Version::V7_0);
+
+        self::assertSame(self::HEAD_70 . "0 @O1@ OBJE\n1 _FILE mailto:a@b.org\n2 FORM url\n1 _FILE urn:isbn:123\n2 FORM url\n1 FILE b.jpg\n2 FORM image/jpeg\n0 TRLR\n", Gedcom::serialize($result->document()));
+        self::assertSame(
+            ['KL3001 warning line 10 (@O1@/FILE[0]), extension: 7.0 FILE has no such value', 'KL3001 warning line 12 (@O1@/FILE[1]), extension: 7.0 FILE has no such value'],
+            array_map(strval(...), $result->losses()->entries()),
+        );
+    }
+
+    #[Test]
     public function structuresWithNeitherAValueNorSubstructuresAreEventsWithYOrExtensions(): void
     {
         $input = self::HEAD . "0 @I1@ INDI\n1 BAPL\n1 BURI\n1 RESI\n1 RESI\n2 PLAC Kyiv\n0 TRLR\n";

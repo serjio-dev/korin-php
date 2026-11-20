@@ -83,10 +83,10 @@ final class V551ToV555Test extends TestCase
     public function valuesFollowTheStricterGrammars(): void
     {
         $result = $this->down(self::HEAD . "0 @I1@ INDI\n1 DEAT\n2 DATE BET 05 JAN 50 AND 1 FEB 1950\n2 AGE >01y 0m 3d\n2 PLAC Kyiv,Ukraine\n"
-            . "1 BURI\n2 AGE 0y\n1 CHAN\n2 DATE 1 JAN 2000\n3 TIME 09:05:00.5\n0 TRLR\n");
+            . "1 BURI\n2 AGE 0y\n1 CHR\n2 AGE 42m\n1 ADOP\n2 AGE 1y 13m 2d\n1 CHAN\n2 DATE 1 JAN 2000\n3 TIME 09:05:00.5\n0 TRLR\n");
 
         self::assertSame(self::HEAD_555 . "0 @I1@ INDI\n1 DEAT\n2 DATE BET 5 JAN 050 AND 1 FEB 1950\n2 AGE > 1y 3d\n2 PLAC Kyiv, Ukraine\n"
-            . "1 BURI\n2 _AGE 0y\n1 CHAN\n2 DATE 1 JAN 2000\n3 TIME 9:05:00.50\n0 TRLR\n", $result->output());
+            . "1 BURI\n2 _AGE 0y\n1 CHR\n2 AGE 3y 6m\n1 ADOP\n2 AGE 2y 1m 2d\n1 CHAN\n2 DATE 1 JAN 2000\n3 TIME 9:05:00.50\n0 TRLR\n", $result->output());
         self::assertSame(['KL3001 warning line 16 (@I1@/BURI/AGE)'], $this->where($result));
     }
 

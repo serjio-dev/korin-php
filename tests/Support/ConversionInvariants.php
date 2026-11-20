@@ -92,7 +92,8 @@ trait ConversionInvariants
      * which 5.x writes). Via 5.5.5 the SUBM records move directly after HEAD and HEAD.SUBM is added, ADDR
      * gets its lines as ADR1–ADR3 and times lose a leading zero (docs/conversion.md), so records compare in
      * any order, an added HEAD.SUBM is left out, ADR lines that repeat the ADDR value compare as absent and
-     * times compare as the same time ("08:56" is "8:56", ".50" is ".5").
+     * times compare as the same time ("08:56" is "8:56", ".50" is ".5"), ages with 12 months or more as
+     * years and months ("1y 30m" is "3y 6m").
      */
     /** @param list<array{string, string}> $known losses of known bugs whose structures are left out as well: code and a pattern of the message */
     private function assertUpDownUp(string $bytes, Version $via, array $known = []): void
@@ -180,6 +181,12 @@ trait ConversionInvariants
     {
         if (($node['tag'] ?? null) === 'TIME' && is_string($node['value'] ?? null)) {
             $node['value'] = (string) preg_replace(['/^0(?=[0-9]:)/', '/(\.[0-9]*?)0+(?=Z?$)/', '/\.(?=Z?$)/'], ['', '$1', ''], $node['value']);
+        }
+        if (($node['tag'] ?? null) === 'AGE' && is_string($node['value'] ?? null)
+            && preg_match('/^(\S*?) ?(?:([0-9]+)y)? ?(?:([0-9]+)m)?( [0-9]+d)?$/', $node['value'], $m) === 1 && ($m[3] ?? '') !== '') {
+            // 5.5.5 has months up to 11: 1y 30m comes back as 3y 6m.
+            $years = (int) $m[2] + intdiv((int) $m[3], 12);
+            $node['value'] = trim($m[1] . ' ' . ($years > 0 ? $years . 'y ' : '') . ((int) $m[3] % 12 > 0 ? ((int) $m[3] % 12) . 'm' : '') . ($m[4] ?? ''));
         }
         /** @var list<array<string, mixed>> $children */
         $children = $node['children'] ?? [];
