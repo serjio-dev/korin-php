@@ -47,3 +47,4 @@ gedcom-corpus as a case with `source.origin: fuzz`.
 | Years longer than an int: a PHP warning in validation, a `TypeError` in `GedcomDate::parse()` | Validation takes a year modulo 10 000 (leap and dual years are the same); a `Date` holds years up to `Date::MAX_YEAR` |
 | A conversion read the first byte of an empty tag (a PHP warning) | Tags are checked with `str_starts_with()` |
 | A damaged `gedcom.ged` in a GEDZIP archive: a PHP warning, or with a wrong CRC no error at all | `GedzipException` |
+| A date range that names its end first (`BET 1950 AND 92 BCE`, in the gedcom7code date tests) had days that ended before they began, and plausibility could report a conflict that was not certain. Found in a seed, which stops the fuzzer at once with status 0: the nightly runs of `values` had fuzzed nothing since | It spans the same days as the range in order; the workflow fails a fuzzer that stops early |

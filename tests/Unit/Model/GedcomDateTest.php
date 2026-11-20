@@ -143,6 +143,10 @@ final class GedcomDateTest extends TestCase
         self::assertSame([$first, JulianDays::day(1909, 12, 31, false)], GedcomDate::parse('FROM 1907 TO 1909')->days());
         self::assertNull(GedcomDate::parse('BET 1907 AND HEBREW 5700')->days());
         self::assertSame([$first, JulianDays::day(1909, 12, 31, false)], GedcomDate::parse('BET 1907 AND 1909')->days());
+        // Found by fuzzing (g7c date-all): a range that names its end first spans the same days.
+        self::assertSame([$first, JulianDays::day(1909, 12, 31, false)], GedcomDate::parse('BET 1909 AND 1907')->days());
+        self::assertSame([$first, JulianDays::day(1909, 12, 31, false)], GedcomDate::parse('FROM 1909 TO 1907')->days());
+        self::assertSame([JulianDays::day(-365, 7, 1, false), JulianDays::day(1689, 1, 31, false)], GedcomDate::parse('FROM GREGORIAN JAN 1689 TO GREGORIAN JUL 366 BCE')->days());
         self::assertSame([$first + 13, $first + 13], GedcomDate::parse('JULIAN 1 JAN 1907')->days(), 'Julian is 13 days behind');
         self::assertSame(GedcomDate::parse('1649')->days(), GedcomDate::parse('1648/49', Version::V5_5_1)->days());
         self::assertNull(GedcomDate::parse('ABT 1907')->days());

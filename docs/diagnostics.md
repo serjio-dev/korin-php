@@ -124,7 +124,7 @@ the date `_CAL 1 MAR 1700` is a Julian date.
 Optional: reported only with `ValidationOptions::withPlausibility()`, always as warnings, for
 data that is valid but cannot be true. Dates are compared only when the conflict is certain:
 a date stands for every day it can mean (`1907` is the whole year, `BEF 1907` has no first
-day, `BET 1900 AND 1910` spans both years). Gregorian and Julian dates of every version are
+day, `BET 1900 AND 1910` spans both years, as does `BET 1910 AND 1900`). Gregorian and Julian dates of every version are
 compared, including `B.C.`/`BCE` and dual years (`1648/49` is 1649); approximate dates (`ABT`,
 `CAL`, `EST`), date phrases and other calendars are not. The first `BIRT` and `DEAT` with
 such a date count. Parents are `HUSB` and `WIFE` of the families an individual is a child of,

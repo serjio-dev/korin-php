@@ -95,6 +95,17 @@ final class PlausibilityTest extends TestCase
     }
 
     #[Test]
+    public function aRangeThatNamesItsEndFirstSpansTheSameDays(): void
+    {
+        $doc = Gedcom::parse(self::HEAD_70
+            . "0 @I1@ INDI\n1 BIRT\n2 DATE BET 1950 AND 92 BCE\n1 DEAT\n2 DATE 1940\n"   // may be before
+            . "0 @I2@ INDI\n1 BIRT\n2 DATE BET 1960 AND 1950\n1 DEAT\n2 DATE 1940\n"     // certainly after
+            . "0 TRLR\n");
+
+        self::assertSame(['KV5001 warning line 11 (@I2@/BIRT/DATE): Birth is after the death on line 13'], $this->lines($doc));
+    }
+
+    #[Test]
     public function childBornBeforeAParent(): void
     {
         $doc = Gedcom::parse(self::HEAD_551

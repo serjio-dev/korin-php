@@ -88,7 +88,8 @@ final readonly class GedcomDate implements \Stringable
 
     /**
      * The days the value can mean, as Julian Day Numbers, PHP_INT_MIN / PHP_INT_MAX for an open
-     * end: "BEF 1907" ends on 31 DEC 1907, "BET 1900 AND 1910" spans both years. Null when they
+     * end: "BEF 1907" ends on 31 DEC 1907, "BET 1900 AND 1910" spans both years, and so does a
+     * range that names its end first ("BET 1910 AND 1900", valid if odd). Null when they
      * are not certain: approximations, no date, other calendars than Gregorian and Julian.
      *
      * @return ?array{int, int}
@@ -103,7 +104,7 @@ final readonly class GedcomDate implements \Stringable
         return match ($this->kind) {
             DateKind::Before, DateKind::To => [PHP_INT_MIN, $first[1]],
             DateKind::After, DateKind::From => [$first[0], PHP_INT_MAX],
-            DateKind::Between, DateKind::Period => ($last = $this->endDate?->days()) === null ? null : [$first[0], $last[1]],
+            DateKind::Between, DateKind::Period => ($last = $this->endDate?->days()) === null ? null : [min($first[0], $last[0]), max($first[1], $last[1])],
             default => $first,
         };
     }

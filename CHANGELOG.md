@@ -17,6 +17,13 @@ break the API; such changes are described in `UPGRADE.md`.
   of 10 MB takes 0.77 s (0.94 s in 0.7.0), of 50 MB 3.9 s (4.7 s); to 5.5 and 5.5.5 0.79 s and
   0.91 s (0.86 s and 1.0 s).
 
+### Fixed
+
+- A date range that names its end first (`BET 1950 AND 92 BCE`, valid if odd) had days that
+  ended before they began, in `GedcomDate::days()` and in the plausibility checks, which could
+  then report a birth after the death that was not certain (`KV5001`, `KV5002`). It spans the
+  same days as the range in order. Found by fuzzing.
+
 ## [0.7.0] - 2026-11-20
 
 Quality thresholds: line coverage in CI (≥ 95% for Io, Syntax, Conversion and Writer), mutation

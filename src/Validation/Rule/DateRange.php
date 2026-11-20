@@ -31,7 +31,8 @@ final class DateRange
             $first = self::date($m[1] !== '' ? $m[1] : $m[3]);
             $last = self::date($m[2] !== '' ? $m[2] : $m[4]);
 
-            return $first === null || $last === null ? null : [$first[0], $last[1]];
+            // A range that names its end first spans the same days.
+            return $first === null || $last === null ? null : [min($first[0], $last[0]), max($first[1], $last[1])];
         }
         if (preg_match('/^(BEF|TO|AFT|FROM) (.+)$/', $value, $m) === 1) {
             $date = self::date($m[2]);
