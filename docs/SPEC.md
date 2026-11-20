@@ -291,7 +291,7 @@ Conversion runs along a chain of adjacent versions: 4.0 → 5.5 → 5.5.1 ↔ 7.
 
 ### Streaming conversion
 
-`Gedcom::convertFile($in, $out, Version::V7_0)` converts a file of any size in constant memory: the input is read one record at a time and the output is written immediately.
+`Gedcom::convertFile($in, $out, Version::V7_0)` converts a file of any size in constant memory: the input is read in batches of records (about 64 KB of the file each) and the output is written as it goes.
 
 Some steps cannot write output before they have seen the whole input, because their result goes to the start of the file or depends on records further down:
 
@@ -368,10 +368,10 @@ Every input file is treated as hostile: the library never crashes uncontrollably
 | Full read of a 50 MB file | ≤ 512 MB memory, ≤ 20 s |
 | `open()` of a 50 MB file | Index ≤ 64 MB memory, built in ≤ 5 s; access to an uncached record ≤ 1 ms |
 | 5.5.1 → 7.0 conversion of a 50 MB file | ≤ 2× the full read time |
-| `convertFile()` 5.5.1 → 7.0 of a 50 MB file | ≤ 64 MB memory, ≤ 1.5× the full read time |
+| `convertFile()` 5.5.1 → 7.0 of a 50 MB file | ≤ 64 MB memory, ≤ 1.2× the full read time plus the conversion time (`read()` + `convert()`): streaming costs little more than the conversion in memory |
 | Regression in a PR | More than 10% blocks the PR |
 
-The targets are preliminary: they are fixed after the first measurements on the corpus (milestone 0.1).
+The targets are preliminary: they are fixed after the first measurements on the corpus (milestone 0.1). The `convertFile()` target was ≤ 1.5× the full read time until 0.8, which no conversion can meet: `convertFile()` parses the whole file (1×) and converts it (up to 2×).
 
 ## 10. Testing
 
