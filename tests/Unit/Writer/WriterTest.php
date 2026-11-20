@@ -166,6 +166,21 @@ final class WriterTest extends TestCase
     }
 
     #[Test]
+    public function normalLinesAreCopiedAroundNewMovedAndChangedOnes(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME A\n1 SEX F\n1 NOTE n\n0 TRLR\n");
+        // A new record before the first line of the source, a line moved before its sibling, a changed one.
+        $doc->createNode(0, '@S1@', 'SUBM', null, 1);
+        $doc->moveNode(7, 5, 6);
+        $doc->setPayload(8, 'm');
+
+        self::assertSame(
+            "0 @S1@ SUBM\n0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I1@ INDI\n1 SEX F\n1 NAME A\n1 NOTE m\n0 TRLR\n",
+            Gedcom::serialize($doc, WriteOptions::normalize()),
+        );
+    }
+
+    #[Test]
     public function anotherEncodingReencodesUnchangedLines(): void
     {
         $doc = Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Анна /Коваль/\r\n0 TRLR");

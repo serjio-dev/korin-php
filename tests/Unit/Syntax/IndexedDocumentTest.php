@@ -219,6 +219,21 @@ final class IndexedDocumentTest extends TestCase
         self::assertSame('@a @@b', $indexed->find('HEAD/NOTE')?->value());
     }
 
+    #[Test]
+    public function recordsAreParsedTogetherWithTheirLines(): void
+    {
+        $indexed = Gedcom::open(self::handle(self::FILE));
+
+        self::assertSame(strlen("0 @F1@ FAM\r\n1 WIFE @I1@\r\n"), $indexed->sizeAt(2));
+        self::assertSame(strlen("0 TRLR\r\n"), $indexed->sizeAt(3));
+        // Records 1 and 3, without the one between them.
+        $document = $indexed->recordsAt([1, 3]);
+        self::assertTrue($document->isReadOnly());
+        self::assertSame(['INDI', 'TRLR'], array_map(static fn(Node $record): string => $record->tag(), $document->records()));
+        self::assertSame([4, 5, 6, 7, 10], array_map($document->lineOf(...), [1, 2, 3, 4, 5]));
+        self::assertSame('0 TRLR', $document->originalLine(5)[0] ?? null);
+    }
+
     /** @return resource */
     private function handle(string $bytes): mixed
     {

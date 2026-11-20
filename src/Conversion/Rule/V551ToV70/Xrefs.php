@@ -51,10 +51,8 @@ final class Xrefs implements NodeRule
                 }
             }
         }
-        if ($document->isInvalid($id)) {
-            return true;
-        }
         if ($this->renamed !== []) {
+            // A line that could not be parsed has no xref.
             $xref = $document->xrefOf($id);
             if ($xref !== null && isset($this->renamed[$xref])) {
                 $document->setXref($id, $this->renamed[$xref]);
@@ -63,6 +61,7 @@ final class Xrefs implements NodeRule
         if (!$document->mayContain($id, '@')) {
             return true;
         }
+        // Null for a line that could not be parsed, too.
         $payload = $document->payloadOf($id);
         if ($payload === null || !Escaping::isPointer($payload)) {
             return true;

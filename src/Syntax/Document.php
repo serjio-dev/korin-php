@@ -602,7 +602,7 @@ final class Document
             return str_contains($this->payload[$id] ?? '', $ascii);
         }
         $offset = $pos >> self::POS_SHIFT;
-        $length = $this->contentLength($id);
+        $length = ($id < $this->parsed ? $this->pos[$id + 1] >> self::POS_SHIFT : strlen($this->source)) - $offset - ($pos & 7);
         if (isset($this->xref[$id]) && $ascii === '@') {
             // Past the xref: from the byte after the second "@" (in UTF-16 maybe earlier, never later).
             $skip = strcspn($this->source, '@', $offset, $length);
@@ -612,6 +612,41 @@ final class Document
         }
 
         return $length > 0 && strcspn($this->source, $ascii, $offset, $length) < $length;
+    }
+
+    /**
+     * @internal the substructures of a structure, CONC and CONT lines left out, last first (a
+     * stack to walk them in document order)
+     *
+     * @return list<int>
+     */
+    public function substructureIdsReversed(int $id): array
+    {
+        $ids = [];
+        for ($child = $this->lastChildOf($id); $child >= 0; $child = ($this->links[$child] & self::LOW32) - 1) {
+            $tag = $this->tag[$child];
+            if ($tag !== 'CONC' && $tag !== 'CONT') {
+                $ids[] = $child;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @internal whether a structure has a CONC line, or a CONT line that may contain this ASCII
+     * character ({@see self::mayContain()}): childIds() and tagOf() without the list
+     */
+    public function hasContinuation(int $id, string $ascii): bool
+    {
+        for ($child = $this->firstChildOf($id); $child >= 0; $child = ($this->links[$child] >> 32) - 1) {
+            $tag = $this->tag[$child];
+            if ($tag === 'CONC' || ($tag === 'CONT' && $this->mayContain($child, $ascii))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -687,7 +722,7 @@ final class Document
             return ($this->payload[$id] ?? '') !== '';
         }
 
-        return $valueStart !== 0 && $this->contentLength($id) > $valueStart;
+        return $valueStart !== 0 && ($id < $this->parsed ? $this->pos[$id + 1] >> self::POS_SHIFT : strlen($this->source)) - ($pos >> self::POS_SHIFT) - ($pos & 7) > $valueStart;
     }
 
     /** @internal */
@@ -748,6 +783,40 @@ final class Document
         return [substr($this->source, $offset, $length), substr($this->source, $offset + $length, $pos & 7), $valueStart];
     }
 
+    /**
+     * @internal where an unmodified line is in the source, its terminator included, when writing it
+     * anew in normal form gives the same bytes (Writer, UTF-8 to UTF-8): one space between level,
+     * xref, tag and value, the level of its depth, this terminator, content at most $limit bytes
+     *
+     * @return ?array{int, int} offset and length; null for new, modified and invalid lines
+     */
+    public function normalSpan(int $id, int $depth, string $eol, ?int $limit): ?array
+    {
+        $pos = $this->pos[$id];
+        $valueStart = $pos >> 3 & self::EXPLICIT;
+        $eolLength = $pos & 7;
+        if ($pos < 0 || $valueStart === self::EXPLICIT || $eolLength !== strlen($eol) || isset($this->dirty[$id]) || isset($this->invalid[$id])) {
+            return null;
+        }
+        $offset = $pos >> self::POS_SHIFT;
+        $length = ($id < $this->parsed ? $this->pos[$id + 1] >> self::POS_SHIFT : strlen($this->source)) - $offset - $eolLength;
+        $prefix = $depth . (isset($this->xref[$id]) ? ' ' . $this->xref[$id] : '') . ' ' . $this->tag[$id];
+        $prefixLength = strlen($prefix);
+        if (($valueStart === 0 ? $length !== $prefixLength : $valueStart !== $prefixLength + 1) || ($limit !== null && $length > $limit)
+            || substr_compare($this->source, $prefix, $offset, $prefixLength) !== 0
+            || ($eolLength > 0 && substr_compare($this->source, $eol, $offset + $length, $eolLength) !== 0)) {
+            return null;
+        }
+
+        return [$offset, $length + $eolLength];
+    }
+
+    /** @internal bytes of the source, from {@see self::normalSpan()} */
+    public function sourceBytes(int $offset, int $length): string
+    {
+        return substr($this->source, $offset, $length);
+    }
+
     /** @internal original terminator of the line, '' if new or the line had none */
     public function originalEol(int $id): string
     {
@@ -761,16 +830,19 @@ final class Document
      *
      * @param ?list<int> $records only these records (convertFile() writes some of a document's records apart)
      *
-     * @return \Generator<int, int> attached node ids in document order (depth first), root excluded
+     * @return \Generator<int, int> attached node ids in document order (depth first), root excluded, keyed by their depth (0 for records)
      */
     public function walk(?array $records = null): \Generator
     {
         $stack = array_reverse($records ?? $this->childIds(self::ROOT));
+        $depths = array_pad([], count($stack), 0);
         while ($stack !== []) {
             $id = array_pop($stack);
-            yield $id;
+            $depth = (int) array_pop($depths);
+            yield $depth => $id;
             for ($child = $this->lastChildOf($id); $child >= 0; $child = ($this->links[$child] & self::LOW32) - 1) {
                 $stack[] = $child;
+                $depths[] = $depth + 1;
             }
         }
     }

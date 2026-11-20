@@ -155,6 +155,16 @@ final class V551ToV55Test extends TestCase
         self::assertStringEndsWith("2 SOUR Told by his sister\n3 QUAY 2\n0 TRLR\n", Gedcom::convert($down->document(), Version::V5_5_1)->output());
     }
 
+    #[Test]
+    public function aCitationHasTheSubstructuresOfItsForm(): void
+    {
+        // TEXT of an inline citation, not of one with a pointer: either form after the other in a record.
+        $result = $this->down(self::HEAD . "0 @I1@ INDI\n1 SOUR Inline\n2 TEXT a\n1 SOUR @S1@\n2 TEXT b\n1 SOUR Again\n2 TEXT c\n0 @S1@ SOUR\n0 TRLR\n");
+
+        self::assertSame(self::HEAD_55 . "0 @I1@ INDI\n1 SOUR Inline\n2 TEXT a\n1 SOUR @S1@\n2 _TEXT b\n1 SOUR Again\n2 TEXT c\n0 @S1@ SOUR\n0 TRLR\n", $this->text($result));
+        self::assertSame(['KL2001'], array_map(static fn(Loss $loss): string => $loss->code, $result->losses()->entries()));
+    }
+
     private function down(string $gedcom): ConversionResult
     {
         return Gedcom::convert(Gedcom::parse($gedcom), Version::V5_5);

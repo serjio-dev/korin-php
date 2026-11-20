@@ -75,15 +75,8 @@ final readonly class Nodes implements Rule
                     break;
                 }
             }
-            if (!$document->hasChildren($id)) {
-                continue;
-            }
-            $children = $document->childIds($id);
-            for ($i = count($children) - 1; $i >= 0; --$i) {
-                $tag = $document->tagOf($children[$i]);
-                if ($tag !== 'CONC' && $tag !== 'CONT') {
-                    $stack[] = $children[$i];
-                }
+            if ($document->hasChildren($id)) {
+                array_push($stack, ...$document->substructureIdsReversed($id));
             }
         }
     }

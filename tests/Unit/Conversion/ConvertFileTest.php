@@ -40,6 +40,11 @@ final class ConvertFileTest extends TestCase
         yield 'LANG of HEAD and SUBM, to 7.0' => [self::HEAD_551 . "1 LANG Ukrainian\n1 SUBM @U1@\n0 @I1@ INDI\n1 NAME A\n0 @U1@ SUBM\n1 NAME U\n1 LANG English\n1 LANG Klingon\n0 TRLR\n", Version::V7_0];
         yield 'extensions with a schema, to 5.5.1' => ["0 HEAD\n1 GEDC\n2 VERS 7.0\n1 SCHMA\n2 TAG _SKYPEID http://xmlns.com/foaf/0.1/skypeID\n0 @I1@ INDI\n1 _SKYPEID x\n1 _UID y\n1 SEX X\n0 @F1@ FAM\n1 _STAT z\n0 TRLR\n", Version::V5_5_1];
         yield 'a 5.3 draft, to 5.5' => ["0 HEAD\n1 GEDC\n2 VERS 5.3\n2 FORM LINEAGE-LINKED\n1 CHAR ASCII\n0 @I1@ INDI\n1 NAME A\n0 TRLR\n", Version::V5_5];
+        // The submitter is node 8 of HEAD's document, @U2@ node 8 of the records after it: still the second SUBM.
+        yield 'a second SUBM with the id of the submitter, to 5.5.5' => [self::HEAD_551 . "1 SUBM @U1@\n0 @U1@ SUBM\n1 NAME One\n0 @I1@ INDI\n1 NAME A\n1 SEX F\n1 BIRT\n2 DATE 1900\n1 DEAT\n2 DATE 1990\n0 @U2@ SUBM\n1 NAME Two\n0 TRLR\n", Version::V5_5_5];
+        // More than one batch of records (Converter::BATCH), with records the conversion adds.
+        yield 'records of more than one batch, to 7.0' => [self::HEAD_551 . implode('', array_map(static fn(int $i): string => "0 @I{$i}@ INDI\n1 NAME Person {$i} /Name/\n1 SOUR Inline {$i}\n1 BIRT\n2 DATE 1 JAN 1900\n", range(1, 3000))) . "0 TRLR\n", Version::V7_0];
+        yield 'records after TRLR of more than one batch, to 7.0' => [self::HEAD_551 . "0 @I0@ INDI\n1 SOUR Before\n0 TRLR\n" . implode('', array_map(static fn(int $i): string => "0 @I{$i}@ INDI\n1 NAME Person {$i} /Name/\n1 SOUR Inline {$i}\n", range(1, 3000))) . "0 TRLR\n", Version::V7_0];
         yield 'same version' => ["\xEF\xBB\xBF0 HEAD\n1 GEDC\n2 VERS 7.0\n0 TRLR", Version::V7_0];
     }
 
