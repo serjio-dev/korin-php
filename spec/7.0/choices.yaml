@@ -1,0 +1,6 @@
+# Substructures of which a 7.0 structure allows only one, reported as KV2002 (docs/diagnostics.md).
+# Our transcription: the specification includes them together with one cardinality
+# (HEAD: +1 <<NOTE_STRUCTURE>> {0:1}, a NOTE or an SNOTE), the term files give each its own.
+# bin/generate-profiles.php checks that each structure exists and has the substructures.
+https://gedcom.io/terms/v7/HEAD:
+  - [NOTE, SNOTE]

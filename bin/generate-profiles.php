@@ -38,6 +38,7 @@ const PROFILES = [
     '7.0' => [
         'terms' => 'spec/7.0/terms',
         'deprecations' => 'spec/7.0/deprecations.yaml',
+        'choices' => 'spec/7.0/choices.yaml',
         'source' => 'FamilySearch GEDCOM v7.0.18 (2f0b863b5a42275bd2b3ca315900cf779e42f28b)',
     ],
 ];
@@ -57,7 +58,7 @@ foreach (PROFILES as $version => $config) {
     $target = "{$root}/resources/profiles/{$version}.php";
     $profile = isset($config['grammar'])
         ? (new Grammar("{$root}/{$config['grammar']}", $config['uri'], $config['root'] ?? 'LINEAGE_LINKED_GEDCOM'))->compile() + primitives("{$root}/{$config['primitives']}")
-        : compile("{$root}/{$config['terms']}", "{$root}/{$config['deprecations']}");
+        : compile("{$root}/{$config['terms']}", "{$root}/{$config['deprecations']}", "{$root}/{$config['choices']}");
     $code = render($version, $config['source'], $profile);
     if ($check) {
         if (!is_file($target) || file_get_contents($target) !== $code) {
@@ -77,7 +78,7 @@ if ($stale !== []) {
 /**
  * @return array<string, mixed>
  */
-function compile(string $dir, string $deprecations): array
+function compile(string $dir, string $deprecations, string $choices): array
 {
     $files = glob($dir . '/*');
     if ($files === false || $files === []) {
@@ -134,7 +135,32 @@ function compile(string $dir, string $deprecations): array
         }
     }
 
-    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'types' => [], 'sizes' => [], 'listed' => [], 'calendars' => $calendars, 'months' => $months, 'deprecated' => deprecations($deprecations, $terms)];
+    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'types' => [], 'sizes' => [], 'listed' => [], 'calendars' => $calendars, 'months' => $months, 'deprecated' => deprecations($deprecations, $terms), 'choices' => choices($choices, $structures)];
+}
+
+/**
+ * spec/7.0/choices.yaml, checked against the structures: each exists and has the substructures.
+ *
+ * @param array<string, array{children: array<string, mixed>}> $structures
+ *
+ * @return array<string, list<list<string>>>
+ */
+function choices(string $file, array $structures): array
+{
+    $yaml = Yaml::parseFile($file);
+    $out = [];
+    foreach (is_array($yaml) ? $yaml : throw new RuntimeException("{$file}: not a map") as $uri => $groups) {
+        $uri = (string) $uri;
+        foreach (is_array($groups) ? $groups : throw new RuntimeException("{$file}: {$uri}: not a list") as $tags) {
+            $tags = is_array($tags) ? array_values(array_filter($tags, is_string(...))) : [];
+            if (count($tags) < 2 || array_diff($tags, array_keys($structures[$uri]['children'] ?? [])) !== []) {
+                throw new RuntimeException("{$file}: {$uri} has no such substructures");
+            }
+            $out[$uri][] = $tags;
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -294,7 +320,8 @@ final readonly class Term
  * is one structure, identified by the name and its tag path ("…#EVENT_DETAIL/DATE"); a structure
  * included with <<NAME>> keeps its own identity; lines written under <<NAME>> are added to each of
  * its top structures. Alternatives with the same tag are merged: a substructure is required only
- * when every alternative requires it. Includes may be cyclic (5.5: NOTE_STRUCTURE and
+ * when every alternative requires it; where a pointer and an inline form have different
+ * substructures, each form's are kept too ('forms'). Includes may be cyclic (5.5: NOTE_STRUCTURE and
  * SOURCE_CITATION include each other), so the top lines of a structure are resolved separately
  * from the structures written in it.
  */
@@ -308,7 +335,7 @@ final class Grammar
     /** @var array<string, array<string, array{string, int, int}>> */
     private array $members = [];
 
-    /** @var array<string, array{tag: string, payloads: list<string>, empty: bool, children: list<array<string, array{string, int, int}>>, extra: array<string, array{string, int, int}>}> */
+    /** @var array<string, array{tag: string, payloads: list<string>, empty: bool, children: list<array<string, array{string, int, int}>>, lines: list<?string>, extra: array<string, array{string, int, int}>}> */
     private array $structures = [];
 
     /** @var array<string, true> named structures whose lines are in $structures */
@@ -346,6 +373,23 @@ final class Grammar
                 'enumset' => null,
                 'children' => $children,
             ];
+            // A pointer form and an inline one with different substructures (SOUR @S1@ has no TEXT, OBJE @O1@ no FILE).
+            $forms = [];
+            foreach ($structure['children'] as $i => $entries) {
+                $line = $structure['lines'][$i];
+                $forms[$line !== null && str_starts_with($line, '@') ? 'pointer' : 'inline'][] = $entries;
+            }
+            if (isset($forms['pointer'], $forms['inline'])) {
+                $forms = array_map(function (array $alternatives) use ($structure): array {
+                    $entries = $this->merge($alternatives) + $structure['extra'];
+                    ksort($entries);
+
+                    return $entries;
+                }, $forms);
+                if ($forms['pointer'] !== $forms['inline']) {
+                    $structures[$uri]['forms'] = $forms;
+                }
+            }
         }
         ksort($structures);
 
@@ -430,7 +474,7 @@ final class Grammar
             }
             foreach ($line->tags as $tag) {
                 $uri = "{$this->base}{$name}{$path}/{$tag}";
-                $this->structures[$uri] ??= ['tag' => $tag, 'payloads' => [], 'empty' => false, 'children' => [], 'extra' => []];
+                $this->structures[$uri] ??= ['tag' => $tag, 'payloads' => [], 'empty' => false, 'children' => [], 'lines' => [], 'extra' => []];
                 $this->structures[$uri]['empty'] = $this->structures[$uri]['empty'] || $line->payload === null;
                 foreach ($line->payload === null ? [] : explode('|', $line->payload) as $payload) {
                     if (!in_array($payload, $this->structures[$uri]['payloads'], true)) {
@@ -438,6 +482,7 @@ final class Grammar
                     }
                 }
                 $this->structures[$uri]['children'][] = $this->entries($name, "{$path}/{$tag}", $line->children);
+                $this->structures[$uri]['lines'][] = $line->payload;
                 $this->walk($name, "{$path}/{$tag}", $line->children);
             }
         }

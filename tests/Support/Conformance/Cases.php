@@ -251,7 +251,9 @@ final class Cases
         }
 
         foreach ($structure->substructures as $tag => $substructure) {
-            yield from $this->cardinalityCases($name, $path, $tag, $substructure);
+            // 5.x: a substructure of the inline form only is tried there, by that form's cardinality.
+            $inline = $structure->forms !== [] && !isset($structure->forms['pointer'][$tag]);
+            yield from $this->cardinalityCases($name, $path, $tag, $inline ? $structure->forms['inline'][$tag] : $substructure, $inline);
         }
 
         if (!str_starts_with(implode('/', $path), 'HEAD/GEDC') && $path !== ['HEAD', 'CHAR']) {
@@ -264,11 +266,11 @@ final class Cases
      *
      * @return iterable<string, array{Version, string, list<string>}>
      */
-    private function cardinalityCases(string $name, array $path, string $tag, Substructure $substructure): iterable
+    private function cardinalityCases(string $name, array $path, string $tag, Substructure $substructure, bool $inline = false): iterable
     {
         $cardinality = $substructure->cardinality;
         if ($cardinality->max !== null) {
-            [$file, $target] = $this->file($path);
+            [$file, $target] = $this->file($path, $inline);
             $count = count(array_filter($target->children, static fn(Line $child): bool => $child->tag === $tag));
             $extra = null;
             for (; $count <= $cardinality->max; ++$count) {
@@ -277,7 +279,7 @@ final class Cases
             yield "{$name}: {$tag} more than {$cardinality->max} time(s)" => $this->case($file, [['KV2002', $extra]]);
         }
         if ($cardinality->isRequired()) {
-            [$file, $target] = $this->file($path);
+            [$file, $target] = $this->file($path, $inline);
             $target->withoutChildren($tag);
             // Left empty, the structure is not also KV3007: the missing substructure is the problem.
             yield "{$name}: without {$tag}" => $this->case($file, [['KV2003', $target]]);
@@ -362,7 +364,7 @@ final class Cases
      *
      * @return array{list<Line>, Line}
      */
-    private function file(array $path): array
+    private function file(array $path, bool $inline = false): array
     {
         $file = [];
         foreach ($this->profile->records() as $tag => $record) {
@@ -374,7 +376,11 @@ final class Cases
         }
         $uri = $path === [] ? null : $this->profile->record($path[0])?->uri;
         foreach (array_slice($path, 1) as $i => $tag) {
-            $substructure = $this->structure((string) $uri)->substructure($tag) ?? throw new \LogicException(implode('/', $path));
+            $structure = $this->structure((string) $uri);
+            $substructure = $structure->substructure($tag) ?? throw new \LogicException(implode('/', $path));
+            if ($structure->forms !== [] && !isset($structure->forms['pointer'][$tag])) {
+                $this->inline($line, $structure, implode('/', array_slice($path, 0, $i + 1)));
+            }
             $uri = $substructure->uri;
             $child = $line->child($tag);
             if ($child === null) {
@@ -382,8 +388,30 @@ final class Cases
             }
             $line = $child;
         }
+        if ($inline) {
+            $this->inline($line, $this->structure((string) $uri), implode('/', $path));
+        }
 
         return [$this->trailerLast($file), $line];
+    }
+
+    /** A 5.x line in the inline form of its structure: a description (SOUR) or no value (OBJE), and that form's substructures. */
+    private function inline(Line $line, Structure $structure, string $path): void
+    {
+        $line->value = null;
+        foreach (explode('|', (string) $structure->payload) as $alternative) {
+            if ($alternative !== '<NULL>' && !str_starts_with($alternative, '@<')) {
+                $line->value = $this->sample($structure, $alternative);
+                break;
+            }
+        }
+        $form = $structure->forms['inline'];
+        $line->children = array_values(array_filter($line->children, static fn(Line $child): bool => isset($form[$child->tag])));
+        foreach ($form as $tag => $substructure) {
+            for ($i = count(array_filter($line->children, static fn(Line $child): bool => $child->tag === $tag)); $i < $substructure->cardinality->min; ++$i) {
+                $line->children[] = $this->instance($substructure, "{$path}/{$tag}");
+            }
+        }
     }
 
     /**

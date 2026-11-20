@@ -82,6 +82,18 @@ final class V70ToV551Test extends TestCase
     }
 
     #[Test]
+    public function theTitleOfAMediaLinkByPointerIsAnExtension(): void
+    {
+        $input = self::HEAD . "0 @O1@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n0 @I1@ INDI\n1 OBJE @O1@\n2 TITL Portrait\n0 TRLR\n";
+
+        // 5.5.1 OBJE @O1@ has no substructures; going up, the title is TITL again.
+        $down = Gedcom::convert(Gedcom::parse($input), Version::V5_5_1);
+        self::assertSame(self::HEAD_551 . "0 @O1@ OBJE\n1 FILE a.jpg\n2 FORM jpg\n0 @I1@ INDI\n1 OBJE @O1@\n2 _TITL Portrait\n0 TRLR\n", Gedcom::serialize($down->document()));
+        self::assertSame(['KL2001 warning line 11 (@I1@/OBJE/TITL)'], $this->where($down->losses()->entries()));
+        self::assertStringEndsWith("1 OBJE @O1@\n2 TITL Portrait\n0 TRLR\n", Gedcom::convert($down->document(), Version::V7_0)->output());
+    }
+
+    #[Test]
     public function pointersToVoidBecomeExtensions(): void
     {
         $input = self::HEAD . "0 @I1@ INDI\n1 FAMC @VOID@\n2 PHRASE Unknown parents\n1 _X\n2 FAMC @VOID@\n1 ASSO @VOID@\n2 ROLE FRIEND\n0 TRLR\n";

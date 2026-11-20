@@ -26,6 +26,12 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ### Fixed
 
+- The 5.x validator checks a source citation and a media link by their form: by pointer or
+  inline, which the profile used to merge (`SOUR @S1@` + `TEXT`, an inline `SOUR` + `PAGE`,
+  `OBJE @O1@` + `FILE` are `KV2001`, an inline `OBJE` without `FILE` `KV2003`). The conversion
+  follows them: 7.0 `OBJE @O1@` + `TITL` → 5.5.1 `_TITL`, 5.5.1 inline `SOUR` + `QUAY` → 5.5
+  `_QUAY` (`KL2001`).
+- The 7.0 validator reports a `HEAD` with both `NOTE` and `SNOTE` (`KV2002`).
 - An extension that a later step of a chain makes a structure again (5.5 and 7.0 `NOTE.SOUR`,
   7.0 `FAM.NCHI.DATE` through 5.5.1) has its value and substructures converted: the date and its
   phrase, a 5.5 media link, a 7.0 `ROLE` 5.5 does not list (`_ROLE`, `KL3001`). Before, they kept

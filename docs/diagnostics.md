@@ -49,8 +49,8 @@ or for 5.x a place in the grammar of the specification such as
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
-| `KV2001` | error | A standard tag that is not allowed where it stands (in this superstructure, or as a record); its substructures are not checked |
-| `KV2002` | error | A substructure occurs more often than allowed; reported once, at the first extra occurrence |
+| `KV2001` | error | A standard tag that is not allowed where it stands (in this superstructure, or as a record); its substructures are not checked. 5.x citations and media links are checked by their form: `TEXT is not allowed in SOUR with a pointer` |
+| `KV2002` | error | A substructure occurs more often than allowed; reported once, at the first extra occurrence. Also the second of two substructures of which 7.0 allows one (`HEAD allows one of NOTE and SNOTE`) |
 | `KV2003` | error | A required substructure is missing; reported at the structure that lacks it. A missing required record (5.5.5: `SUBM`) is reported for the file, without a line |
 | `KV2004` | error | 5.5.5: the `SUBM` record does not directly follow `HEAD`; reported at the first `SUBM` record. Extension records do not count |
 | `KV2005` | warning | 7.0: a structure or value the specification deprecates: `ADR1`, `ADR2`, `ADR3`, `HEAD.SOUR.DATA`, `EXID` without `TYPE`, and the `STAT` values `COMPLETED`, `EXCLUDED`, `INFANT`, `PRE_1970`, `SUBMITTED`, `UNCLEARED`. The message says what to write instead where the specification does. The list is [spec/7.0/deprecations.yaml](https://github.com/serjio-dev/korin-php/blob/main/spec/7.0/deprecations.yaml) |

@@ -2700,4 +2700,9 @@ return [
             'https://gedcom.io/terms/v7/EXID' => 'TYPE',
         ],
     ],
+    'choices' => [
+        'https://gedcom.io/terms/v7/HEAD' => [
+            ['NOTE', 'SNOTE'],
+        ],
+    ],
 ];

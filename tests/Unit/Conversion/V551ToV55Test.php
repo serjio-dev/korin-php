@@ -144,6 +144,17 @@ final class V551ToV55Test extends TestCase
         ], $this->where($down));
     }
 
+    #[Test]
+    public function anInlineCitationHasNoQuality(): void
+    {
+        // Only the 5.5 citation by pointer has QUAY; going up, it is QUAY again.
+        $down = $this->down(self::HEAD . "0 @I1@ INDI\n1 BIRT\n2 SOUR Told by his sister\n3 QUAY 2\n0 TRLR\n");
+
+        self::assertSame(self::HEAD_55 . "0 @I1@ INDI\n1 BIRT\n2 SOUR Told by his sister\n3 _QUAY 2\n0 TRLR\n", $this->text($down));
+        self::assertSame(['KL2001 warning line 10 (@I1@/BIRT/SOUR/QUAY)'], $this->where($down));
+        self::assertStringEndsWith("2 SOUR Told by his sister\n3 QUAY 2\n0 TRLR\n", Gedcom::convert($down->document(), Version::V5_5_1)->output());
+    }
+
     private function down(string $gedcom): ConversionResult
     {
         return Gedcom::convert(Gedcom::parse($gedcom), Version::V5_5);

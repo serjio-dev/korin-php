@@ -11,3 +11,8 @@ commit above and in `bin/generate-profiles.php`, then run `php bin/generate-prof
 `deprecations.yaml` is ours: the structures and values the specification deprecates (`KV2005`),
 which the term files say only in prose. The generator fails when a term file marks a deprecation
 that it does not list, so after an update, add what the new release deprecates there.
+
+`choices.yaml` is ours too: substructures of which a structure allows only one (`KV2002`). The
+specification includes them with one cardinality (`HEAD`: `+1 <<NOTE_STRUCTURE>> {0:1}`, a `NOTE`
+or an `SNOTE`), the term files give each its own. The generator checks that the structures and
+substructures exist.
