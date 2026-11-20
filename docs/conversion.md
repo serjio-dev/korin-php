@@ -268,7 +268,10 @@ times without a leading zero (`8:56`) or with a two-digit fraction (`.50`), the 
 Every corpus input, and random valid documents of every version (`tests/Generative`), is
 converted to every version (`tests/Corpus/MatrixTest.php`, SPEC section 10): the conversion
 is deterministic, converting the output to its own version changes nothing, and the output
-validates without errors other than those of the input and these limits of the target versions:
+validates without errors other than those of the input and these limits of the target versions.
+An error of the input stays one where it was: with its code, at the same path, or, where the
+conversion moved a structure (an inline `OBJE` that becomes a record), with the same message;
+an error of that code elsewhere is a new one.
 
 | Target | Error the output may have | Why |
 | --- | --- | --- |
