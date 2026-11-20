@@ -45,16 +45,7 @@ final class TextValues implements NodeRule
         if ($document->mayContain($id, '@') && str_contains($payload = (string) $document->payloadOf($id), '@')) {
             return !Escaping::isPointer($payload);
         }
-        if (!$document->hasChildren($id) || !$document->hasContinuation($id, '@')) {
-            return false;
-        }
-        foreach ($document->childIds($id) as $child) {
-            $tag = $document->tagOf($child);
-            if ($tag === 'CONC' || ($tag === 'CONT' && str_contains((string) $document->payloadOf($child), '@'))) {
-                return true;
-            }
-        }
-
-        return false;
+        // A CONT that only may contain "@" (in UTF-16) has the value written anew, as it was.
+        return $document->hasContinuation($id, '@');
     }
 }

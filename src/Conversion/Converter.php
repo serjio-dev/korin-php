@@ -142,6 +142,7 @@ final readonly class Converter
         $writer = new Writer();
         $added = $this->temporary();
         $tail = null;
+        $target = $out;
         $buffer = '';
         $consumed = [];
 
@@ -214,7 +215,7 @@ final readonly class Converter
             $context->unit($source, $work, $prepass === null ? null : new Prepass($prepass->xrefs, [], $prepass->languages));
             $done = [];
             foreach ($work->childIds(0) as $record) {
-                if (!isset($done[$record]) && $work->contains($record)) {
+                if (!isset($done[$record])) {
                     $this->convertRecord($work, $record, 0, $context, $route, $rules, $done);
                 }
             }
@@ -222,21 +223,21 @@ final readonly class Converter
             [$records, $new] = $this->split($work);
             if ($tail === null && $input->tagAt($batch[0]) === 'TRLR') {
                 // Records the conversion adds go before the first TRLR: what follows waits for them.
-                $this->write($out, $buffer);
+                $this->write($target, $buffer);
                 $buffer = '';
-                $tail = $this->temporary();
+                $target = $tail = $this->temporary();
             }
             // Written in pieces of some size, not batch by batch.
             $buffer .= $writer->serialize($work, $write, $records);
             if (strlen($buffer) >= self::BUFFER) {
-                $this->write($tail ?? $out, $buffer);
+                $this->write($target, $buffer);
                 $buffer = '';
             }
             if ($new !== []) {
                 $this->write($added, $writer->serialize($work, $write, $new));
             }
         }
-        $this->write($tail ?? $out, $buffer);
+        $this->write($target, $buffer);
         $this->append($out, $added);
         if ($tail !== null) {
             $this->append($out, $tail);
