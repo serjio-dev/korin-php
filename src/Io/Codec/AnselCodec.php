@@ -7,8 +7,9 @@ namespace Korin\Gedcom\Io\Codec;
 use Korin\Gedcom\Exception\UnencodableCharacterException;
 
 /**
- * ANSEL (ANSI/NISO Z39.47) with the GEDCOM 5.5 additions. Combining marks precede the
- * base letter in ANSEL and follow it in Unicode; decoded text is NFC.
+ * ANSEL (ANSI/NISO Z39.47) with the GEDCOM 5.5 additions (empty and black box, midline e and o,
+ * es zet; "LDS extensions"). Combining marks precede the base letter in ANSEL and follow it in
+ * Unicode; decoded text is NFC.
  */
 final readonly class AnselCodec implements Codec
 {
@@ -18,8 +19,14 @@ final readonly class AnselCodec implements Codec
         0xA9 => '♭', 0xAA => '®', 0xAB => '±', 0xAC => 'Ơ', 0xAD => 'Ư', 0xAE => 'ʼ', 0xB0 => 'ʻ', 0xB1 => 'ł',
         0xB2 => 'ø', 0xB3 => 'đ', 0xB4 => 'þ', 0xB5 => 'æ', 0xB6 => 'œ', 0xB7 => 'ʺ', 0xB8 => 'ı', 0xB9 => '£',
         0xBA => 'ð', 0xBC => 'ơ', 0xBD => 'ư', 0xC0 => '°', 0xC1 => 'ℓ', 0xC2 => '℗', 0xC3 => '©', 0xC4 => '♯',
-        0xC5 => '¿', 0xC6 => '¡', 0xCF => 'ß',
+        0xC5 => '¿', 0xC6 => '¡', 0xCF => 'ß', 0xBE => '□', 0xBF => '■',
     ];
+
+    /**
+     * GEDCOM 5.5 midline e and o, which Unicode does not have: read as e and o (as Gramps does),
+     * which ANSEL writes as ASCII.
+     */
+    private const MIDLINE = [0xCD => 'e', 0xCE => 'o'];
 
     /** Combining marks, byte → UTF-8 of the Unicode combining character. */
     public const COMBINING = [
@@ -109,6 +116,8 @@ final readonly class AnselCodec implements Codec
                 $char = $bytes[$i];
             } elseif (isset(self::SPACING[$byte])) {
                 $char = self::SPACING[$byte];
+            } elseif (isset(self::MIDLINE[$byte])) {
+                $char = self::MIDLINE[$byte];
             } elseif ($lossy) {
                 $char = "\u{FFFD}";
             } else {

@@ -47,8 +47,8 @@ Implemented so far:
 | Media `FORM` (`jpg`) | Media type (`image/jpeg`); an unknown extension `application/x-<ext>` |
 | Media link with `FORM` beside `FILE`, as 5.5 writes it (and some 5.5.1 programs) | `FORM` moves into the `FILE`, as 5.5 → 5.5.1 does. Not into one of several `FILE`, nor into one with its own `FORM`: then it is `_FORM` (`KL2001`) |
 | `FORM.TYPE` (medium of a file) | `FORM.MEDI` |
-| `FILE` | URL or relative path: `/x` → `file:///x`, `c:\x` → `file:///c:/x`, `\\server\x` → `file://server/x`, `\` → `/`; spaces, `%`, `?`, `#`, `[`, `]` percent-encoded. A URI with a scheme (`https://…`, `urn:isbn:…`) only has spaces and such encoded, `file://C:\x` → `file:///C:/x`. `..` stays, though 7.0 does not allow it |
-| Enumerations (`PEDI birth`, `SEX f`, `STAT PRE-1970`, `DNS/CAN`) | 7.0 values (`BIRTH`, `F`, `PRE_1970`, `DNS_CAN`); a value 7.0 does not have becomes `OTHER` + `PHRASE` where 7.0 has both (`NAME.TYPE Screen`, `MEDI document`, `ROLE (midwife)`), and stays otherwise. `SOUR.DATA.EVEN birt,deat` → `BIRT, DEAT` |
+| `FILE` | URL or relative path: `/x` → `file:///x`, `c:\x` → `file:///c:/x`, `\\server\x` → `file://server/x`, `\` → `/`; spaces, `%`, `?`, `#`, `[`, `]` percent-encoded. A URL of `ftp`, `http` or `https` only has spaces and such encoded, `file://C:\x` → `file:///C:/x`. `..` stays, though 7.0 does not allow it. A URI of another scheme (`mailto:…`, `urn:isbn:…`), which 7.0 `FILE` does not support → `_FILE`, `KL3001` |
+| Enumerations (`PEDI birth`, `SEX f`, `STAT PRE-1970`, `DNS/CAN`) | 7.0 values (`BIRTH`, `F`, `PRE_1970`, `DNS_CAN`); a value 7.0 does not have becomes `OTHER` + `PHRASE` where 7.0 has both (`NAME.TYPE Screen`, `MEDI document`, `ROLE (midwife)`), and stays otherwise. The event type of a citation (`SOUR.EVEN Census of Galicia`), whose set has no `OTHER`, becomes `EVEN` + `PHRASE`. `SOUR.DATA.EVEN birt,deat` → `BIRT, DEAT` |
 | `FONE`, `ROMN` (of a name or place) | `TRAN` with `LANG` from the `TYPE`: `hangul` → `ko-Hang`, `kana` → `ja-Kana`, `romaji` → `ja-Latn`, `pinyin` → `zh-Latn-pinyin`, `wadegiles` → `zh-Latn-wadegile`; a `FONE` type only for `FONE`, a `ROMN` type only for `ROMN`; another `TYPE` stays as `_TYPE`, with `LANG und` (`FONE`) or `und-Latn` (`ROMN`); an empty `TYPE` is dropped |
 | `RESI`, `EVEN` without a value | Unchanged: 7.0 requires the payload, but an empty `Text` is one (`1 EVEN` in section 1 of the specification); without substructures too, as below |
 | An event with neither a value nor substructures (`1 BURI`, `1 DEAT`) | `Y`: it says the event occurred, and 7.0 has no structure without both |
@@ -233,7 +233,7 @@ the inline sources and media (records in 5.5.5), new `ADR` lines and respelled v
 | A structure 5.5.5 does not have where it stands: LDS ordinances, `RESN`, `ALIA`, `ANCI`, `DESI`, `AFN`, `RFN`, `HEAD.PLAC`, `HEAD.CHAR.VERS`, `SUBM.LANG`, `SOUR` of a note | An extension with its tag and substructures, `KL2001` |
 | More than 5.5.5 allows: a second `FILE` of a media record, a second `CALN` | The extra ones as extensions, `KL2002` |
 | Dates: `05 JAN 50`, `ABT 50` | Days without a leading zero, years of at least 3 digits: `5 JAN 050`, `ABT 050` |
-| Ages: `<01y 0m` | `< 1y`: a space after `<` and `>`, no leading zeroes, no zero parts. An age with no part left (`0y`) → `_AGE`, `KL3001` |
+| Ages: `<01y 0m`, `42m` | `< 1y`: a space after `<` and `>`, no leading zeroes, no zero parts, months past 11 in years (`42m` → `3y 6m`; days stay). An age with no part left (`0y`) → `_AGE`, `KL3001` |
 | Times: `09:05:00.5` | `9:05:00.50` |
 | Places: `Kyiv,Ukraine` | `Kyiv, Ukraine`; a place with an empty part (`Kyiv, , Ukraine`) stays as it is |
 | A value no 5.5.5 spelling fits (`HEAD.SOUR.VERS 7.0 beta`) | The structure as an extension, `KL3001` |

@@ -19,9 +19,10 @@ use Korin\Gedcom\Validation\Rule\PayloadGrammar;
  *   c:\x → file:///c:/x, \\server\x → file://server/x, a\b → a/b; spaces, "%" (but in a
  *   percent-encoding: a%C3%AB stays, as 7.0 → 5.5.1 writes it), "?", "#", "[", "]" and
  *   characters a URL cannot hold are percent-encoded, as is ":" in the first
- *   segment of a relative path (https:/x is not a URL). A URI with a scheme ("http://…",
- *   "urn:isbn:…") only has spaces and such characters encoded, a file: URL its backslashes
- *   turned into "/" too (file://C:\x → file:///C:/x); ".." stays, though 7.0 does not allow it.
+ *   segment of a relative path (https:/x is not a URL). A URL of ftp, http or https only has
+ *   spaces and such characters encoded, a file: URL its backslashes turned into "/" too
+ *   (file://C:\x → file:///C:/x); ".." stays, though 7.0 does not allow it. A URI of another
+ *   scheme (mailto:, urn:isbn:), which 7.0 FILE does not support, is an extension, _FILE (KL3001).
  *
  * @internal
  */
@@ -66,6 +67,10 @@ final class Media implements NodeRule
             '<MULTIMEDIA_FILE_REFN>' => $this->url($value),
             default => $value,
         };
+        if ($context->sourceElement($id) === '<MULTIMEDIA_FILE_REFN>' && preg_match('~^([A-Za-z][A-Za-z0-9+.\-]+):~', $converted, $m) === 1
+            && !in_array(strtolower($m[1]), ['ftp', 'http', 'https', 'file'], true)) {
+            return $context->unsupported($id, 'KL3001', '7.0 FILE has no such value');
+        }
         if ($converted !== $value) {
             $context->setValue($id, $converted);
         }

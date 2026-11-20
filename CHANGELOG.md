@@ -26,6 +26,14 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ### Fixed
 
+- ANSEL reads the GEDCOM 5.5 "LDS extensions": empty and black box (`BE`, `BF` → □, ■) and
+  midline e and o (`CD`, `CE` → e, o, as Gramps reads them); they were invalid bytes (`KV1003`).
+  The GEDCOM 5.5 torture test files (H. Eichmann, J. A. Nairn) use them.
+- 5.5.1 → 7.0: the event type of a citation 7.0 does not list (`SOUR.EVEN Census of Galicia`)
+  is `EVEN` + `PHRASE`, not a value 7.0 rejects; a `FILE` of a URI scheme 7.0 does not support
+  (`mailto:`, `urn:`) is `_FILE` (`KL3001`), not an invalid `FILE`.
+- 5.5.1 → 5.5.5: an age with 12 months or more is written in years and months (`42m` →
+  `3y 6m`), not as `_AGE`.
 - A 5.0–5.4 draft converted to 5.5 is written as 5.5 (`GEDC.VERS 5.5`, `CHAR UNICODE`); it used
   to be copied with its draft version and character set, which 5.5 does not have.
 - A 4.0 or draft `GEDC.VERS` (`4+`, `5.01`) converted to 5.5.5 no longer becomes `_VERS` with a

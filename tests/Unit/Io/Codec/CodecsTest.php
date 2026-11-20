@@ -162,6 +162,15 @@ final class CodecsTest extends TestCase
     }
 
     #[Test]
+    public function anselHasTheLdsExtensionsOfGedcom55(): void
+    {
+        $codec = Codecs::for(Encoding::Ansel);
+        // Empty and black box both ways; midline e and o are read as e and o, written as ASCII.
+        self::assertSame('□■eoß', $codec->decode("\xBE\xBF\xCD\xCE\xCF"));
+        self::assertSame("\xBE\xBFeo\xCF", $codec->encode('□■eoß'));
+    }
+
+    #[Test]
     public function anselReplacesWhatItCannotDecodeAndRejectsWhatItCannotEncode(): void
     {
         $codec = Codecs::for(Encoding::Ansel);
