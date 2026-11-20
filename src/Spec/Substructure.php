@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Spec;
 
-/** A structure as it may appear under a particular superstructure (or at the top level). */
+/**
+ * A structure as it may appear under a particular superstructure (or at the top level).
+ *
+ * @internal
+ */
 final readonly class Substructure
 {
     public function __construct(

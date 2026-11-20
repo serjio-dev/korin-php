@@ -1,0 +1,490 @@
+final class Conversion\ConversionResult
+    document(): Syntax\Document
+    losses(): Conversion\LossReport
+    output(): string
+final readonly class Conversion\Converter
+    __construct(?array $steps = …)
+    convert(Syntax\Document $document, Version $to, ConvertOptions $options = …): Conversion\ConversionResult
+    convertFile(Syntax\IndexedDocument $input, mixed $out, Version $to, ConvertOptions $options = …): Conversion\LossReport
+    supports(Version $from, Version $to): bool
+final readonly class Conversion\Loss implements JsonSerializable
+    readonly string $code
+    readonly Severity $severity
+    readonly string $path
+    readonly ?int $line
+    readonly Conversion\StoredAs $storedAs
+    readonly string $message
+    __construct(string $code, Severity $severity, string $path, ?int $line, Conversion\StoredAs $storedAs, string $message)
+    __toString(): string
+    jsonSerialize(): array
+enum Conversion\LossPolicy
+    case PreserveAsExtension
+    case DropWithReport
+    case Fail
+final readonly class Conversion\LossReport implements Countable, IteratorAggregate, JsonSerializable
+    readonly Version $from
+    readonly Version $to
+    __construct(Version $from, Version $to, array $entries = …)
+    count(): int
+    entries(): array
+    getIterator(): ArrayIterator
+    isEmpty(): bool
+    jsonSerialize(): array
+enum Conversion\StoredAs: string
+    case Extension
+    case Note
+    case Moved
+    case Dropped
+final readonly class ConvertOptions
+    readonly Conversion\LossPolicy $policy
+    __construct(Conversion\LossPolicy $policy = …)
+    withPolicy(Conversion\LossPolicy $policy): ConvertOptions
+final readonly class Diagnostic implements JsonSerializable
+    readonly string $code
+    readonly Severity $severity
+    readonly string $message
+    readonly ?int $line
+    readonly ?string $path
+    readonly ?string $reference
+    __construct(string $code, Severity $severity, string $message, ?int $line = …, ?string $path = …, ?string $reference = …)
+    __toString(): string
+    jsonSerialize(): array
+    withSeverity(Severity $severity): Diagnostic
+final class Exception\ConversionException extends RuntimeException implements Exception\GedcomException
+    readonly ?Conversion\Loss $loss
+    __construct(string $message, ?Conversion\Loss $loss = …)
+final class Exception\DetachedNodeException extends LogicException implements Exception\GedcomException
+interface Exception\GedcomException
+final class Exception\GedzipException extends RuntimeException implements Exception\GedcomException
+final class Exception\InvalidPathException extends InvalidArgumentException implements Exception\GedcomException
+final class Exception\InvalidValueException extends InvalidArgumentException implements Exception\GedcomException
+final class Exception\IoException extends RuntimeException implements Exception\GedcomException
+final class Exception\ParseException extends RuntimeException implements Exception\GedcomException
+final class Exception\ReadOnlyException extends LogicException implements Exception\GedcomException
+final class Exception\RequiresDocumentException extends LogicException implements Exception\GedcomException
+final class Exception\UnencodableCharacterException extends RuntimeException implements Exception\GedcomException
+final class Exception\UnsupportedVersionException extends LogicException implements Exception\GedcomException
+enum Extension\Program: string
+    case Ancestry
+    case AncestralQuest
+    case BrothersKeeper
+    case FamilyHistorian
+    case FamilyTreeMaker
+    case GEDitCOM
+    case GeneWeb
+    case GenoPro
+    case Gramps
+    case Heredis
+    case Legacy
+    case MacFamilyTree
+    case MyHeritage
+    case PersonalAncestralFile
+    case Reunion
+    case RootsMagic
+    case Webtrees
+    static fromIdentifier(string $identifier): ?Extension\Program
+final readonly class Extension\SourceSystem
+    readonly string $identifier
+    readonly ?string $version
+    readonly ?string $name
+    __construct(string $identifier, ?string $version = …, ?string $name = …)
+    isBefore(string $version): bool
+    static of(Syntax\Node $head): ?Extension\SourceSystem
+    program(): ?Extension\Program
+    version(): ?string
+final class Gedcom
+    static convert(Syntax\Document $document, Version $to, ConvertOptions $options = …): Conversion\ConversionResult
+    static convertFile(mixed $input, mixed $output, Version $to, ConvertOptions $options = …, ReadOptions $read = …): Conversion\LossReport
+    static open(mixed $source, ReadOptions $options = …): Syntax\IndexedDocument
+    static parse(string $bytes, ReadOptions $options = …): Syntax\Document
+    static read(string $path, ReadOptions $options = …): Syntax\Document
+    static readGedzip(string $path, ReadOptions $options = …): Gedzip\Archive
+    static serialize(Syntax\Document $document, WriteOptions $options = …): string
+    static stream(mixed $source, ReadOptions $options = …): Syntax\RecordStream
+    static validate(Syntax\Document|Syntax\IndexedDocument $document, Validation\ValidationOptions $options = …): Validation\ValidationReport
+    static write(Syntax\Document $document, string $path, WriteOptions $options = …): void
+    static writeGedzip(Syntax\Document $document, string $path, array $media = …, WriteOptions $options = …): void
+final readonly class Gedzip\Archive
+    diagnostics(): array
+    document(): Syntax\Document
+    entries(): array
+    has(string $reference): bool
+    ignored(): array
+    media(string $reference): mixed
+    missing(): array
+final readonly class Gedzip\GedzipReader
+    __construct(Syntax\Parser $parser = …)
+    read(string $path, ReadOptions $options = …): Gedzip\Archive
+final readonly class Gedzip\GedzipWriter
+    __construct(Writer\Writer $writer = …)
+    write(Syntax\Document $document, string $path, array $media = …, WriteOptions $options = …): void
+enum Io\Encoding: string
+    case Utf8
+    case Utf16Le
+    case Utf16Be
+    case Ascii
+    case Ansel
+    case Windows1250
+    case Windows1251
+    case Windows1252
+    case Cp437
+    case Cp850
+    case MacRoman
+    bom(): string
+final readonly class Model\Age
+    const CHILD
+    const INFANT
+    const STILLBORN
+    readonly ?int $years
+    readonly ?int $months
+    readonly ?int $weeks
+    readonly ?int $days
+    readonly ?Model\AgeBound $bound
+    readonly ?string $word
+    readonly ?string $phrase
+    __construct(?int $years = …, ?int $months = …, ?int $weeks = …, ?int $days = …, ?Model\AgeBound $bound = …, ?string $word = …, ?string $phrase = …)
+    __toString(): string
+    isEmpty(): bool
+    static parse(string $value, Version $version = …): Model\Age
+    toGedcom(Version $version = …): string
+    static tryParse(string $value, Version $version = …): ?Model\Age
+    withPhrase(?string $phrase): Model\Age
+enum Model\AgeBound: string
+    case Less
+    case Greater
+final readonly class Model\Coordinates
+    readonly float $latitude
+    readonly float $longitude
+    __construct(float $latitude, float $longitude)
+    latitudeToGedcom(): string
+    longitudeToGedcom(): string
+    static parse(string $latitude, string $longitude, Version $version = …): Model\Coordinates
+    static tryParse(string $latitude, string $longitude, Version $version = …): ?Model\Coordinates
+final readonly class Model\Date
+    const GREGORIAN
+    const JULIAN
+    const HEBREW
+    const FRENCH_R
+    const ROMAN
+    const UNKNOWN
+    const BCE
+    const MAX_YEAR
+    readonly ?int $year
+    readonly ?string $month
+    readonly ?int $day
+    readonly string $calendar
+    readonly ?string $epoch
+    readonly ?int $dualYear
+    __construct(?int $year, ?string $month = …, ?int $day = …, string $calendar = …, ?string $epoch = …, ?int $dualYear = …)
+    days(): ?array
+    isBce(): bool
+    static of(?int $year, ?string $month = …, ?int $day = …, string $calendar = …): Model\Date
+enum Model\DateKind: string
+    case None
+    case Date
+    case About
+    case Calculated
+    case Estimated
+    case Before
+    case After
+    case Between
+    case From
+    case To
+    case Period
+    dates(): int
+    isPeriod(): bool
+final readonly class Model\Event
+    age(): ?Model\Age
+    date(): ?Model\GedcomDate
+    node(): Syntax\Node
+    place(): ?Model\Place
+    setAge(?Model\Age $age): Model\Event
+    setDate(?Model\GedcomDate $date): Model\Event
+    setPlace(?Model\Place $place): Model\Event
+    tag(): string
+    type(): ?string
+final class Model\Family extends Model\RecordView
+    const TAG
+    const EVENTS
+    addChild(Model\Individual $child): Model\Family
+    addMarriage(?Model\GedcomDate $date = …, ?Model\Place $place = …): Model\Event
+    children(): array
+    events(string ...$tags): array
+    husband(): ?Model\Individual
+    marriage(): ?Model\Event
+    memberXrefs(): array
+    partners(): array
+    removeChild(Model\Individual $child): Model\Family
+    setHusband(Model\Individual $husband): Model\Family
+    setWife(Model\Individual $wife): Model\Family
+    wife(): ?Model\Individual
+final readonly class Model\GedcomDate
+    readonly Model\DateKind $kind
+    readonly ?Model\Date $date
+    readonly ?Model\Date $endDate
+    readonly ?string $phrase
+    __construct(Model\DateKind $kind, ?Model\Date $date = …, ?Model\Date $endDate = …, ?string $phrase = …)
+    __toString(): string
+    days(): ?array
+    static of(Model\Date $date): Model\GedcomDate
+    static parse(string $value, Version $version = …): Model\GedcomDate
+    toGedcom(Version $version = …): string
+    static tryParse(string $value, Version $version = …): ?Model\GedcomDate
+    withPhrase(?string $phrase): Model\GedcomDate
+final class Model\Individual extends Model\RecordView
+    const TAG
+    const EVENTS
+    addBirth(?Model\GedcomDate $date = …, ?Model\Place $place = …): Model\Event
+    addDeath(?Model\GedcomDate $date = …, ?Model\Place $place = …): Model\Event
+    birth(): ?Model\Event
+    children(): array
+    death(): ?Model\Event
+    editName(Closure $edit): Model\Individual
+    events(string ...$tags): array
+    familiesAsChild(): array
+    familiesAsSpouse(): array
+    familyXrefs(): array
+    name(): ?Model\PersonalName
+    names(): array
+    parents(): array
+    setName(Model\PersonalName $name): Model\Individual
+    setSex(Model\Sex $sex): Model\Individual
+    sex(): ?Model\Sex
+    spouses(): array
+final readonly class Model\MediaFile
+    format(): ?string
+    node(): Syntax\Node
+    path(): string
+    title(): ?string
+final class Model\MediaObject extends Model\RecordView
+    const TAG
+    addFile(string $path, string $format, ?string $title = …): Model\MediaFile
+    files(): array
+    title(): ?string
+final readonly class Model\PersonalName
+    readonly string $given
+    readonly ?string $surname
+    readonly string $suffix
+    __construct(string $given = …, ?string $surname = …, string $suffix = …)
+    __toString(): string
+    full(): string
+    static of(string $given, ?string $surname = …, string $suffix = …): Model\PersonalName
+    static parse(string $value): Model\PersonalName
+    toGedcom(): string
+    static tryParse(string $value): ?Model\PersonalName
+    withGiven(string $given): Model\PersonalName
+    withSurname(?string $surname): Model\PersonalName
+final readonly class Model\Place
+    readonly array $parts
+    __construct(array $parts)
+    __toString(): string
+    name(): string
+    static of(string $value): Model\Place
+    toGedcom(): string
+abstract class Model\RecordView
+    const TAG
+    const EVENTS
+    addEvent(string $tag, ?Model\GedcomDate $date = …, ?Model\Place $place = …): Model\Event
+    node(): Syntax\Node
+    static tagIn(Version $version): string
+    xref(): ?string
+final class Model\Repository extends Model\RecordView
+    const TAG
+    address(): ?string
+    name(): ?string
+    setName(?string $name): Model\Repository
+enum Model\Sex: string
+    case Male
+    case Female
+    case Intersex
+    case Unknown
+    isIn(Version $version): bool
+    static parse(string $value, Version $version = …): ?Model\Sex
+final class Model\SharedNote extends Model\RecordView
+    content(): string
+    mediaType(): ?string
+    setContent(string $text): Model\SharedNote
+    static tagIn(Version $version): string
+final class Model\Source extends Model\RecordView
+    const TAG
+    abbreviation(): ?string
+    addRepository(Model\Repository $repository, ?string $callNumber = …): Model\Source
+    author(): ?string
+    callNumber(Model\Repository $repository): ?string
+    content(): ?string
+    publication(): ?string
+    repositories(): array
+    repositoryXrefs(): array
+    setAuthor(?string $author): Model\Source
+    setPublication(?string $publication): Model\Source
+    setTitle(?string $title): Model\Source
+    title(): ?string
+final class Model\Submitter extends Model\RecordView
+    const TAG
+    address(): ?string
+    emails(): array
+    name(): ?string
+    setName(?string $name): Model\Submitter
+final readonly class ReadOptions
+    readonly bool $strict
+    readonly ?Io\Encoding $encoding
+    readonly ?Version $version
+    readonly int $maxDepth
+    readonly int $maxLineLength
+    readonly int $maxArchiveSize
+    readonly int $maxCompressionRatio
+    readonly bool $dialects
+    __construct(bool $strict = …, ?Io\Encoding $encoding = …, ?Version $version = …, int $maxDepth = …, int $maxLineLength = …, int $maxArchiveSize = …, int $maxCompressionRatio = …, bool $dialects = …)
+    withArchiveLimits(int $maxArchiveSize, int $maxCompressionRatio): ReadOptions
+    withDialects(bool $dialects = …): ReadOptions
+    withEncoding(?Io\Encoding $encoding): ReadOptions
+    withLimits(int $maxDepth, int $maxLineLength): ReadOptions
+    withStrict(bool $strict = …): ReadOptions
+    withVersion(?Version $version): ReadOptions
+enum Severity: string
+    case Error
+    case Warning
+    case Info
+final class Syntax\Document
+    addFamily(?string $xref = …): Model\Family
+    addIndividual(?string $xref = …): Model\Individual
+    addRecord(string $tag, ?string $xref = …, ?string $value = …): Syntax\Node
+    copy(): Syntax\Document
+    static create(Version $version = …): Syntax\Document
+    diagnostics(): array
+    encoding(): Io\Encoding
+    families(): array
+    family(string $xref): ?Model\Family
+    find(string $path): ?Syntax\Node
+    hasBom(): bool
+    head(): ?Syntax\Node
+    individual(string $xref): ?Model\Individual
+    individuals(): array
+    isReadOnly(): bool
+    lineEnding(): string
+    mediaObject(string $xref): ?Model\MediaObject
+    mediaObjects(): array
+    record(string $xref): ?Syntax\Node
+    records(): array
+    removeRecord(string $xref): void
+    renameXref(string $from, string $to): void
+    repositories(): array
+    repository(string $xref): ?Model\Repository
+    sharedNote(string $xref): ?Model\SharedNote
+    sharedNotes(): array
+    source(string $xref): ?Model\Source
+    sourceSystem(): ?Extension\SourceSystem
+    sources(): array
+    submitter(string $xref): ?Model\Submitter
+    submitters(): array
+    version(): Version
+final class Syntax\IndexedDocument implements Countable
+    __destruct()
+    count(): int
+    diagnostics(): array
+    encoding(): Io\Encoding
+    families(): Generator
+    family(string $xref): ?Model\Family
+    find(string $path): ?Syntax\Node
+    hasBom(): bool
+    head(): ?Syntax\Node
+    individual(string $xref): ?Model\Individual
+    individuals(): Generator
+    lineEnding(): string
+    load(): Syntax\Document
+    mediaObject(string $xref): ?Model\MediaObject
+    mediaObjects(): Generator
+    record(string $xref): ?Syntax\Node
+    records(): Generator
+    repositories(): Generator
+    repository(string $xref): ?Model\Repository
+    sharedNote(string $xref): ?Model\SharedNote
+    sharedNotes(): Generator
+    source(string $xref): ?Model\Source
+    sourceSystem(): ?Extension\SourceSystem
+    sources(): Generator
+    submitter(string $xref): ?Model\Submitter
+    submitters(): Generator
+    version(): Version
+final readonly class Syntax\Node
+    addChild(string $tag, ?string $value = …, ?int $position = …): Syntax\Node
+    all(string $tag): array
+    children(): array
+    document(): Syntax\Document
+    first(string $tag): ?Syntax\Node
+    isRemoved(): bool
+    level(): int
+    line(): ?int
+    parent(): ?Syntax\Node
+    path(): string
+    pointer(): ?string
+    remove(): void
+    setPointer(string $xref): Syntax\Node
+    setValue(?string $value): Syntax\Node
+    tag(): string
+    value(): ?string
+    xref(): ?string
+final readonly class Syntax\Parser
+    __construct(Io\EncodingDetector $detector = …)
+    parse(string $bytes, ReadOptions $options = …): Syntax\Document
+final readonly class Syntax\Record
+    document(): Syntax\Document
+    line(): int
+    node(): Syntax\Node
+    tag(): string
+    view(): ?Model\RecordView
+    xref(): ?string
+final class Syntax\RecordStream implements IteratorAggregate
+    diagnostics(): array
+    encoding(): Io\Encoding
+    getIterator(): Generator
+    hasBom(): bool
+    version(): Version
+final readonly class Validation\ValidationOptions
+    readonly array $disabled
+    readonly array $severities
+    readonly bool $plausibility
+    __construct(array $disabled = …, array $severities = …, bool $plausibility = …)
+    withDisabled(string ...$codes): Validation\ValidationOptions
+    withPlausibility(bool $plausibility = …): Validation\ValidationOptions
+    withSeverity(string $code, Severity $severity): Validation\ValidationOptions
+final readonly class Validation\ValidationReport implements Countable, IteratorAggregate, JsonSerializable
+    __construct(array $diagnostics)
+    count(): int
+    diagnostics(): array
+    errors(): array
+    getIterator(): ArrayIterator
+    isValid(): bool
+    jsonSerialize(): array
+    warnings(): array
+final readonly class Validation\Validator
+    __construct()
+    validate(Syntax\Document|Syntax\IndexedDocument $document, Validation\ValidationOptions $options = …): Validation\ValidationReport
+enum Version: string
+    case V4_0
+    case V5_5
+    case V5_5_1
+    case V5_5_5
+    case V7_0
+    static fromDeclared(string $declared): ?Version
+    isWritable(): bool
+    readAs(): Version
+final readonly class WriteOptions
+    const MAX_LINE_LENGTH_5
+    readonly Writer\WriteMode $mode
+    readonly ?string $lineEnding
+    readonly int $maxLineLength
+    readonly ?Io\Encoding $encoding
+    readonly ?bool $bom
+    __construct(Writer\WriteMode $mode = …, ?string $lineEnding = …, int $maxLineLength = …, ?Io\Encoding $encoding = …, ?bool $bom = …)
+    static normalize(): WriteOptions
+    static preserve(): WriteOptions
+    withBom(?bool $bom): WriteOptions
+    withEncoding(?Io\Encoding $encoding): WriteOptions
+    withLineEnding(?string $lineEnding): WriteOptions
+    withMaxLineLength(int $maxLineLength): WriteOptions
+enum Writer\WriteMode
+    case Preserve
+    case Normalize
+final class Writer\Writer
+    serialize(Syntax\Document $document, WriteOptions $options = …, ?array $records = …): string

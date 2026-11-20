@@ -6,6 +6,7 @@ namespace Korin\Gedcom\Io;
 
 use Korin\Gedcom\Diagnostic;
 
+/** @internal */
 final readonly class Detection
 {
     /**

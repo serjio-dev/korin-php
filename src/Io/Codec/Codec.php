@@ -6,7 +6,11 @@ namespace Korin\Gedcom\Io\Codec;
 
 use Korin\Gedcom\Exception\UnencodableCharacterException;
 
-/** Converts between one character encoding and UTF-8. */
+/**
+ * Converts between one character encoding and UTF-8.
+ *
+ * @internal
+ */
 interface Codec
 {
     /** Decodes to UTF-8, or returns null when the bytes are not valid in this encoding. */

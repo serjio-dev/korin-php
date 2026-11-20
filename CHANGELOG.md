@@ -7,6 +7,21 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+### Changed
+
+- The public API is audited for 1.0 and listed in `tests/Unit/public-api.txt`, checked by a
+  test. Classes and methods that were public only by omission are `@internal` now: the codecs
+  (`Io\Codec`), `Io\EncodingDetector` and `Io\Detection`, the profiles (`Spec\Profile`,
+  `Structure`, `Substructure`, `Cardinality`), `Syntax\Path`, `Document::createNode()` and
+  `hasPayload()`, `Encoding::ascii()` and `codeUnitSize()`, `Version::escapesOnlyLeadingAt()`,
+  `Writer::bomByDefault()`, and the constructor parameters of `Converter` and `Parser`
+  ([UPGRADE.md](UPGRADE.md)).
+
+### Removed
+
+- `Spec\Cardinality::allows()`, `Document::isDirty()` and `Document::originalLine()`, internal
+  and no longer used.
+
 ## [0.8.0] - 2026-11-21
 
 Performance and stability. `convertFile()` converts records in batches and is a third faster

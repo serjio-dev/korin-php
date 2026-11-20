@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Spec;
 
-/** How many times a substructure may occur, e.g. {0:1}, {1:M}. */
+/**
+ * How many times a substructure may occur, e.g. {0:1}, {1:M}.
+ *
+ * @internal
+ */
 final readonly class Cardinality implements \Stringable
 {
     /** @param ?int $max null for "M" (unbounded) */
@@ -12,11 +16,6 @@ final readonly class Cardinality implements \Stringable
         public int $min,
         public ?int $max,
     ) {}
-
-    public function allows(int $count): bool
-    {
-        return $count >= $this->min && ($this->max === null || $count <= $this->max);
-    }
 
     public function isRequired(): bool
     {

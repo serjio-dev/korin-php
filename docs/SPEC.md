@@ -144,7 +144,7 @@ A file is decoded into one tree; the model, validation and conversion read it, a
 - **Immutable value objects.** `GedcomDate`, `PersonalName`, `Place` and the other value objects are `final readonly`. Views (`Individual`, `Family`, …) are `final` but not `readonly`: they are "live". A value object is the same for every version: `parse($value, $version)` accepts exactly what the validator finds valid for that version without a warning, `toGedcom($version)` writes it in that version's form and throws `InvalidValueException` when the version cannot hold it (a dual year in 7.0, weeks of an age in 5.x) — the converter, not the value object, decides what to do with such values. Phrases (7.0 `PHRASE`, 5.x `INT … (…)`) belong to the value object; in 7.0 the view writes them as the substructure.
 - **Compact tree.** Nodes are stored not as separate PHP objects but in packed arrays (level, tag, value, offsets into the raw buffer); node objects are created lazily on access. Without this the "50 MB → ≤ 512 MB" target is out of reach.
 - **Extensibility.** A new GEDCOM version = a new profile + conversion steps to its neighbor, with no changes to the core.
-- **Private is marked explicitly.** Everything not marked `@internal` is public API and falls under the SemVer guarantees.
+- **Private is marked explicitly.** Everything not marked `@internal` is public API and falls under the SemVer guarantees. It is listed in `tests/Unit/public-api.txt`, which `PublicApiTest` compares with the code, so a change of it shows in the pull request; every public class is `final` (or abstract, an interface, an enum).
 
 **Change model (the "mutable tree" option):**
 
@@ -161,7 +161,7 @@ A file is decoded into one tree; the model, validation and conversion read it, a
 
 ## 6. Public API
 
-The entry point is the `Gedcom` facade with static methods for common tasks. Behind it are plain classes (`Reader`, `Writer`, `Converter`, `Validator`) that can be injected through a DI container.
+The entry point is the `Gedcom` facade with static methods for common tasks. Behind it are plain classes (`Syntax\Parser`, `Writer\Writer`, `Conversion\Converter`, `Validation\Validator`, `Gedzip\GedzipReader`, `Gedzip\GedzipWriter`) that can be injected through a DI container.
 
 ```php
 use Korin\Gedcom\Gedcom;

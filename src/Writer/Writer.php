@@ -133,6 +133,8 @@ final class Writer
      * Whether a file written anew starts with a byte order mark (SPEC section 3): 7.0 and 5.5.5
      * always, any version in UTF-16, not 5.5 and 5.5.1 in UTF-8 (some old programs do not
      * recognize "0 HEAD" after a BOM). Encodings without a BOM have none.
+     *
+     * @internal
      */
     public static function bomByDefault(Version $version, Encoding $encoding): bool
     {

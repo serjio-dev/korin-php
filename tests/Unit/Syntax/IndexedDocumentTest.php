@@ -231,7 +231,7 @@ final class IndexedDocumentTest extends TestCase
         self::assertTrue($document->isReadOnly());
         self::assertSame(['INDI', 'TRLR'], array_map(static fn(Node $record): string => $record->tag(), $document->records()));
         self::assertSame([4, 5, 6, 7, 10], array_map($document->lineOf(...), [1, 2, 3, 4, 5]));
-        self::assertSame('0 TRLR', $document->originalLine(5)[0] ?? null);
+        self::assertSame('0 TRLR', $document->originalBytes(5)[0] ?? null);
     }
 
     /** @return resource */

@@ -6,7 +6,11 @@ namespace Korin\Gedcom\Io\Codec;
 
 use Korin\Gedcom\Io\Encoding;
 
-/** Shared, stateless codec instances per encoding. */
+/**
+ * Shared, stateless codec instances per encoding.
+ *
+ * @internal
+ */
 final class Codecs
 {
     /** @var array<string, Codec> */

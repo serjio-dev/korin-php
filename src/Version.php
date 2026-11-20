@@ -44,7 +44,7 @@ enum Version: string
         return $this !== self::V4_0;
     }
 
-    /** Whether "@" is escaped only at the start of a line value (7.0) rather than everywhere (5.x). */
+    /** @internal whether "@" is escaped only at the start of a line value (7.0) rather than everywhere (5.x) */
     public function escapesOnlyLeadingAt(): bool
     {
         return $this === self::V7_0;

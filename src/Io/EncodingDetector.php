@@ -14,6 +14,8 @@ use Korin\Gedcom\Severity;
  * Order: explicit encoding → BOM → UTF-16 byte pattern → HEAD.CHAR checked against content.
  * HEAD.CHAR wins unless the content proves it wrong; a non-standard or ambiguous CHAR
  * (ANSI, LATIN1, …) is resolved from content and reported.
+ *
+ * @internal
  */
 final class EncodingDetector
 {
