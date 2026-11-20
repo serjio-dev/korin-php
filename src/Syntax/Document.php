@@ -835,7 +835,7 @@ final class Document
     public function walk(?array $records = null): \Generator
     {
         $stack = array_reverse($records ?? $this->childIds(self::ROOT));
-        $depths = array_fill(0, count($stack), 0);
+        $depths = array_pad([], count($stack), 0);
         while ($stack !== []) {
             $id = array_pop($stack);
             $depth = (int) array_pop($depths);

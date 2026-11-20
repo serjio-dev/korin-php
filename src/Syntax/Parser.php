@@ -99,7 +99,7 @@ final readonly class Parser
         foreach (LineSplitter::split($bytes, $encoding, $start) as [$offset, $length, $eol]) {
             ++$lineNumber;
             // Only where the records do not follow each other in the file: lineOf() looks the bases up one by one.
-            if (isset($lines[$offset]) && $offset > 0 && $lines[$offset] !== $lineNumber) {
+            if (isset($lines[$offset]) && $lines[$offset] !== $lineNumber) {
                 $lineNumber = $lines[$offset];
                 $document->continueAtLine($lineNumber);
             }

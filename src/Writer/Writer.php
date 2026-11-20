@@ -44,18 +44,18 @@ final class Writer
         foreach ($document->walk($records) as $depth => $id) {
             if ($canonical && ($undecodable === [] || !isset($undecodable[$document->lineOf($id)]))
                 && ($span = $document->normalSpan($id, $depth, $lineEnding, $limit)) !== null) {
-                if ($run !== null && $span[0] === $run[0] + $run[1]) {
-                    $run[1] += $span[1];
-                } else {
-                    $out .= $this->flush($document, $run, $pendingEol, $eol);
+                if ($run === null || $span[0] !== $run[0] + $run[1]) {
+                    // Normalizing, a line due a terminator gets that of the output.
+                    $out .= $run === null ? (string) $pendingEol : $document->sourceBytes($run[0], $run[1]);
                     $pendingEol = null;
                     $run = $span;
+                } else {
+                    $run[1] += $span[1];
                 }
-                $lastIsNew = false;
                 continue;
             }
             if ($run !== null) {
-                $out .= $this->flush($document, $run, null, $eol);
+                $out .= $document->sourceBytes($run[0], $run[1]);
                 $run = null;
             }
             if ($pendingEol !== null) {
@@ -105,25 +105,15 @@ final class Writer
             }
             $lastIsNew = $document->lineOf($id) === 0;
         }
-        $out .= $this->flush($document, $run, null, $eol);
+        if ($run !== null) {
+            $out .= $document->sourceBytes($run[0], $run[1]);
+        }
         // Keep a missing final terminator only when the input had none; a normalized file always has one.
         if ($pendingEol !== null) {
             $out .= $pendingEol === '' && ($lastIsNew || $normalize) ? $eol : $pendingEol;
         }
 
         return $out;
-    }
-
-    /**
-     * A run of normal lines, after the terminator still due before it.
-     *
-     * @param ?array{int, int} $run offset and length in the source
-     */
-    private function flush(Document $document, ?array $run, ?string $pendingEol, string $eol): string
-    {
-        $due = $pendingEol === null ? '' : ($pendingEol === '' ? $eol : $pendingEol);
-
-        return $run === null ? $due : $due . $document->sourceBytes($run[0], $run[1]);
     }
 
     /** @return array<int, true> lines with bytes invalid in the document's encoding (KV1003) */
