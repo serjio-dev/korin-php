@@ -88,6 +88,10 @@ final class ConverterTest extends TestCase
         self::assertNotSame($doc, $result->document());
         self::assertSame(self::FILE_55, Gedcom::serialize($result->document()));
         self::assertSame('{"from":"5.5","to":"5.5","entries":[]}', json_encode($result->losses()));
+        // VERS 5.5 with a space, no GEDC, no HEAD: not a draft either.
+        foreach (["0 HEAD\n1 GEDC\n2 VERS 5.5 \n0 TRLR\n", "0 HEAD\n0 TRLR\n", "0 @I1@ INDI\n0 TRLR\n"] as $file) {
+            self::assertSame($file, (new Converter([]))->convert(Gedcom::parse($file, (new ReadOptions())->withVersion(Version::V5_5)), Version::V5_5)->output());
+        }
     }
 
     #[Test]
@@ -121,9 +125,11 @@ final class ConverterTest extends TestCase
         ]);
 
         $converter->convert(Gedcom::parse("0 HEAD\n1 GEDC\n2 VERS 4+\n0 TRLR\n"), Version::V5_5_1);
+        // A HEAD without GEDC gets one from the output only.
+        $converter->convert(Gedcom::parse("0 HEAD\n0 TRLR\n", (new ReadOptions())->withVersion(Version::V4_0)), Version::V5_5_1);
 
         // What the file declared is not a value of the later versions (5.5.5 _VERS, KL3001).
-        self::assertSame(['4.0', '5.5'], $seen);
+        self::assertSame(['4.0', '5.5', null, null], $seen);
     }
 
     #[Test]
