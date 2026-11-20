@@ -7,6 +7,16 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-20
+
+Quality thresholds: line coverage in CI (≥ 95% for Io, Syntax, Conversion and Writer), mutation
+testing (MSI ≥ 85%), and generative tests that draw random valid documents from the grammars
+of the profiles and run them through the conversion matrix and up and down again. They, the
+new corpus cells of the 4.0 and 5.0–5.4 rows and the GEDCOM 5.5 torture test files found the
+conversion and validation bugs fixed below. No breaking changes
+([UPGRADE.md](UPGRADE.md)). `convert()` to 7.0 checks the place of every structure now, which
+makes it slower (10 MB: 0.70 → 0.94 s); conversions to 5.5 and 5.5.5 are faster.
+
 ### Added
 
 - Line coverage in CI (pcov, `Coverage` job, report as an artifact and to Codecov). The 1.0
@@ -23,6 +33,22 @@ break the API; such changes are described in `UPGRADE.md`.
   test until fixed.
 - `Utf16Codec` takes `useMbstring: false` to force the pure-PHP encoder, like
   `AnselCodec(useIntl: false)`, so that tests cover the path without the extension.
+- `Document::hasPayload()`: whether a structure has a payload that is not empty, without
+  decoding it.
+- 5.x profiles keep the forms of a source citation and a media link, by pointer and inline
+  (`Structure::allowed()`, `form()`); the 7.0 profile lists the substructures of which a
+  structure allows only one (`Profile::choices()`, from `spec/7.0/choices.yaml`).
+- The corpus has every cell of the 4.0 and 5.0–5.4 rows of the conversion matrix, and the
+  GEDCOM 5.5 torture test files of H. Eichmann and J. A. Nairn as external cases (non-commercial
+  use only, downloaded by `fetch-external.py`).
+
+### Changed
+
+- 5.5.1 → 7.0 checks where every structure stands (the structures rule of the other steps), so
+  that a structure 7.0 has no place for is an extension with a `KL2001` instead of an invalid
+  output. It costs time: `convert()` to 7.0 of 10 MB takes 0.94 s (0.70 s in 0.6.0),
+  `convertFile()` 2.0 s (1.7 s); to 5.5 and 5.5.5, whose rule reads values only where they
+  decide now, 0.86 s and 1.0 s (0.98 s and 1.3 s).
 
 ### Fixed
 
@@ -408,7 +434,8 @@ streaming and indexed reading follow in 0.2–0.4.
   gedcom7code test files; PHPBench benchmarks; a baseline comparison with
   liberu-genealogy/php-gedcom ([docs/comparison](docs/comparison/liberu-php-gedcom.md)).
 
-[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.7.0
 [0.6.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.6.0
 [0.5.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.5.0
 [0.4.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.4.0
