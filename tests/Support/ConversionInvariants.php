@@ -37,8 +37,8 @@ trait ConversionInvariants
     ];
 
     /**
-     * SPEC section 10, kind 4: the output validates without errors, other than those the input has (by code)
-     * and the documented limits of the target (docs/conversion.md); the conversion is deterministic,
+     * SPEC section 10, kind 4: the output validates without errors, other than those the input has
+     * ({@see self::sameErrors()}) and the documented limits of the target (docs/conversion.md); the conversion is deterministic,
      * converting the output to its own version changes nothing, and convertFile() gives the bytes and the
      * losses of convert().
      *
@@ -64,12 +64,46 @@ trait ConversionInvariants
         self::assertSame($result->output(), stream_get_contents($out), 'convertFile() writes the output of convert()');
         self::assertSame(json_encode($result->losses()), json_encode($losses), 'convertFile() reports the losses of convert()');
 
-        $before = [];
-        foreach (Gedcom::validate($input)->errors() as $error) {
-            $before[$error->code] = true;
-        }
-        $unexpected = array_filter(Gedcom::validate($result->document())->errors(), fn(Diagnostic $error): bool => !isset($before[$error->code]) && !$this->isLimit($input->version(), $to, $error, $known));
+        $unexpected = array_filter(
+            $this->sameErrors(Gedcom::validate($input)->errors(), Gedcom::validate($result->document())->errors()),
+            fn(Diagnostic $error): bool => !$this->isLimit($input->version(), $to, $error, $known),
+        );
         self::assertSame([], array_values(array_map(strval(...), $unexpected)), 'The output must validate without errors');
+    }
+
+    /**
+     * The errors of the output that are not errors of the input: an error of the input stays one at
+     * the structure it is at, with its code. That is the same path (any number of errors of the
+     * structure; the message may name what the version expects), or, where the conversion moved
+     * the structure or renamed its record, the same message, once for every error of the input:
+     * an inline OBJE that 5.5.5 and 7.0 make a record loses the form its message names.
+     *
+     * @param list<Diagnostic> $input
+     * @param list<Diagnostic> $output
+     *
+     * @return list<Diagnostic>
+     */
+    private function sameErrors(array $input, array $output): array
+    {
+        $message = static fn(Diagnostic $error): string => $error->code . ' ' . str_replace([' without a pointer', ' with a pointer'], '', $error->message);
+        $paths = $messages = [];
+        foreach ($input as $error) {
+            $paths[$error->code . ' ' . $error->path] = true;
+            $messages[$message($error)] = ($messages[$message($error)] ?? 0) + 1;
+        }
+        $left = [];
+        foreach ($output as $error) {
+            if (isset($paths[$error->code . ' ' . $error->path])) {
+                continue;
+            }
+            if (($messages[$message($error)] ?? 0) > 0) {
+                --$messages[$message($error)];
+                continue;
+            }
+            $left[] = $error;
+        }
+
+        return $left;
     }
 
     /** @param list<array{string, string}> $known */

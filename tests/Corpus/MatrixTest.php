@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * SPEC section 10, test type 4: every corpus input converted to every version (the conversion
- * matrix). The output validates without errors, other than those the input has (by code) and
+ * matrix). The output validates without errors, other than those the input has (at the same structure) and
  * the documented limits of the target (docs/conversion.md); the conversion is deterministic,
  * and converting the output to its own version changes nothing. The loss reports of the cells
  * a case names are checked against its golden files by CorpusTest.
