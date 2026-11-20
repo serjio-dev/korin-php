@@ -35,6 +35,10 @@ same shape as the 7.0 profile:
 - Alternatives with the same tag are merged (`NOTE` as a pointer or as text): payloads are
   joined with `|`, a substructure is required only when every alternative requires it, and an
   alternative without a payload adds `<NULL>`.
+- Where the alternatives with a pointer and those without have different substructures (a
+  `SOURCE_CITATION`: `PAGE` by pointer, `TEXT` inline; a `MULTIMEDIA_LINK`: `FILE` inline only),
+  the profile also keeps the substructures of each, merged the same way (`forms`). The
+  validator and the conversion use the form the payload has (`Structure::allowed()`).
 - Pointers `@<XREF:INDI>@` become pointers to the URI of the record.
 - Top-level records repeat `{0:M}`; `HEAD` and `TRLR` occur once, `SUBN` at most once.
 

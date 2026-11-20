@@ -107,6 +107,7 @@ back, except for what the loss report lists. Implemented so far:
 | `HEAD.LANG`, `SUBM.LANG` | 5.5.1 names: `uk` → `Ukrainian`, `und` + `_PHRASE Hmong` → `Hmong`. A tag without a 5.5.1 name (`en-GB`) → `_LANG`, `KL3001`. A `SUBM.LANG` after the three 5.5.1 allows keeps its tag (`_LANG fr`, `KL2002`) |
 | Media `FORM` | A file extension: one 5.5.1 lists (`image/jpeg` → `jpg`, `image/tiff` → `tif`), another known one (`image/png` → `png`), `application/x-x` → `x`; others stay |
 | `FORM.MEDI` | `FORM.TYPE` |
+| `TITL` of a media link by pointer (`OBJE @O1@` + `TITL`) | `_TITL`, `KL2001`: the 5.5.1 link by pointer has no substructures |
 | `FILE` | A path: `file:///c:/My%20Photos/a.jpg` → `c:\My Photos\a.jpg`, `file:///x` → `/x`, `file://server/x` → `\\server\x`, a relative path without percent-encoding. Other URLs stay |
 | Enumerations | 5.5.1 case and spelling (`BIRTH` → `birth`, `PRE_1970` → `PRE-1970`, `DNS_CAN` → `DNS/CAN`); `OTHER` + `PHRASE` → the phrase (`(midwife)` for a role in an event) |
 | A value a closed 5.5.1 list does not have (`MEDI OTHER` + `PHRASE Portrait`: `FORM.TYPE` lists `photo`, `book`…; `STAT INFANT`) | The 7.0 structure as an extension (`_MEDI OTHER` + `PHRASE Portrait`, `_STAT INFANT`), `KL3001` |
@@ -137,6 +138,7 @@ loss report lists with a `KL3` code.
 | 5.5.1 | 5.5 |
 | --- | --- |
 | A structure 5.5 does not have where it stands: `EMAIL`, `FAX`, `WWW`, `ADR3`, `MAP`, `FONE`, `ROMN`, `NAME.TYPE`, `FACT`, `FAMC.STAT`, `RELI` and `RESN` of an event, `RESN` of a family, `MEDI` | An extension with its tag and substructures (`_EMAIL`, `_MAP`), `KL2001` |
+| `QUAY` of an inline citation (`SOUR Told by his sister` + `QUAY`) | `_QUAY`, `KL2001`: only the 5.5 citation by pointer has it |
 | More of a structure than 5.5 allows: a second `REPO` of a source, a second `FILE` of a media link | The extra ones as extensions (`_REPO`, `_FILE`), `KL2002` |
 | `REPO` of a source without a pointer (`1 REPO` + `CALN`) | `_REPO`, `KL3001`: 5.5 requires the pointer |
 | A value 5.5 does not list: `SEX U`, `RESN confidential`, `STAT EXCLUDED` | The structure as an extension with its value (`_SEX U`), `KL3001` |

@@ -11,6 +11,7 @@ use Korin\Gedcom\Spec\Structure;
 use Korin\Gedcom\Spec\Substructure;
 use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Validation\Records\Records;
+use Korin\Gedcom\Version;
 
 /**
  * Level 2: every standard tag is allowed where it stands, and substructures occur as often as
@@ -24,6 +25,15 @@ final class StructureRule implements Rule
 {
     private const CONTINUATION = ['CONC' => true, 'CONT' => true];
 
+    /**
+     * 7.0 substructures of which a structure allows one, by its URI: the term files give each its own
+     * cardinality, the specification the choice (HEAD: <<NOTE_STRUCTURE>> {0:1}, NOTE or SNOTE).
+     */
+    private const CHOICES_70 = ['https://gedcom.io/terms/v7/HEAD' => [['NOTE', 'SNOTE']]];
+
+    /** @var array<string, list<list<string>>> */
+    private array $choices = [];
+
     private Profile $profile;
 
     /** @var array<string, int> records so far by tag */
@@ -35,6 +45,7 @@ final class StructureRule implements Rule
     public function begin(Records $records, Profile $profile): void
     {
         $this->profile = $profile;
+        $this->choices = $profile->version() === Version::V7_0 ? self::CHOICES_70 : [];
         $this->counts = [];
         $this->out = [];
     }
@@ -58,7 +69,7 @@ final class StructureRule implements Rule
         }
         $definition = $this->profile->structure($substructure->uri);
         if ($definition !== null) {
-            $this->children($document, $this->profile, $id, $definition, $definition->substructures, $this->out);
+            $this->children($document, $this->profile, $id, $definition, $definition->allowed($document->payloadOf($id)), $this->out);
         }
     }
 
@@ -90,7 +101,8 @@ final class StructureRule implements Rule
             }
             $substructure = $allowed[$tag] ?? null;
             if ($substructure === null) {
-                $out[] = $this->diagnostic($document, 'KV2001', "{$tag} is not allowed in {$structure->tag}", $child, $structure->uri);
+                $form = isset($structure->substructures[$tag]) ? ($allowed === ($structure->forms['pointer'] ?? null) ? ' with a pointer' : ' without a pointer') : '';
+                $out[] = $this->diagnostic($document, 'KV2001', "{$tag} is not allowed in {$structure->tag}{$form}", $child, $structure->uri);
                 continue;
             }
             $counts[$tag] = ($counts[$tag] ?? 0) + 1;
@@ -102,12 +114,19 @@ final class StructureRule implements Rule
             $this->deprecations($document, $profile, $child, $tag, $substructure->uri, $out);
             $definition = $profile->structure($substructure->uri);
             if ($definition !== null) {
-                $this->children($document, $profile, $child, $definition, $definition->substructures, $out);
+                $this->children($document, $profile, $child, $definition, $definition->allowed($document->payloadOf($child)), $out);
             }
         }
+        $form = $allowed === $structure->substructures ? '' : ($allowed === ($structure->forms['pointer'] ?? null) ? ' with a pointer' : ' without a pointer');
         foreach ($allowed as $tag => $substructure) {
             if ($substructure->cardinality->isRequired() && ($counts[$tag] ?? 0) < $substructure->cardinality->min) {
-                $out[] = $this->diagnostic($document, 'KV2003', "{$structure->tag} requires {$tag}", $parent, $structure->uri);
+                $out[] = $this->diagnostic($document, 'KV2003', "{$structure->tag}{$form} requires {$tag}", $parent, $structure->uri);
+            }
+        }
+        foreach ($this->choices[$structure->uri] ?? [] as $tags) {
+            $present = array_values(array_filter($tags, static fn(string $tag): bool => isset($first[$tag])));
+            if (count($present) > 1) {
+                $out[] = $this->diagnostic($document, 'KV2002', "{$structure->tag} allows one of " . implode(' and ', $tags), $first[$present[1]], $structure->uri);
             }
         }
     }

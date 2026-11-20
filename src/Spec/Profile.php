@@ -15,7 +15,7 @@ use Korin\Gedcom\Version;
  *     version: string,
  *     source: string,
  *     root: array<string, array{string, int, int}>,
- *     structures: array<string, array{tag: string, payload: ?string, enumset: ?string, children: array<string, array{string, int, int}>}>,
+ *     structures: array<string, array{tag: string, payload: ?string, enumset: ?string, children: array<string, array{string, int, int}>, forms?: array{pointer: array<string, array{string, int, int}>, inline: array<string, array{string, int, int}>}}>,
  *     enumsets: array<string, list<string>>,
  *     types: array<string, string>,
  *     sizes: array<string, array{int, int}>,
@@ -100,8 +100,15 @@ final class Profile
         foreach ($entry['children'] as $tag => $child) {
             $substructures[$tag] = $this->substructureOf($tag, $child);
         }
+        $forms = [];
+        foreach ($entry['forms'] ?? [] as $form => $children) {
+            foreach ($children as $tag => $child) {
+                $forms[$form][$tag] = $this->substructureOf($tag, $child);
+            }
+            $forms[$form] ??= [];
+        }
 
-        return $this->structures[$uri] = new Structure($uri, $entry['tag'], $entry['payload'], $entry['enumset'], $substructures);
+        return $this->structures[$uri] = new Structure($uri, $entry['tag'], $entry['payload'], $entry['enumset'], $substructures, $forms);
     }
 
     /**

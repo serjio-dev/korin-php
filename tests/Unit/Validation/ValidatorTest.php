@@ -42,6 +42,29 @@ final class ValidatorTest extends TestCase
     }
 
     #[Test]
+    public function fiveXFormsByPointerAndInlineAreCheckedEachByItsOwn(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 SOUR X\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n1 SUBM @U1@\n0 @U1@ SUBM\n1 NAME A\n0 @S1@ SOUR\n0 @O1@ OBJE\n1 FILE a.jpg\n2 FORM jpg\n"
+            . "0 @I1@ INDI\n1 SOUR @S1@\n2 TEXT x\n2 PAGE 4\n1 SOUR Told\n2 PAGE 4\n2 TEXT x\n1 OBJE @O1@\n2 TITL x\n1 OBJE\n2 TITL x\n0 TRLR\n");
+
+        self::assertSame([
+            'KV2001 error line 16 (@I1@/SOUR[0]/TEXT): TEXT is not allowed in SOUR with a pointer',
+            'KV2001 error line 19 (@I1@/SOUR[1]/PAGE): PAGE is not allowed in SOUR without a pointer',
+            'KV2001 error line 22 (@I1@/OBJE[0]/TITL): TITL is not allowed in OBJE with a pointer',
+            'KV2003 error line 23 (@I1@/OBJE[1]): OBJE without a pointer requires FILE',
+        ], $this->lines(Gedcom::validate($doc)->diagnostics()));
+    }
+
+    #[Test]
+    public function aSevenHeadHasANoteOrASharedNote(): void
+    {
+        $doc = Gedcom::parse(self::HEAD_70 . "1 NOTE a\n1 SNOTE @N1@\n0 @N1@ SNOTE x\n0 @I1@ INDI\n1 NOTE a\n1 SNOTE @N1@\n0 TRLR\n");
+
+        // INDI allows any number of either.
+        self::assertSame(['KV2002 error line 5 (HEAD/SNOTE): HEAD allows one of NOTE and SNOTE'], $this->lines(Gedcom::validate($doc)->diagnostics()));
+    }
+
+    #[Test]
     public function cardinalityIsChecked(): void
     {
         $report = Gedcom::validate(Gedcom::parse(self::HEAD_70 . "1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 SEX F\n1 SEX M\n1 SEX U\n0 TRLR\n"));

@@ -67,14 +67,14 @@ final class Extensions implements NodeRule
             array_unshift($tags, $document->tagOf($above));
         }
         $profile = Profile::for($this->to);
-        $target = $profile->resolve($tags)?->substructure($standard);
+        $target = $profile->resolve($tags)?->allowed($document->payloadOf($parent))[$standard] ?? null;
         $payload = $document->payloadOf($id);
         $targetStructure = $target === null ? null : $profile->structure($target->uri);
         // The value must fit too: a 5.5 _SOUR with a text under NOTE is no 7.0 NOTE.SOUR, a pointer.
         if ($target === null || $targetStructure === null || !Payloads::fits($profile, $targetStructure, $payload, $this->grammars)) {
             return true;
         }
-        $source = $context->isFromSource($parent) ? $context->sourceStructure($parent)?->substructure($standard) : null;
+        $source = $context->isFromSource($parent) ? $context->sourceStructure($parent)?->allowed($document->payloadOf($parent))[$standard] ?? null : null;
         if ($source !== null && ($this->to !== Version::V7_0 || ($payload !== '@VOID@' && $document->node($id)->first('FAMC')?->pointer() !== '@VOID@'))
             && !$this->notWritable($document, $id, $parent, $standard, $source, $target, $payload)) {
             return true;

@@ -76,7 +76,8 @@ final class Structures implements NodeRule
 
             return true;
         }
-        $substructure = $profile->structure($above)?->substructure($tag);
+        // 5.x: by the form of the parent (OBJE @O1@ has no TITL, SOUR @S1@ no TEXT).
+        $substructure = $profile->structure($above)?->allowed($document->payloadOf($parent))[$tag] ?? null;
         $this->uris[$id] = $substructure?->uri;
         if ($substructure === null) {
             return $context->unsupported($id, 'KL2001', "{$this->target->value} has no {$tag} here");

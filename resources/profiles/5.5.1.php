@@ -2048,6 +2048,14 @@ return [
                 'FORM' => ['https://gedcom.io/specifications/ged551.pdf#MULTIMEDIA_LINK/OBJE/FORM', 0, 1],
                 'TITL' => ['https://gedcom.io/specifications/ged551.pdf#MULTIMEDIA_LINK/OBJE/TITL', 0, 1],
             ],
+            'forms' => [
+                'pointer' => [],
+                'inline' => [
+                    'FILE' => ['https://gedcom.io/specifications/ged551.pdf#MULTIMEDIA_LINK/OBJE/FILE', 1, -1],
+                    'FORM' => ['https://gedcom.io/specifications/ged551.pdf#MULTIMEDIA_LINK/OBJE/FORM', 0, 1],
+                    'TITL' => ['https://gedcom.io/specifications/ged551.pdf#MULTIMEDIA_LINK/OBJE/TITL', 0, 1],
+                ],
+            ],
         ],
         'https://gedcom.io/specifications/ged551.pdf#MULTIMEDIA_LINK/OBJE/FILE' => [
             'tag' => 'FILE',
@@ -2416,6 +2424,22 @@ return [
                 'PAGE' => ['https://gedcom.io/specifications/ged551.pdf#SOURCE_CITATION/SOUR/PAGE', 0, 1],
                 'QUAY' => ['https://gedcom.io/specifications/ged551.pdf#SOURCE_CITATION/SOUR/QUAY', 0, 1],
                 'TEXT' => ['https://gedcom.io/specifications/ged551.pdf#SOURCE_CITATION/SOUR/TEXT', 0, -1],
+            ],
+            'forms' => [
+                'pointer' => [
+                    'DATA' => ['https://gedcom.io/specifications/ged551.pdf#SOURCE_CITATION/SOUR/DATA', 0, 1],
+                    'EVEN' => ['https://gedcom.io/specifications/ged551.pdf#SOURCE_CITATION/SOUR/EVEN', 0, 1],
+                    'NOTE' => ['https://gedcom.io/specifications/ged551.pdf#NOTE_STRUCTURE/NOTE', 0, -1],
+                    'OBJE' => ['https://gedcom.io/specifications/ged551.pdf#MULTIMEDIA_LINK/OBJE', 0, -1],
+                    'PAGE' => ['https://gedcom.io/specifications/ged551.pdf#SOURCE_CITATION/SOUR/PAGE', 0, 1],
+                    'QUAY' => ['https://gedcom.io/specifications/ged551.pdf#SOURCE_CITATION/SOUR/QUAY', 0, 1],
+                ],
+                'inline' => [
+                    'NOTE' => ['https://gedcom.io/specifications/ged551.pdf#NOTE_STRUCTURE/NOTE', 0, -1],
+                    'OBJE' => ['https://gedcom.io/specifications/ged551.pdf#MULTIMEDIA_LINK/OBJE', 0, -1],
+                    'QUAY' => ['https://gedcom.io/specifications/ged551.pdf#SOURCE_CITATION/SOUR/QUAY', 0, 1],
+                    'TEXT' => ['https://gedcom.io/specifications/ged551.pdf#SOURCE_CITATION/SOUR/TEXT', 0, -1],
+                ],
             ],
         ],
         'https://gedcom.io/specifications/ged551.pdf#SOURCE_CITATION/SOUR/DATA' => [

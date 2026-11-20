@@ -139,6 +139,17 @@ final class ProfileTest extends TestCase
         self::assertNotNull($link);
         self::assertSame('{0:M}', (string) $link->substructure('FILE')?->cardinality);
         self::assertSame('@<' . $base . 'MULTIMEDIA_RECORD/OBJE>@|<NULL>', $link->payload);
+        // Each form keeps its own substructures: OBJE @O1@ has none, an inline OBJE requires FILE.
+        self::assertSame([], $link->allowed('@O1@'));
+        self::assertSame(['FILE', 'FORM', 'TITL'], array_keys($link->allowed(null)));
+        self::assertSame('{1:M}', (string) $link->allowed(null)['FILE']->cardinality);
+        // A text, which neither form has, gets the substructures of both.
+        self::assertSame($link->substructures, $link->allowed('text'));
+        $citation = $profile->resolve(['INDI', 'SOUR']);
+        self::assertNotNull($citation);
+        self::assertArrayNotHasKey('TEXT', $citation->allowed('@S1@'));
+        self::assertArrayNotHasKey('PAGE', $citation->allowed('Parish register'));
+        self::assertSame($note->substructures, $note->allowed('@N1@'));
         self::assertSame('Y|<NULL>', $profile->resolve(['INDI', 'BIRT'])?->payload);
         self::assertNull($profile->resolve(['INDI', 'BIRT'])->pointerTarget());
         self::assertNull($profile->resolve(['INDI', 'NAME', 'CONT']));
