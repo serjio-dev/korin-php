@@ -24,8 +24,16 @@ php -d memory_limit=2G ../../../vendor/bin/php-fuzzer fuzz ../../../fuzz/read.ph
 The fuzzer keeps its corpus in memory and grows past the 128 MB of a default `php.ini` in a few
 minutes: give it more. Crashes are written to the working directory as `crash-<hash>.txt`.
 
-The `fuzz` workflow runs every target for 20 minutes each night (and on demand, for as long as
-asked), keeping the corpus between runs. A crash fails the run and is attached to it. Fix it
+The `fuzz` workflow runs every target for 20 minutes each night, keeping the corpus between runs.
+On demand it runs for as long as asked, in shards: several runs of every target side by side,
+each for at most 330 minutes (a hosted job lasts 6 hours). The 1.0 criterion of 24 hours without
+new crashes is 2 shards × 4 targets × 180 minutes:
+
+```bash
+gh workflow run fuzz.yml -f minutes=180 -f shards=2
+```
+
+A crash fails the run and is attached to it; so does a fuzzer that stops before its time. Fix it
 with a unit test of the minimized input; an input that shows behaviour worth keeping goes to
 gedcom-corpus as a case with `source.origin: fuzz`.
 
