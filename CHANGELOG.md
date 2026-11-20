@@ -7,6 +7,23 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-21
+
+Performance and stability. `convertFile()` converts records in batches and is a third faster
+(50 MB to 7.0: 6.5 s instead of 10.2 s, in 43 MB), `convert()` a sixth; the `convertFile()` target
+of SPEC section 9 is now relative to `read()` + `convert()` (≤ 1.2×; 1.15), as the old one (≤ 1.5×
+the read) could not be met by any conversion. A pull request may no longer make a benchmark more
+than 10% slower than its base branch, and 24 hours of fuzzing ran without new crashes. The
+conversion matrix tolerates an error of the input only at the structure it stands at. No
+breaking changes ([UPGRADE.md](UPGRADE.md)).
+
+### Added
+
+- The `bench` workflow: a pull request fails when a benchmark is more than 10% slower than on
+  its base branch, or needs more than 10% more memory.
+- Long fuzzing runs on demand, in shards (`gh workflow run fuzz.yml -f minutes=180 -f shards=2`
+  is 24 hours); a fuzzer that stops before its time fails the run.
+
 ### Changed
 
 - `convertFile()` reads, converts and writes the records in batches of about 64 KB of the file
@@ -451,7 +468,8 @@ streaming and indexed reading follow in 0.2–0.4.
   gedcom7code test files; PHPBench benchmarks; a baseline comparison with
   liberu-genealogy/php-gedcom ([docs/comparison](docs/comparison/liberu-php-gedcom.md)).
 
-[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.8.0
 [0.7.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.7.0
 [0.6.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.6.0
 [0.5.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.5.0
