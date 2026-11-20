@@ -39,6 +39,19 @@ final class DocumentTest extends TestCase
     }
 
     #[Test]
+    public function hasPayloadTellsAnEmptyPayloadWithoutDecodingIt(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 NOTE \n1 NOTE a\n1 NOTE\n1 NOTE @N1@\n0 TRLR\n");
+
+        self::assertSame([false, true, false, true], array_map($doc->hasPayload(...), [2, 3, 4, 5]));
+        // Set or changed: from the stored value.
+        $doc->setPayload(3, '');
+        $doc->setPayload(4, 'b');
+        $created = $doc->createNode(1, null, 'NOTE', 'c');
+        self::assertSame([false, true, true], array_map($doc->hasPayload(...), [3, 4, $created]));
+    }
+
+    #[Test]
     public function ambiguousPathWithoutIndexIsRejected(): void
     {
         $this->expectException(InvalidPathException::class);
