@@ -150,6 +150,13 @@ final class ProfileTest extends TestCase
         self::assertArrayNotHasKey('TEXT', $citation->allowed('@S1@'));
         self::assertArrayNotHasKey('PAGE', $citation->allowed('Parish register'));
         self::assertSame($note->substructures, $note->allowed('@N1@'));
+        // A malformed pointer is the form with a pointer; a structure without forms has none.
+        self::assertSame('pointer', $citation->form('@S1'));
+        self::assertSame('inline', $citation->form('Parish register'));
+        self::assertNull($link->form('text'));
+        self::assertNull($note->form('@N1@'));
+        self::assertSame([['NOTE', 'SNOTE']], Profile::for(Version::V7_0)->choices('https://gedcom.io/terms/v7/HEAD'));
+        self::assertSame([], $profile->choices($base . 'HEADER/HEAD'));
         self::assertSame('Y|<NULL>', $profile->resolve(['INDI', 'BIRT'])?->payload);
         self::assertNull($profile->resolve(['INDI', 'BIRT'])->pointerTarget());
         self::assertNull($profile->resolve(['INDI', 'NAME', 'CONT']));

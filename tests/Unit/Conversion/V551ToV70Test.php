@@ -276,6 +276,13 @@ final class V551ToV70Test extends TestCase
     }
 
     #[Test]
+    public function anExtensionOfAnInlineCitationIsReadByTheInlineForm(): void
+    {
+        // The inline 5.5.1 citation has no PAGE: _PAGE is how it writes one, though InlineRecords points the citation to @X1@ first.
+        self::assertSame(self::HEAD_70 . "0 @I1@ INDI\n1 SOUR @X1@\n2 PAGE 5\n0 @X1@ SOUR\n1 NOTE Told\n0 TRLR\n", $this->convert(self::HEAD . "0 @I1@ INDI\n1 SOUR Told\n2 _PAGE 5\n0 TRLR\n"));
+    }
+
+    #[Test]
     public function aPointerOfAnExtensionTheStepBeforeMadeFollowsTheXrefs(): void
     {
         // 5.5 NOTE.SOUR, 5.5.1 _SOUR: a pointer to no record is @VOID@ in 7.0, one to a renamed record follows it.

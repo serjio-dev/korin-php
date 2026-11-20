@@ -62,6 +62,9 @@ final class ValidatorTest extends TestCase
 
         // INDI allows any number of either.
         self::assertSame(['KV2002 error line 5 (HEAD/SNOTE): HEAD allows one of NOTE and SNOTE'], $this->lines(Gedcom::validate($doc)->diagnostics()));
+        // Reported at the later one, whichever comes first.
+        $doc = Gedcom::parse(self::HEAD_70 . "1 SNOTE @N1@\n1 NOTE a\n0 @N1@ SNOTE x\n0 TRLR\n");
+        self::assertSame(['KV2002 error line 5 (HEAD/NOTE): HEAD allows one of NOTE and SNOTE'], $this->lines(Gedcom::validate($doc)->diagnostics()));
     }
 
     #[Test]

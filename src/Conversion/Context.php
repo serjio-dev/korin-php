@@ -68,13 +68,16 @@ final class Context
     private int $watermark = 0;
 
     /**
-     * @var array<int, array{int, array<int, ?string>}> later steps: for a record extractRecord()
-     *                                                   added, the watermark and structure URIs of the record it was taken from
+     * @var array<int, array{int, array<int, ?string>, array<int, ?('pointer'|'inline')>}> later steps: for a record
+     *                                                   extractRecord() added, the watermark, structure URIs and forms of the record it was taken from
      */
     private array $extracted = [];
 
     /** @var array<int, ?string> later steps: the structure URIs of the record as the step began */
     private array $stepUris = [];
+
+    /** @var array<int, ?('pointer'|'inline')> later steps: the 5.x forms of the record's structures with forms as the step began */
+    private array $stepForms = [];
 
     /** @var array<int, string> structures of the current record restored(), by the URI of the source structure they are read as */
     private array $restoredAs = [];
@@ -174,7 +177,7 @@ final class Context
         $record = $this->insertRecord($tag, $xref);
         $this->added[] = [$record, true];
         if (!$this->first) {
-            $this->extracted[$record] = [$this->watermark, $this->stepUris];
+            $this->extracted[$record] = [$this->watermark, $this->stepUris, $this->stepForms];
         }
 
         return $record;
@@ -301,6 +304,21 @@ final class Context
     }
 
     /**
+     * 5.x: the form a structure had in the source of the step (Structure::form()); null for a structure
+     * without forms, or when it was not there.
+     *
+     * @return ?('pointer'|'inline')
+     */
+    public function sourceForm(int $node): ?string
+    {
+        if (!$this->first) {
+            return $this->stepForms[$node] ?? null;
+        }
+
+        return $this->source->contains($node) ? $this->sourceStructure($node)?->formOf($this->source, $node) : null;
+    }
+
+    /**
      * An extension made a structure again (Extensions) is read as the source structure of its tag that
      * its value fits ($uri): the source has none there, but the rules after convert its value from it.
      * What is inside an extension of the input is in the target's form already, as the conversion the
@@ -324,6 +342,9 @@ final class Context
         while ($stack !== []) {
             $id = array_pop($stack);
             $structure = $this->stepUris[$id] === null ? null : $this->profile()->structure($this->stepUris[$id]);
+            if ($structure !== null && $structure->forms !== []) {
+                $this->stepForms[$id] = $structure->formOf($this->document, $id);
+            }
             foreach ($this->document->childIds($id) as $child) {
                 $this->stepUris[$child] = $structure?->substructure($this->document->tagOf($child))?->uri;
                 $stack[] = $child;
@@ -390,7 +411,7 @@ final class Context
         $this->extensions = [];
         if (isset($this->extracted[$record])) {
             // Taken out of a record of the step: its structures are where they were in that one.
-            [$this->watermark, $this->stepUris] = $this->extracted[$record];
+            [$this->watermark, $this->stepUris, $this->stepForms] = $this->extracted[$record];
             unset($this->extracted[$record]);
 
             return;
@@ -399,6 +420,7 @@ final class Context
         // The record as the step begins: the rules move and rename its structures.
         $profile = $this->profile();
         $this->stepUris = [$record => $profile->record($this->document->tagOf($record))?->uri];
+        $this->stepForms = [];
         $stack = [$record];
         while ($stack !== []) {
             $id = array_pop($stack);
@@ -407,6 +429,9 @@ final class Context
                 continue;
             }
             $structure = $profile->structure($uri);
+            if ($structure !== null && $structure->forms !== []) {
+                $this->stepForms[$id] = $structure->formOf($this->document, $id);
+            }
             foreach ($this->document->childIds($id) as $child) {
                 if ($child < $this->watermark) {
                     $this->stepUris[$child] = $structure?->substructure($this->document->tagOf($child))?->uri;

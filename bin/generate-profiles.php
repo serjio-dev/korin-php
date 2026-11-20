@@ -38,6 +38,7 @@ const PROFILES = [
     '7.0' => [
         'terms' => 'spec/7.0/terms',
         'deprecations' => 'spec/7.0/deprecations.yaml',
+        'choices' => 'spec/7.0/choices.yaml',
         'source' => 'FamilySearch GEDCOM v7.0.18 (2f0b863b5a42275bd2b3ca315900cf779e42f28b)',
     ],
 ];
@@ -57,7 +58,7 @@ foreach (PROFILES as $version => $config) {
     $target = "{$root}/resources/profiles/{$version}.php";
     $profile = isset($config['grammar'])
         ? (new Grammar("{$root}/{$config['grammar']}", $config['uri'], $config['root'] ?? 'LINEAGE_LINKED_GEDCOM'))->compile() + primitives("{$root}/{$config['primitives']}")
-        : compile("{$root}/{$config['terms']}", "{$root}/{$config['deprecations']}");
+        : compile("{$root}/{$config['terms']}", "{$root}/{$config['deprecations']}", "{$root}/{$config['choices']}");
     $code = render($version, $config['source'], $profile);
     if ($check) {
         if (!is_file($target) || file_get_contents($target) !== $code) {
@@ -77,7 +78,7 @@ if ($stale !== []) {
 /**
  * @return array<string, mixed>
  */
-function compile(string $dir, string $deprecations): array
+function compile(string $dir, string $deprecations, string $choices): array
 {
     $files = glob($dir . '/*');
     if ($files === false || $files === []) {
@@ -134,7 +135,32 @@ function compile(string $dir, string $deprecations): array
         }
     }
 
-    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'types' => [], 'sizes' => [], 'listed' => [], 'calendars' => $calendars, 'months' => $months, 'deprecated' => deprecations($deprecations, $terms)];
+    return ['root' => $root, 'structures' => $structures, 'enumsets' => $enumsets, 'types' => [], 'sizes' => [], 'listed' => [], 'calendars' => $calendars, 'months' => $months, 'deprecated' => deprecations($deprecations, $terms), 'choices' => choices($choices, $structures)];
+}
+
+/**
+ * spec/7.0/choices.yaml, checked against the structures: each exists and has the substructures.
+ *
+ * @param array<string, array{children: array<string, mixed>}> $structures
+ *
+ * @return array<string, list<list<string>>>
+ */
+function choices(string $file, array $structures): array
+{
+    $yaml = Yaml::parseFile($file);
+    $out = [];
+    foreach (is_array($yaml) ? $yaml : throw new RuntimeException("{$file}: not a map") as $uri => $groups) {
+        $uri = (string) $uri;
+        foreach (is_array($groups) ? $groups : throw new RuntimeException("{$file}: {$uri}: not a list") as $tags) {
+            $tags = is_array($tags) ? array_values(array_filter($tags, is_string(...))) : [];
+            if (count($tags) < 2 || array_diff($tags, array_keys($structures[$uri]['children'] ?? [])) !== []) {
+                throw new RuntimeException("{$file}: {$uri} has no such substructures");
+            }
+            $out[$uri][] = $tags;
+        }
+    }
+
+    return $out;
 }
 
 /**

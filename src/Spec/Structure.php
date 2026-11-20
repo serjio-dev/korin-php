@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Korin\Gedcom\Spec;
 
+use Korin\Gedcom\Syntax\Document;
 use Korin\Gedcom\Syntax\Escaping;
 
 /**
@@ -26,7 +27,12 @@ final readonly class Structure
         public ?string $enumerationSet,
         public array $substructures,
         public array $forms = [],
-    ) {}
+    ) {
+        $this->inlineText = $forms !== [] && array_diff(explode('|', (string) $payload), ['<NULL>', "@<{$this->pointerTarget()}>@"]) !== [];
+    }
+
+    /** Whether the inline form has a text value (a SOUR description; an OBJE link has none). */
+    private bool $inlineText;
 
     public function substructure(string $tag): ?Substructure
     {
@@ -35,22 +41,52 @@ final readonly class Structure
 
     /**
      * The substructures allowed with a payload: in 5.x, those of the form with a pointer or of the
-     * inline one, where they differ. A text where the inline form has none (OBJE text) is a wrong
-     * value, not a form: then any substructure of either.
+     * inline one, where they differ (form()).
      *
      * @return array<string, Substructure>
      */
     public function allowed(?string $payload): array
     {
-        if ($this->forms === []) {
-            return $this->substructures;
-        }
-        if ($payload !== null && Escaping::isPointer($payload)) {
-            return $this->forms['pointer'];
-        }
-        $texts = array_diff(explode('|', (string) $this->payload), ['<NULL>', "@<{$this->pointerTarget()}>@"]);
+        return $this->substructuresOf($this->form($payload));
+    }
 
-        return $payload === null || $payload === '' || $texts !== [] ? $this->forms['inline'] : $this->substructures;
+    /**
+     * 5.x: the form a payload gives a structure with forms, 'pointer' or 'inline'. A malformed pointer
+     * (@S1) is the form with a pointer; a text where the inline form has none (OBJE text) is a wrong
+     * value, not a form: null, as for a structure without forms.
+     *
+     * @return ?('pointer'|'inline')
+     */
+    public function form(?string $payload): ?string
+    {
+        if ($this->forms === []) {
+            return null;
+        }
+        if ($payload !== null && (Escaping::isPointer($payload) || (str_starts_with($payload, '@') && !str_starts_with($payload, '@@') && !str_starts_with($payload, '@#')))) {
+            return 'pointer';
+        }
+
+        return $payload === null || $payload === '' || $this->inlineText ? 'inline' : null;
+    }
+
+    /**
+     * The form of a structure of a document: its payload is read only for a structure with forms.
+     *
+     * @return ?('pointer'|'inline')
+     */
+    public function formOf(Document $document, int $id): ?string
+    {
+        return $this->forms === [] ? null : $this->form($document->payloadOf($id));
+    }
+
+    /**
+     * @param ?('pointer'|'inline') $form
+     *
+     * @return array<string, Substructure> the substructures of a form; null: of any form
+     */
+    public function substructuresOf(?string $form): array
+    {
+        return $form === null ? $this->substructures : $this->forms[$form];
     }
 
     /** URI of the record type a pointer payload must point to; null when the payload cannot be a pointer. */

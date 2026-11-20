@@ -22,7 +22,8 @@ use Korin\Gedcom\Version;
  *     listed?: array<string, list<string>>,
  *     calendars: array<string, array{uri: string, months: list<string>, epochs: list<string>}>,
  *     months?: array<string, string>,
- *     deprecated?: array{structures: array<string, string>, values: array<string, array<string, string>>, without: array<string, string>}
+ *     deprecated?: array{structures: array<string, string>, values: array<string, array<string, string>>, without: array<string, string>},
+ *     choices?: array<string, list<list<string>>>
  * }
  */
 final class Profile
@@ -190,6 +191,17 @@ final class Profile
     public function deprecatedValue(string $enumerationSet, string $value): ?string
     {
         return $this->data['deprecated']['values'][$enumerationSet][$value] ?? null;
+    }
+
+    /**
+     * 7.0: groups of substructures of which a structure allows one (spec/7.0/choices.yaml: HEAD has a
+     * NOTE or an SNOTE).
+     *
+     * @return list<list<string>>
+     */
+    public function choices(string $uri): array
+    {
+        return $this->data['choices'][$uri] ?? [];
     }
 
     /** 7.0: the tag of the substructure without which a structure is deprecated (EXID without TYPE). */
