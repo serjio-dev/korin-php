@@ -7,6 +7,25 @@ new diagnostic or a different conversion of a value, are in [CHANGELOG.md](CHANG
 Diagnostic (`KV*`) and loss (`KL*`) codes are stable: a code keeps its meaning, and a new case
 gets a new code.
 
+## 0.8 → 1.0
+
+From 1.0 the public API is everything not marked `@internal`, as listed in
+`tests/Unit/public-api.txt`, and changes only in a major version. Marked `@internal` now, and
+so free to change in any release:
+
+- `Io\Codec\*`, `Io\EncodingDetector`, `Io\Detection`: read and write through `Gedcom`,
+  `ReadOptions::withEncoding()` and `WriteOptions::withEncoding()`;
+  `Document::encoding()` is the detected encoding.
+- `Spec\Profile`, `Spec\Structure`, `Spec\Substructure`, `Spec\Cardinality`: the rules of a
+  version are applied by `Gedcom::validate()`.
+- `Syntax\Path`: pass a path as a string to `Document::find()`.
+- `Document::createNode()`, `Document::hasPayload()`: edit through `Node` (`addChild()`,
+  `setValue()`) and `Document::addRecord()`; `Node::value()`.
+- `Encoding::ascii()`, `Encoding::codeUnitSize()`, `Version::escapesOnlyLeadingAt()`,
+  `Writer::bomByDefault()` (`WriteOptions::withBom()` sets whether a file has a BOM).
+- The `$steps` parameter of `Converter` and `$detector` of `Parser`: construct them without
+  arguments.
+
 ## 0.7 → 0.8
 
 No breaking changes. Worth knowing: `GedcomDate::days()` of a range that names its end first

@@ -6,6 +6,7 @@ namespace Korin\Gedcom\Io\Codec;
 
 use Korin\Gedcom\Exception\UnencodableCharacterException;
 
+/** @internal */
 final readonly class Utf16Codec implements Codec
 {
     /** @param bool $useMbstring use ext-mbstring to encode when available; false forces the pure-PHP path */

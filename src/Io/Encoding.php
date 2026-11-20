@@ -28,13 +28,13 @@ enum Encoding: string
         };
     }
 
-    /** Bytes per code unit: line terminators are searched only at multiples of this. */
+    /** @internal bytes per code unit: line terminators are searched only at multiples of this */
     public function codeUnitSize(): int
     {
         return $this === self::Utf16Le || $this === self::Utf16Be ? 2 : 1;
     }
 
-    /** Encode an ASCII string (line terminators, tags) in this encoding. */
+    /** @internal encode an ASCII string (line terminators, tags) in this encoding */
     public function ascii(string $ascii): string
     {
         return match ($this) {

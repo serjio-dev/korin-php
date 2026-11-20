@@ -6,6 +6,7 @@ namespace Korin\Gedcom\Io\Codec;
 
 use Korin\Gedcom\Exception\UnencodableCharacterException;
 
+/** @internal */
 final class AsciiCodec implements Codec
 {
     public function decode(string $bytes): ?string

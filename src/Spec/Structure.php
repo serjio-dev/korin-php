@@ -10,6 +10,8 @@ use Korin\Gedcom\Syntax\Escaping;
 /**
  * One structure type of a profile, identified by its URI: the same tag can mean different
  * structures in different places (INDI.NAME and REPO.NAME).
+ *
+ * @internal
  */
 final readonly class Structure
 {

@@ -10,6 +10,8 @@ use Korin\Gedcom\Exception\UnencodableCharacterException;
  * ANSEL (ANSI/NISO Z39.47) with the GEDCOM 5.5 additions (empty and black box, midline e and o,
  * es zet; "LDS extensions"). Combining marks precede the base letter in ANSEL and follow it in
  * Unicode; decoded text is NFC.
+ *
+ * @internal
  */
 final readonly class AnselCodec implements Codec
 {

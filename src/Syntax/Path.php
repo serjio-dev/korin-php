@@ -10,6 +10,8 @@ use Korin\Gedcom\Exception\InvalidPathException;
  * Node path, e.g. "HEAD/GEDC/VERS" or "@I1@/NAME[0]/SURN". The first segment is HEAD,
  * TRLR or a record xref; each next one is a tag with an optional 0-based index among
  * siblings with that tag. Without an index the tag must be unique among its siblings.
+ *
+ * @internal
  */
 final readonly class Path
 {

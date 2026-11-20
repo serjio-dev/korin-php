@@ -33,13 +33,13 @@ jobs:
       - uses: ramsey/composer-install@v4
       - name: Changed lines
         if: github.event_name == 'pull_request'
-        run: infection --threads=max --git-diff-lines --git-diff-base=origin/${{ github.base_ref }} --min-msi=85 --min-covered-msi=85 --show-mutations --no-progress
+        run: infection --threads=max --git-diff-lines --git-diff-base=origin/${{ github.base_ref }} --min-msi=85 --min-covered-msi=85 --ignore-msi-with-no-mutations --show-mutations --no-progress
       - name: Everything
         if: github.event_name != 'pull_request'
         run: infection --threads=max --min-msi=85 --no-progress
-      # No summary when no line of src changed: there were no mutants.
+      # No summary when no line of src changed, or only lines without mutants (docblocks, removed code).
       - run: |
-          cat build/infection/summary.log >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo 'No mutants, no line of src changed.' >> "$GITHUB_STEP_SUMMARY"
+          cat build/infection/summary.log >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo 'No mutants: no line of src with code changed.' >> "$GITHUB_STEP_SUMMARY"
         if: always()
       - uses: actions/upload-artifact@v7
         if: always()

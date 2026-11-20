@@ -370,17 +370,17 @@ final class Document
         return new Node($this, $id);
     }
 
-    /**
-     * @internal a node that is not in the source: added by editing or by {@see self::create()}
-     *
-     * @param ?int $before sibling to insert before; null appends
-     */
     /** @internal the id the next node created gets: ids only grow, so a node with a lower id was there before */
     public function nextId(): int
     {
         return count($this->parent);
     }
 
+    /**
+     * @internal a node that is not in the source: added by editing or by {@see self::create()}
+     *
+     * @param ?int $before sibling to insert before; null appends
+     */
     public function createNode(int $parent, ?string $xref, string $tag, ?string $payload, ?int $before = null): int
     {
         $this->assertWritable();
@@ -707,13 +707,7 @@ final class Document
         return isset($this->removed[$id]);
     }
 
-    /** @internal */
-    public function isDirty(int $id): bool
-    {
-        return isset($this->dirty[$id]);
-    }
-
-    /** Whether a structure has a payload that is not empty: payloadOf() without decoding it. */
+    /** @internal whether a structure has a payload that is not empty: payloadOf() without decoding it */
     public function hasPayload(int $id): bool
     {
         $pos = $this->pos[$id];
@@ -762,25 +756,6 @@ final class Document
         $this->codec ??= Codecs::for($this->encoding);
 
         return [$this->codec->decode($original[0]) ?? $this->codec->decodeLossy($original[0]), (string) $this->codec->decode($original[1])];
-    }
-
-    /**
-     * @internal the original line with the byte position of its value in the decoded line
-     *
-     * @return ?array{string, string, int} content, terminator, value start (0: no value); null
-     *                                      for new or modified nodes and very long values
-     */
-    public function originalLine(int $id): ?array
-    {
-        $pos = $this->pos[$id];
-        $valueStart = $pos >> 3 & self::EXPLICIT;
-        if ($pos < 0 || $valueStart === self::EXPLICIT || isset($this->dirty[$id])) {
-            return null;
-        }
-        $offset = $pos >> self::POS_SHIFT;
-        $length = $this->contentLength($id);
-
-        return [substr($this->source, $offset, $length), substr($this->source, $offset + $length, $pos & 7), $valueStart];
     }
 
     /**

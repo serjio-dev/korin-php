@@ -25,6 +25,8 @@ use Korin\Gedcom\Version;
  *     deprecated?: array{structures: array<string, string>, values: array<string, array<string, string>>, without: array<string, string>},
  *     choices?: array<string, list<list<string>>>
  * }
+ *
+ * @internal
  */
 final class Profile
 {

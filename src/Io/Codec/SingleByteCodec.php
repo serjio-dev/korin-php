@@ -6,7 +6,11 @@ namespace Korin\Gedcom\Io\Codec;
 
 use Korin\Gedcom\Exception\UnencodableCharacterException;
 
-/** Code pages whose bytes 0x00–0x7F are ASCII and 0x80–0xFF come from a table. */
+/**
+ * Code pages whose bytes 0x00–0x7F are ASCII and 0x80–0xFF come from a table.
+ *
+ * @internal
+ */
 final readonly class SingleByteCodec implements Codec
 {
     /** @var array<string, string> byte → UTF-8 */

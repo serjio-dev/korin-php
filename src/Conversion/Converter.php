@@ -51,7 +51,7 @@ final readonly class Converter
     /** @var list<Step> */
     private array $steps;
 
-    /** @param ?list<Step> $steps the library's steps when null */
+    /** @param ?list<Step> $steps @internal the library's steps when null */
     public function __construct(?array $steps = null)
     {
         $this->steps = $steps ?? Steps::all();

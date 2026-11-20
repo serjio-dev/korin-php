@@ -25,6 +25,7 @@ final readonly class Parser
      */
     public const LINE = '/^[ \t]*(\d{1,3})(?:[ \t]+(@[^@]+@))?[ \t]+([^ \t]+)(?: (.*))?$/s';
 
+    /** @param EncodingDetector $detector @internal */
     public function __construct(private EncodingDetector $detector = new EncodingDetector()) {}
 
     public function parse(string $bytes, ReadOptions $options = new ReadOptions()): Document
