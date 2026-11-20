@@ -23,7 +23,8 @@ final class PublicApiTest extends TestCase
         if (getenv('KORIN_UPDATE_API') === '1') {
             file_put_contents(self::LIST, $api);
         }
-        self::assertSame((string) file_get_contents(self::LIST), $api);
+        // Git may check the list out with CRLF (Windows).
+        self::assertSame(str_replace("\r\n", "\n", (string) file_get_contents(self::LIST)), $api);
     }
 
     #[Test]
