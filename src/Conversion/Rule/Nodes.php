@@ -59,7 +59,7 @@ final readonly class Nodes implements Rule
         while ($stack !== []) {
             $id = array_pop($stack);
             $tag = $document->tagOf($id);
-            $extension = str_starts_with($tag, '_');
+            $extension = $tag !== '' && $tag[0] === '_';
             foreach ($this->byTag[$tag] ?? $this->any as $rule) {
                 if (!$rule->node($document, $id, $context)) {
                     continue 2;
@@ -76,7 +76,9 @@ final readonly class Nodes implements Rule
                 }
             }
             if ($document->hasChildren($id)) {
-                array_push($stack, ...$document->substructureIdsReversed($id));
+                foreach ($document->substructureIdsReversed($id) as $child) {
+                    $stack[] = $child;
+                }
             }
         }
     }
