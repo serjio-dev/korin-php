@@ -1,0 +1,56 @@
+name: bench
+
+# Spec section 9: a pull request that makes a benchmark more than 10% slower, or need more than
+# 10% more memory, than on its base branch is blocked. Both run on the same runner, one after the
+# other; the 50 MB subjects are left out (time), and a failed comparison is run once more before
+# it fails (shared runners are noisy).
+on:
+  pull_request:
+    paths: ['src/**', 'resources/**', 'benchmarks/**', 'phpbench.json', 'composer.json', '.github/workflows/bench.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FILTER: '^(?!.*50Mb)'
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: intl, mbstring, zip
+          coverage: none
+      - uses: ramsey/composer-install@v4
+      - name: Base branch
+        run: |
+          git worktree add ../base "origin/${GITHUB_BASE_REF}"
+          cd ../base
+          composer install --no-interaction --no-progress
+      - name: Benchmarks of the base branch
+        run: |
+          cd ../base
+          vendor/bin/phpbench run --filter="$FILTER" --tag=base --store --progress=plain --report=korin
+      - name: Benchmarks of the pull request, against the base branch
+        run: |
+          cp -r ../base/.phpbench .phpbench
+          compare() {
+            vendor/bin/phpbench run --filter="$FILTER" --ref=base --progress=plain --report=korin \
+              --assert='mode(variant.time.avg) <= mode(baseline.time.avg) +/- 10%' \
+              --assert='mode(variant.mem.peak) <= mode(baseline.mem.peak) +/- 10%' | tee -a bench.txt
+            return "${PIPESTATUS[0]}"
+          }
+          compare || { echo '::warning::A benchmark was more than 10% over the base branch; running the comparison again.'; compare; }
+      - if: always()
+        run: |
+          { echo '### Benchmarks against the base branch'; echo '```'; cat bench.txt 2>/dev/null; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

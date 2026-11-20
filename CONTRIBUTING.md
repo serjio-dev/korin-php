@@ -38,7 +38,9 @@ Other commands (benchmarks, fuzzing, regenerating profiles and encoding tables) 
   `resources/profiles/*.php` by hand.
 - **Messages** of exceptions and diagnostics quote at most a short fragment of a file.
 - **Performance.** `Document` storage is packed (section 9 of the specification); run
-  `composer bench` after a change to it.
+  `composer bench` after a change to it. The `bench` workflow compares a pull request with its
+  base branch and fails when a benchmark is more than 10% slower or needs more than 10% more
+  memory.
 
 ## The corpus first
 

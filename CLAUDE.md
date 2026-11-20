@@ -16,6 +16,8 @@ php bin/generate-profiles.php          # compile spec/<version> into resources/p
 infection --threads=max   # MSI >= 85 (tool, PHP 8.3+, pcov; --filter=src/Io/Foo.php for one file); not a dev dependency
 composer bench          # PHPBench; test files are generated into build/bench on first run
 vendor/bin/phpbench run --report=korin --filter=10Mb --filter=WriteBench   # without the 50 MB subject
+vendor/bin/phpbench run --filter='^(?!.*50Mb)' --tag=main --store   # on main; then on a branch, as the bench workflow:
+vendor/bin/phpbench run --filter='^(?!.*50Mb)' --ref=main --report=korin --assert='mode(variant.time.avg) <= mode(baseline.time.avg) +/- 10%'
 php fuzz/seed.php ../gedcom-corpus && (mkdir -p build/fuzz/crashes && cd build/fuzz/crashes && php -d memory_limit=2G ../../../vendor/bin/php-fuzzer fuzz ../../../fuzz/read.php ../read)   # docs/fuzzing.md
 (cd tools/liberu-comparison && composer install && php compare.php ../../docs/comparison/liberu-php-gedcom.md)   # PHP 8.4+
 ```
