@@ -9,6 +9,7 @@ use Korin\Gedcom\Exception\InvalidPathException;
 use Korin\Gedcom\Exception\ParseException;
 use Korin\Gedcom\Exception\ReadOnlyException;
 use Korin\Gedcom\Gedcom;
+use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\Model\Family;
 use Korin\Gedcom\Model\Individual;
 use Korin\Gedcom\ReadOptions;
@@ -238,6 +239,24 @@ final class DocumentTest extends TestCase
         $doc = Gedcom::parse(self::FILE);
         $doc->find('@I1@/NAME[0]')?->setValue('a@b');
         self::assertTrue($doc->mayContain($doc->find('@I1@/NAME[0]')?->id() ?? 0, '@'));
+        // The answer for a line is kept for the next question, until the line changes.
+        // Parsed lines are nodes 1..N in source order.
+        $pointer = 9;
+        self::assertTrue($doc->mayContain($pointer, '@'));
+        self::assertTrue($doc->mayContain($pointer, '@'));
+        self::assertFalse($doc->mayContain($pointer, '#'));
+        $doc->node($pointer)->setValue('none');
+        self::assertFalse($doc->mayContain($pointer, '@'));
+    }
+
+    #[Test]
+    public function valuesOfAFileWithBytesThatAreNotUtf8AreDecodedLossily(): void
+    {
+        $doc = Gedcom::parse("0 HEAD\n1 NOTE a\xFFb\n1 _X Ünï\n0 TRLR\n", (new ReadOptions())->withEncoding(Encoding::Utf8));
+
+        self::assertSame("a\u{FFFD}b", $doc->find('HEAD/NOTE')?->value());
+        self::assertSame('Ünï', $doc->find('HEAD/_X')?->value());
+        self::assertSame('Ünï', Gedcom::parse("0 HEAD\n1 _X Ünï\n0 TRLR\n")->find('HEAD/_X')?->value());
     }
 
     #[Test]

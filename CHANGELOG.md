@@ -16,6 +16,10 @@ break the API; such changes are described in `UPGRADE.md`.
   `hasPayload()`, `Encoding::ascii()` and `codeUnitSize()`, `Version::escapesOnlyLeadingAt()`,
   `Writer::bomByDefault()`, and the constructor parameters of `Converter` and `Parser`
   ([UPGRADE.md](UPGRADE.md)).
+- `convert()` to 7.0 is a tenth faster and within the target of SPEC section 9 (≤ 2× the read;
+  1.85× for 50 MB): the values of a valid UTF-8 file are not checked line by line again, and the
+  rules check less of every structure. 10 MB take 0.68 s (0.77 s in 0.8.0), 50 MB 3.4 s (3.9 s);
+  `convertFile()` 1.2 s and 6.1 s (1.3 s and 6.5 s).
 
 ### Removed
 

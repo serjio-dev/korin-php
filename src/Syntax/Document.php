@@ -11,6 +11,7 @@ use Korin\Gedcom\Exception\ReadOnlyException;
 use Korin\Gedcom\Extension\SourceSystem;
 use Korin\Gedcom\Io\Codec\Codec;
 use Korin\Gedcom\Io\Codec\Codecs;
+use Korin\Gedcom\Io\Codec\Utf8;
 use Korin\Gedcom\Io\Encoding;
 use Korin\Gedcom\Model\Family;
 use Korin\Gedcom\Model\Individual;
@@ -30,6 +31,8 @@ use Korin\Gedcom\Version;
  */
 final class Document
 {
+    private int $atId = -1;
+    private bool $atResult = false;
     private const ROOT = 0;
 
     /** Bits of {@see $pos} below the line offset: value start (21 bits), terminator length (3 bits). */
@@ -71,6 +74,9 @@ final class Document
     private int $parsed = 0;
 
     private ?Codec $codec = null;
+
+    /** Whether the document is UTF-8 and its source valid UTF-8; null until a value is read. */
+    private ?bool $validUtf8 = null;
 
     /** @var array<int, true> */
     private array $dirty = [];
@@ -583,6 +589,10 @@ final class Document
         if ($valueStart === 0) {
             return null;
         }
+        // Valid UTF-8 decodes to itself: the source is checked once, not every line.
+        if ($this->validUtf8 ??= $this->encoding === Encoding::Utf8 && Utf8::isValid($this->source)) {
+            return substr($this->source, ($pos >> self::POS_SHIFT) + $valueStart, $this->contentLength($id) - $valueStart);
+        }
         $raw = substr($this->source, $pos >> self::POS_SHIFT, $this->contentLength($id));
         $this->codec ??= Codecs::for($this->encoding);
 
@@ -601,6 +611,9 @@ final class Document
         if ($pos < 0 || isset($this->dirty[$id])) {
             return str_contains($this->payload[$id] ?? '', $ascii);
         }
+        if ($id === $this->atId && $ascii === '@') {
+            return $this->atResult;
+        }
         $offset = $pos >> self::POS_SHIFT;
         $length = ($id < $this->parsed ? $this->pos[$id + 1] >> self::POS_SHIFT : strlen($this->source)) - $offset - ($pos & 7);
         if (isset($this->xref[$id]) && $ascii === '@') {
@@ -611,7 +624,13 @@ final class Document
             $length -= min($skip, $length);
         }
 
-        return $length > 0 && strcspn($this->source, $ascii, $offset, $length) < $length;
+        $result = $length > 0 && strcspn($this->source, $ascii, $offset, $length) < $length;
+        if ($ascii === '@') {
+            $this->atId = $id;
+            $this->atResult = $result;
+        }
+
+        return $result;
     }
 
     /**
@@ -639,6 +658,9 @@ final class Document
      */
     public function hasContinuation(int $id, string $ascii): bool
     {
+        if (!isset($this->children[$id])) {
+            return false;
+        }
         for ($child = $this->firstChildOf($id); $child >= 0; $child = ($this->links[$child] >> 32) - 1) {
             $tag = $this->tag[$child];
             if ($tag === 'CONC' || ($tag === 'CONT' && $this->mayContain($child, $ascii))) {

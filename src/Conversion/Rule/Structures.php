@@ -49,9 +49,13 @@ final class Structures implements NodeRule
 
     private readonly Profile $profile;
 
+    /** 5.5.5 and 7.0 have no structure with neither a value nor substructures. */
+    private readonly bool $noBare;
+
     public function __construct(private readonly Version $target)
     {
         $this->profile = Profile::for($target);
+        $this->noBare = $target === Version::V5_5_5 || $target === Version::V7_0;
     }
 
     public function needsPrepass(): bool
@@ -85,7 +89,7 @@ final class Structures implements NodeRule
             return true;
         }
         // 5.x: by the form of the parent (OBJE @O1@ has no TITL, SOUR @S1@ no TEXT).
-        $form = $structure->formOf($document, $parent);
+        $form = $structure->forms === [] ? null : $structure->formOf($document, $parent);
         $place = $this->places[$form === null ? $structure->uri : "{$structure->uri} {$form}"][$tag] ??= $this->place($structure, $form, $tag);
         if ($place === false) {
             $this->structures[$id] = null;
@@ -113,7 +117,7 @@ final class Structures implements NodeRule
             if (!$empty) {
                 $context->loss('KL3003', Severity::Warning, $id, StoredAs::Dropped, "{$this->target->value} {$tag} has no value Y");
             }
-        } elseif (($this->target === Version::V5_5_5 || $this->target === Version::V7_0) && !$document->hasPayload($id)
+        } elseif ($this->noBare && !$document->hasPayload($id)
             && !$this->hasSubstructures($document, $id) && ($context->value($id) ?? '') === '') {
             return $this->bare($id, $tag, $context);
         }
