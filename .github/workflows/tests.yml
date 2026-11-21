@@ -67,7 +67,7 @@ jobs:
         with:
           name: coverage
           path: build/coverage
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: build/coverage/clover.xml
