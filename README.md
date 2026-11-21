@@ -6,14 +6,14 @@ without losing a single tag. Every unavoidable loss is reported.
 **Documentation:** [serjio-dev.github.io/korin-php](https://serjio-dev.github.io/korin-php/) —
 guides, reference and the [API](https://serjio-dev.github.io/korin-php/api/).
 
-> **Status: 0.5 — early development.** Reading, lossless writing, editing, validation and
-> conversion between 5.5, 5.5.1, 5.5.5 and 7.0 work today, also for files of any size (streaming
-> and indexed reading, streaming conversion), and the model: views of every record type with
-> dates, ages, names and places, and GEDZIP archives. GEDCOM 4.0 and the 5.0–5.4 drafts are read
-> too, and documented mistakes of vendor programs corrected. 1.0 follows once the acceptance
-> criteria of [the specification](docs/SPEC.md#14-milestones-and-acceptance-criteria) are met;
-> see [CHANGELOG.md](CHANGELOG.md) for releases.
-> Until 1.0 a minor release may break the API.
+> **Status: 1.0 release candidate.** Reading, lossless writing, editing, validation and
+> conversion between 5.5, 5.5.1, 5.5.5 and 7.0, also for files of any size (streaming and
+> indexed reading, streaming conversion), and the model: views of every record type with dates,
+> ages, names and places, and GEDZIP archives. GEDCOM 4.0 and the 5.0–5.4 drafts are read too,
+> and documented mistakes of vendor programs corrected. The
+> [acceptance criteria](docs/SPEC.md#14-milestones-and-acceptance-criteria) of 1.0 are met; the
+> public API ([`tests/Unit/public-api.txt`](tests/Unit/public-api.txt)) is frozen, and 1.0.0
+> follows a quiet week. See [CHANGELOG.md](CHANGELOG.md) for releases.
 
 ```php
 use Korin\Gedcom\Gedcom;
@@ -47,7 +47,7 @@ PHP 8.2–8.6, 64-bit.
 ## Installation
 
 ```bash
-composer require korin/gedcom
+composer require korin/gedcom:^1.0@RC    # the release candidate; ^1.0 once 1.0.0 is out
 ```
 
 ## Diagnostics
@@ -248,8 +248,10 @@ a vulnerability privately, as [SECURITY.md](SECURITY.md) describes.
 
 ## Versioning and BC policy
 
-[Semantic Versioning](https://semver.org/). Until 1.0 a minor release may break the API; every
-break is in [UPGRADE.md](UPGRADE.md), every change in [CHANGELOG.md](CHANGELOG.md). Diagnostic
+[Semantic Versioning](https://semver.org/). The public API is everything not marked
+`@internal`, listed in [`tests/Unit/public-api.txt`](tests/Unit/public-api.txt); from 1.0 it
+breaks only in a major version, with every break in [UPGRADE.md](UPGRADE.md) and every change in
+[CHANGELOG.md](CHANGELOG.md). Diagnostic
 (`KV*`) and loss (`KL*`) codes are stable. Releases are signed tags.
 
 ## Contributing

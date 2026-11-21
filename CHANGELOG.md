@@ -7,6 +7,22 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+## [1.0.0-rc.1] - 2026-11-21
+
+The first release candidate of 1.0. The acceptance criteria of SPEC section 14 are met: the
+official GEDCOM 7 test files, byte-for-byte round-trips of the corpus, the conversion matrix and
+the up-down-up invariants, coverage and mutation score, PHPStan `max` and CI on PHP 8.2–8.6 and
+three systems, 24 hours of fuzzing without new crashes, the performance targets, and the
+documentation. The code is that of 0.8.0; the public API, listed in `tests/Unit/public-api.txt`,
+is frozen, and from 1.0 breaks only in a major version. 1.0.0 follows after a quiet week, with
+the fixes it needs and nothing else.
+
+### Changed
+
+- The `release` workflow marks a tag with a pre-release part (`v1.0.0-rc.1`) as a pre-release.
+- README, `SECURITY.md` and `CITATION.cff` for the release candidate: `composer require
+  korin/gedcom:^1.0@RC`; 0.8 and the candidates get security fixes until 1.0.0.
+
 ## [0.8.0] - 2026-11-21
 
 Performance, stability and the API of 1.0. `convertFile()` converts records in batches and is
@@ -487,7 +503,8 @@ streaming and indexed reading follow in 0.2–0.4.
   gedcom7code test files; PHPBench benchmarks; a baseline comparison with
   liberu-genealogy/php-gedcom ([docs/comparison](docs/comparison/liberu-php-gedcom.md)).
 
-[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/serjio-dev/korin-php/compare/v1.0.0-rc.1...HEAD
+[1.0.0-rc.1]: https://github.com/serjio-dev/korin-php/releases/tag/v1.0.0-rc.1
 [0.8.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.8.0
 [0.7.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.7.0
 [0.6.0]: https://github.com/serjio-dev/korin-php/releases/tag/v0.6.0

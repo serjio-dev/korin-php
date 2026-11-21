@@ -7,7 +7,8 @@ gets them, and the previous major for another 12 months (`docs/SPEC.md`, section
 
 | Version | Supported |
 | --- | --- |
-| The latest 0.x minor | ✅ |
+| 1.0 release candidates | ✅ until 1.0.0 |
+| 0.8 | ✅ until 1.0.0 |
 | Older minors | ❌ |
 
 ## Reporting a vulnerability
