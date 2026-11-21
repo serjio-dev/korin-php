@@ -7,19 +7,44 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-21
+
+Performance, stability and the API of 1.0. `convertFile()` converts records in batches and is
+40% faster (50 MB to 7.0: 6.1 s instead of 10.2 s, in 41 MB), `convert()` a quarter (3.4 s
+instead of 4.7 s); both meet the targets of SPEC section 9, the one of `convertFile()` now
+relative to `read()` + `convert()` (≤ 1.2×; 1.15), as the old one (≤ 1.5× the read) could not be
+met by any conversion. A pull request may no longer make a benchmark more than 10% slower than
+its base branch. The first 24 hours of fuzzing found two bugs, fixed here. The conversion
+matrix tolerates an error of the input only at the structure it stands at. The public API is
+audited and listed; what was public only by omission is `@internal` now
+([UPGRADE.md](UPGRADE.md)).
+
+### Added
+
+- The `bench` workflow: a pull request fails when a benchmark is more than 10% slower than on
+  its base branch, or needs more than 10% more memory.
+- Long fuzzing runs on demand, in shards (`gh workflow run fuzz.yml -f minutes=180 -f shards=2`
+  is 24 hours); a fuzzer that stops before its time fails the run.
+- `tests/Unit/public-api.txt`: the public API, checked against the code by a test, so that a
+  change of it shows in a pull request.
+
 ### Changed
 
-- The public API is audited for 1.0 and listed in `tests/Unit/public-api.txt`, checked by a
-  test. Classes and methods that were public only by omission are `@internal` now: the codecs
+- `convertFile()` reads, converts and writes the records in batches of about 64 KB of the file
+  instead of one by one, and writes its output in pieces of 64 KB: to 7.0, 10 MB take 1.2 s
+  (2.0 s in 0.7.0) and 50 MB 6.1 s (10.2 s), in the same memory (41 MB for 50 MB).
+- `convert()` and writes in normal form are faster: lines already in their normal form are
+  copied in runs, the values of a valid UTF-8 file are not checked line by line again, and the
+  rules check less of every structure. `convert()` to 7.0 of 10 MB takes 0.68 s (0.94 s in
+  0.7.0), of 50 MB 3.4 s (4.7 s, 1.85 times the read); to 5.5 and 5.5.5 0.72 s and 0.86 s
+  (0.86 s and 1.0 s).
+- Classes and methods that were public only by omission are `@internal`: the codecs
   (`Io\Codec`), `Io\EncodingDetector` and `Io\Detection`, the profiles (`Spec\Profile`,
   `Structure`, `Substructure`, `Cardinality`), `Syntax\Path`, `Document::createNode()` and
   `hasPayload()`, `Encoding::ascii()` and `codeUnitSize()`, `Version::escapesOnlyLeadingAt()`,
-  `Writer::bomByDefault()`, and the constructor parameters of `Converter` and `Parser`
-  ([UPGRADE.md](UPGRADE.md)).
-- `convert()` to 7.0 is a tenth faster and within the target of SPEC section 9 (≤ 2× the read;
-  1.85× for 50 MB): the values of a valid UTF-8 file are not checked line by line again, and the
-  rules check less of every structure. 10 MB take 0.68 s (0.77 s in 0.8.0), 50 MB 3.4 s (3.9 s);
-  `convertFile()` 1.2 s and 6.1 s (1.3 s and 6.5 s).
+  `Writer::bomByDefault()`, and the constructor parameters of `Converter` and `Parser`.
+- A file that is only a byte order mark has no record in `stream()`; `RecordStream::hasBom()`
+  holds the mark (SPEC section 6).
 
 ### Removed
 
@@ -28,42 +53,12 @@ break the API; such changes are described in `UPGRADE.md`.
 
 ### Fixed
 
-- Converting to 7.0 a date with a dual year longer than an int (`8 JAN 2222…849/00`) gave a
-  PHP warning; the following year is worked out in digits. Found by fuzzing.
-
-## [0.8.0] - 2026-11-21
-
-Performance and stability. `convertFile()` converts records in batches and is a third faster
-(50 MB to 7.0: 6.5 s instead of 10.2 s, in 43 MB), `convert()` a sixth; the `convertFile()` target
-of SPEC section 9 is now relative to `read()` + `convert()` (≤ 1.2×; 1.15), as the old one (≤ 1.5×
-the read) could not be met by any conversion. A pull request may no longer make a benchmark more
-than 10% slower than its base branch, and 24 hours of fuzzing ran without new crashes. The
-conversion matrix tolerates an error of the input only at the structure it stands at. No
-breaking changes ([UPGRADE.md](UPGRADE.md)).
-
-### Added
-
-- The `bench` workflow: a pull request fails when a benchmark is more than 10% slower than on
-  its base branch, or needs more than 10% more memory.
-- Long fuzzing runs on demand, in shards (`gh workflow run fuzz.yml -f minutes=180 -f shards=2`
-  is 24 hours); a fuzzer that stops before its time fails the run.
-
-### Changed
-
-- `convertFile()` reads, converts and writes the records in batches of about 64 KB of the file
-  instead of one by one, and writes its output in pieces of 64 KB: to 7.0, 10 MB take 1.3 s
-  (2.0 s in 0.7.0) and 50 MB 6.5 s (10.2 s), in the same memory (43 MB for 50 MB).
-- `convert()` and writes in normal form are faster: lines already in their normal form are
-  copied in runs, and the rules of 5.5.1 → 7.0 check less of every line. `convert()` to 7.0
-  of 10 MB takes 0.77 s (0.94 s in 0.7.0), of 50 MB 3.9 s (4.7 s); to 5.5 and 5.5.5 0.79 s and
-  0.91 s (0.86 s and 1.0 s).
-
-### Fixed
-
 - A date range that names its end first (`BET 1950 AND 92 BCE`, valid if odd) had days that
   ended before they began, in `GedcomDate::days()` and in the plausibility checks, which could
   then report a birth after the death that was not certain (`KV5001`, `KV5002`). It spans the
   same days as the range in order. Found by fuzzing.
+- Converting to 7.0 a date with a dual year longer than an int (`8 JAN 2222…849/00`) gave a
+  PHP warning; the following year is worked out in digits. Found by fuzzing.
 
 ## [0.7.0] - 2026-11-20
 
