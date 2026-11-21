@@ -26,6 +26,11 @@ break the API; such changes are described in `UPGRADE.md`.
 - `Spec\Cardinality::allows()`, `Document::isDirty()` and `Document::originalLine()`, internal
   and no longer used.
 
+### Fixed
+
+- Converting to 7.0 a date with a dual year longer than an int (`8 JAN 2222…849/00`) gave a
+  PHP warning; the following year is worked out in digits. Found by fuzzing.
+
 ## [0.8.0] - 2026-11-21
 
 Performance and stability. `convertFile()` converts records in batches and is a third faster

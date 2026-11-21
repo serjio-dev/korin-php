@@ -54,10 +54,15 @@ $config->setTarget(static function (string $input): void {
     }
     rewind($handle);
     $streamed = '';
-    foreach (Gedcom::stream($handle, $options) as $record) {
+    $stream = Gedcom::stream($handle, $options);
+    foreach ($stream as $record) {
         $streamed .= Gedcom::serialize($record->document());
     }
     fclose($handle);
+    // The byte order mark is written with the first record: a file of only the mark has none (SPEC section 6).
+    if ($streamed === '' && $stream->hasBom()) {
+        $streamed = $stream->encoding()->bom();
+    }
     if ($streamed !== $input) {
         throw new LogicException('stream() records do not add up to the input');
     }

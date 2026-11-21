@@ -74,6 +74,18 @@ final class RecordStreamTest extends TestCase
     }
 
     #[Test]
+    public function aFileOfOnlyAByteOrderMarkHasNoRecordButTheStreamHasTheMark(): void
+    {
+        foreach (["\xEF\xBB\xBF", "\xFF\xFE"] as $bytes) {
+            $stream = new RecordStream($this->handle($bytes));
+
+            self::assertSame([], iterator_to_array($stream));
+            self::assertTrue($stream->hasBom());
+            self::assertSame($bytes, $stream->encoding()->bom());
+        }
+    }
+
+    #[Test]
     #[DataProvider('files')]
     public function readerSplitsRecordsAtTheSameBytesWhateverTheChunks(string $bytes): void
     {
