@@ -7,6 +7,11 @@ new diagnostic or a different conversion of a value, are in [CHANGELOG.md](CHANG
 Diagnostic (`KV*`) and loss (`KL*`) codes are stable: a code keeps its meaning, and a new case
 gets a new code.
 
+## 0.8 → 1.0
+
+No changes: 1.0.0-rc.1 is 0.8.0 with the public API frozen. What 0.8 made `@internal` is listed
+below.
+
 ## 0.7 → 0.8
 
 From 1.0 the public API is everything not marked `@internal`, as listed in

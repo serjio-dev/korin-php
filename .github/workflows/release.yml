@@ -45,5 +45,8 @@ jobs:
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "$archive" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" "$archive" --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md
+            # v1.0.0-rc.1 and the like: a pre-release, not the latest release.
+            prerelease=()
+            [[ "$GITHUB_REF_NAME" == *-* ]] && prerelease=(--prerelease)
+            gh release create "$GITHUB_REF_NAME" "$archive" --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md "${prerelease[@]}"
           fi

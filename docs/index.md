@@ -19,7 +19,7 @@ Gedcom::write($doc, 'family.ged');          // only the changed line is rewritte
 ```
 
 ```bash
-composer require korin/gedcom
+composer require korin/gedcom:^1.0@RC    # the release candidate; ^1.0 once 1.0.0 is out
 ```
 
 PHP 8.2–8.6, 64-bit, no runtime dependencies. `ext-intl` and `ext-mbstring` are used when
