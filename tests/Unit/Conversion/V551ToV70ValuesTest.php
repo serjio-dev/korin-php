@@ -26,6 +26,8 @@ final class V551ToV70ValuesTest extends TestCase
         yield 'bce without space' => ['DATE_VALUE', 'MAR 44B.C.', ['MAR 44 BCE', null]];
         yield 'dual' => ['DATE_VALUE', '30 JAN 1648/49', ['30 JAN 1649', '30 JAN 1648/49']];
         yield 'dual across a century' => ['DATE_VALUE', '1699/00', ['1700', '1699/00']];
+        yield 'dual with leading zeros' => ['DATE_VALUE', '0999/00', ['1000', '0999/00']];
+        yield 'dual of a year an int does not hold' => ['DATE_VALUE', '8 JAN 99999999999999999999/00', ['8 JAN 100000000000000000000', '8 JAN 99999999999999999999/00']];
         yield 'dual not the next year' => ['DATE_VALUE', 'JAN 1701/99', ['JAN 1701', 'JAN 1701/99']];
         yield 'dual in a range' => ['DATE_VALUE', 'BET 1648/49 AND 1650', ['BET 1649 AND 1650', 'BET 1648/49 AND 1650']];
         yield 'interpreted' => ['DATE_VALUE', 'INT 5 MAR 1900 (Fifth of March)', ['5 MAR 1900', 'Fifth of March']];

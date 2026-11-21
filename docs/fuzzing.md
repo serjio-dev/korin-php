@@ -48,3 +48,5 @@ gedcom-corpus as a case with `source.origin: fuzz`.
 | A conversion read the first byte of an empty tag (a PHP warning) | Tags are checked with `str_starts_with()` |
 | A damaged `gedcom.ged` in a GEDZIP archive: a PHP warning, or with a wrong CRC no error at all | `GedzipException` |
 | A date range that names its end first (`BET 1950 AND 92 BCE`, in the gedcom7code date tests) had days that ended before they began, and plausibility could report a conflict that was not certain. Found in a seed, which stops the fuzzer at once with status 0: the nightly runs of `values` had fuzzed nothing since | It spans the same days as the range in order; the workflow fails a fuzzer that stops early |
+| The first 24-hour run (2 × 3 h of each target): a dual year longer than an int (`8 JAN 2222…849/00`) gave a PHP warning in the conversion to 7.0; three crashes of `read`, the same bug | The following year is worked out in digits |
+| The same run: a file that is only a byte order mark has no record, so `stream()` cannot write the mark back | Documented (SPEC section 6): `RecordStream::hasBom()` holds it; the target writes it |

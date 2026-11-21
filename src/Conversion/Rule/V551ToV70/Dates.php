@@ -180,6 +180,19 @@ final class Dates implements NodeRule
         return [sprintf($format, ...$dates), $dual ? true : null];
     }
 
+    /** The year after a year, in digits: a year may have more of them than an int holds. */
+    private function next(string $year): string
+    {
+        $year = ltrim($year, '0');
+        $i = strlen($year) - 1;
+        while ($i >= 0 && $year[$i] === '9') {
+            $year[$i] = '0';
+            --$i;
+        }
+
+        return $i < 0 ? '1' . $year : substr_replace($year, (string) ((int) $year[$i] + 1), $i, 1);
+    }
+
     /** @return ?array{string, bool} the 7.0 date and whether it had a dual year */
     private function date(string $date): ?array
     {
@@ -205,7 +218,8 @@ final class Dates implements NodeRule
                 return null;
             }
         }
-        $year = $dual !== '' && !$bce && (int) $dual === ((int) $m[4] + 1) % 100 ? (string) ((int) $m[4] + 1) : $m[4];
+        $next = $dual !== '' && !$bce ? $this->next($m[4]) : null;
+        $year = $next !== null && (int) $dual === (int) substr($next, -2) ? $next : $m[4];
 
         return [
             ($escape === '' ? '' : $calendar . ' ') . ($day === '' ? '' : $day . ' ') . ($month === '' ? '' : $month . ' ') . $year . ($bce ? ' BCE' : ''),
