@@ -7,10 +7,10 @@ new diagnostic or a different conversion of a value, are in [CHANGELOG.md](CHANG
 Diagnostic (`KV*`) and loss (`KL*`) codes are stable: a code keeps its meaning, and a new case
 gets a new code.
 
-## 0.8 → 1.0
+## 0.7 → 0.8
 
 From 1.0 the public API is everything not marked `@internal`, as listed in
-`tests/Unit/public-api.txt`, and changes only in a major version. Marked `@internal` now, and
+`tests/Unit/public-api.txt`, and changes only in a major version. Marked `@internal` in 0.8, and
 so free to change in any release:
 
 - `Io\Codec\*`, `Io\EncodingDetector`, `Io\Detection`: read and write through `Gedcom`,
@@ -26,11 +26,9 @@ so free to change in any release:
 - The `$steps` parameter of `Converter` and `$detector` of `Parser`: construct them without
   arguments.
 
-## 0.7 → 0.8
-
-No breaking changes. Worth knowing: `GedcomDate::days()` of a range that names its end first
-(`BET 1950 AND 92 BCE`) spans the same days as the range in order instead of ending before it
-begins, and plausibility no longer reports a conflict for such a date that is not certain.
+Worth knowing: `GedcomDate::days()` of a range that names its end first (`BET 1950 AND 92 BCE`)
+spans the same days as the range in order instead of ending before it begins, and plausibility
+no longer reports a conflict for such a date that is not certain.
 
 ## 0.6 → 0.7
 
