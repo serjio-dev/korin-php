@@ -533,7 +533,7 @@ After 1.0: GEDCOM 7.1 after its official release, `korin/gedcomx`, a Symfony bun
 - [x] Up-down-up invariants hold for the corpus and the generative tests
 - [x] Line coverage ≥ 95% (`Io`, `Syntax`, `Conversion`, `Writer`), MSI ≥ 85%
 - [x] PHPStan `max` without errors; CI green on PHP 8.2–8.6 and three operating systems
-- [ ] 24 hours of fuzzing without new crashes
+- [x] 24 hours of fuzzing without new crashes
 - [x] Performance targets from section 9 met
 - [x] README, documentation site and API reference published
 - [ ] Signed tag `v1.0.0`, package on Packagist
